@@ -1,0 +1,53 @@
+/* 
+* Copyright (c) 2023 Forschungszentrum Juelich GmbH.
+* This file is part of JURI. 
+*
+* This is an open source software distributed under the GPLv3 license. More information see the LICENSE file at the top level.
+*
+* Contributions must follow the Contributor License Agreement. More information see the CONTRIBUTING.md file at the top level.
+*
+* Contributors:
+*    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
+*    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*/
+#svg_img {
+    display: block;
+    float: left;
+    border: 1px solid #000000;
+}
+
+#jobs_wrapper {
+    overflow: scroll;
+    border: 1px solid #000000;
+}
+#jobs {
+    font-family: monospace;
+    text-align: right;
+    border: none;
+}
+#jobs th {
+    border-top: none;
+    border-left: none;
+}
+
+#jobs td {
+    border-left: none;
+}
+
+#jobs tr.highlight {
+    background: #FF0000 !important;
+}
+
+#jobs td, #jobs th {
+    white-space: pre;
+}
+
+.hidden {display: none;}
+
+.tmp_hidden {
+    visibility: hidden;
+    position: absolute;
+    top: 0px;
+}
+
+.color_box {width: 10px; height: 10px;}

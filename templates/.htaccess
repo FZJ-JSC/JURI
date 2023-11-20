@@ -1,0 +1,2 @@
+AddType text/x-handlebars-template .handlebars
+Require all granted

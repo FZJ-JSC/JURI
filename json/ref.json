@@ -1,0 +1,33 @@
+{
+    "table": {
+        "scripts": ["table_sort.js", "table_filter.js", "table_download.js"],
+        "functions": ["set_filter", "set_initial_sort", "enable_table_download", "add_column_css"]
+    },
+    "llview": {
+        "scripts": ["table_sort.js", "llview.js"],
+        "functions": ["init_llview"],
+        "styles": ["llview.css"]
+    },
+    "graphs": {
+        "scripts": [["ext/dygraph.min.js", "ext/synchronizer.js"]],
+        "styles": ["ext/dygraph.css"],
+        "functions": ["init_graphs"]
+    },
+    "job_footer_graph": {
+        "scripts": [
+            ["ext/dygraph.min.js", "ext/synchronizer.js"],
+            ["footer_graph_generic.js", "footer_graph.js"]
+        ],
+        "styles": ["ext/dygraph.css"],
+        "functions": ["init_graphs", "add_job_event_handler"]
+    },
+    "job_footer_graph_gpu": {
+        "scripts": [
+            ["ext/dygraph.min.js", "ext/synchronizer.js"],
+            ["footer_graph_generic.js", "footer_graph_gpu.js"]
+        ],
+        "styles": ["ext/dygraph.css"],
+        "functions": ["init_graphs", "add_gpu_event_handler"]
+    }
+}
+

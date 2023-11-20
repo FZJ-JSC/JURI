@@ -1,0 +1,701 @@
+/* 
+* Copyright (c) 2023 Forschungszentrum Juelich GmbH.
+* This file is part of JURI. 
+*
+* This is an open source software distributed under the GPLv3 license. More information see the LICENSE file at the top level.
+*
+* Contributions must follow the Contributor License Agreement. More information see the CONTRIBUTING.md file at the top level.
+*
+* Contributors:
+*    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
+*    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*/
+:root {
+  --fzj-color-blue:  #023d6b;
+  --fzj-color-lightblue:  #adbde3;
+  --fzj-color-gray:  #ebebeb;
+  --fzj-color-yellow:  #faeb5a;
+  --fzj-color-red:  #eb5f73;
+  --fzj-color-green:  #b9d25f;
+  --fzj-color-violet:  #af82b9;
+  --fzj-color-orange:  #fab45a;
+  /* Refresh button options: */
+  --time: 60s;
+  --size: 32px;
+  --ring-size: 6px;
+}
+
+body {
+  overflow: hidden;
+  font-family: Weissenhof Grotesk,Helvetica Neue,Arial,Helvetica,sans-serif;
+}
+
+/* Header and navigation layout */
+#header {
+  position: relative;
+  border: none;
+  background-color: var(--fzj-color-blue);
+  color: #ffffff; 
+  border-bottom: 1px solid #fff;
+  padding: 0;   
+  min-height: 37px; 
+}
+
+#institution_logo {
+  height: 50px;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+#title_wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+#title {
+  padding-left: 10px;
+  padding-right: 10px;
+  align-self: center;
+  font-size: 20px;
+}
+
+#system_picture {
+  align-self: center;
+}
+
+#logo {
+  align-self: center;
+}
+/* Auto-refresh and presentation buttons */
+#presentation, #refresh {
+  align-self: center;
+  font-size: 0.8em;
+}
+#presentation, #refresh 
+{
+  width: var(--size);
+  height: var(--size);
+  margin: 0;
+  position: relative;
+}
+#presentation .outer-circle, 
+#presentation .inner-circle, 
+#refresh .outer-circle, 
+#refresh .inner-circle
+{
+  z-index: 4;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 100%;
+}
+#presentation .inner-circle,
+#refresh .inner-circle 
+{
+  top: 50%;
+  left: 50%;
+  padding: 0;
+  width: calc(var(--size) - var(--ring-size));
+  height: calc(var(--size) - var(--ring-size));
+  margin-left: calc(-1*(var(--size) - var(--ring-size))/2);
+  margin-top: calc(-1*(var(--size) - var(--ring-size))/2);
+  border-radius: 100%;
+  background-color: var(--fzj-color-blue);
+  color: #ffffff;
+  text-align: center;
+  justify-content: center; /* center the content horizontally */
+  align-items: center; /* center the content vertically */
+}
+#presentation span,
+#refresh span {
+  padding: 0px;
+  margin-left: calc(-1*(var(--size) - var(--ring-size))/4);
+  margin-top: calc(-1*(var(--size) - var(--ring-size) + 5px)/4);
+  position: absolute;
+}
+#presentation > button.active,
+#refresh > button.active {
+  border-style: inset;
+  background-color: var(--fzj-color-gray);
+  color: #444;
+}
+#presentation > button:focus,
+#refresh > button:focus {
+  outline: none;
+}
+#presentation .hold,
+#refresh .hold 
+{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+  border-radius: 100%;
+  background-color: var(--fzj-color-blue) /* #9A9A9A; */ /* Not-filled part of circle */
+}
+#presentation .fill, 
+#presentation .dot span,
+#refresh .fill, 
+#refresh .dot span 
+{
+  background-color: var(--fzj-color-yellow);  /* Filled part of circle */
+}
+#presentation .fill, 
+#refresh .fill 
+{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 100%;
+  clip-path: polygon(50% 0, 0 0, 0 100%, 50% 100%);
+}
+#presentation .left .fill, 
+#refresh .left .fill 
+{
+  z-index: 1;
+  animation: left var(--time) linear both;
+  animation-iteration-count: infinite;
+}
+@keyframes left {
+  0%{ transform: rotate(0deg); }
+  50%{ transform: rotate(180deg); }
+  100%{ transform: rotate(180deg); }
+}
+#presentation .right,
+#refresh .right {
+  z-index: 3;
+  transform: rotate(180deg);
+}
+#presentation .right .fill,
+#refresh .right .fill {
+  z-index: 3;
+  animation: right var(--time) linear both;
+  animation-iteration-count: infinite;
+}
+@keyframes right {
+  0%{ transform: rotate(0deg); }
+  50%{ transform: rotate(0deg); }
+  100%{ transform: rotate(180deg); }
+}
+.slow-spin {
+  margin: auto;
+  display: block;
+  font-size: 1.0em;
+  animation: fa-spin 6s infinite linear;
+}
+/**** End auto-refresh button ****/
+/**** Auto-refresh counter ****/
+@property --num {
+  syntax: "<integer>";
+  initial-value: 60;
+  inherits: false;
+}
+
+#countsec {
+  animation: counter 60s linear;
+  animation-iteration-count: infinite;
+  counter-reset: num var(--num);
+  color: #fff;
+}
+#countsec::after {
+  content: counter(num);
+}
+
+@keyframes counter {
+  from {
+    --num: 60;
+  }
+  to {
+    --num: 0;
+  }
+}
+/**** End auto-refresh counter ****/
+
+
+/*** Alert banner with button ***/
+.alert {
+  padding-left: 20px;
+  padding-right: 20px;
+  background-color: #f44336;
+  color: white;
+  opacity: 1;
+  transition: opacity 0.6s;
+  margin-bottom: 15px;
+  position: fixed;
+  top: 0;
+  z-index: 2000;
+  width: 100vw;
+  border-radius: 0rem 0rem 0.3rem 0.3rem;
+}
+.closebtn {
+  margin-left: 15px;
+  color: white;
+  font-weight: bold;
+  float: right;
+  font-size: 22px;
+  line-height: 20px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.closebtn:hover {
+  color: black;
+}
+/*** End of Alert banner ***/
+
+
+@media (max-width: 575.98px) {
+  h2 {font-size: 1.3rem;}
+  footer {font-size: 0.7rem;}
+}
+
+#header h6 {
+  margin-bottom: 0.3rem;
+  font-style: italic;
+  font-weight: bold;
+  font-size: 0.8rem;
+}
+
+#header h2 {
+  flex-grow: 1;
+}
+
+#header h2 img {
+  height: 1.7em;
+}
+
+.navbar {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+nav {
+  margin-top: auto;
+  font-size: 0.9rem;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+nav li:hover {
+  background-color: var(--fzj-color-gray);
+  border-radius: 0.3rem 0.3rem 0rem 0rem;
+}
+
+.nav-link {
+  color: #ffffff ! important;
+}
+
+nav li:hover > .nav-link {
+  color: var(--fzj-color-blue) ! important;
+}
+
+.nav-item.active > .nav-link {
+  color: var(--fzj-color-blue) ! important;
+}
+
+.nav-item.active {
+  background-color: #ffffff;
+  color: var(--fzj-color-blue);
+  border-radius: 0.3rem 0.3rem 0rem 0rem;
+}
+
+.dropdown-item.active, .dropdown-item:active {
+  color: #000;
+  background-color: #e7e7e7;
+}
+
+.dropup .dropdown-menu {
+  margin: 0;
+}
+
+li > .dropdown-menu {
+  margin: 0;
+  border-top: none;
+  border-radius: 0 0.25rem 0.25rem 0.25rem;
+}
+
+.nav-item.active > .dropdown-menu {
+  left: -1px;
+}
+
+#header object {
+  width: 250px;
+  align-self: start;
+}
+
+/* Main content layout */
+#main_content {
+  margin-top: 0;
+  padding-top: 10px;
+  font-size: 0.75rem;
+  overflow: auto;
+  display: grid;
+  grid-auto-rows: min-content;
+}
+
+.hidden {display: none;}
+
+.loading {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #fff;
+  color: var(--fzj-color-blue);
+  z-index: 2000;
+  text-align: center;
+  font-size: 1.2rem;
+  vertical-align: middle;
+}
+
+.loading:before {
+  content: '';
+  display: inline-block;
+  vertical-align: middle;
+  height: 100%;
+}
+
+.loading span {display: inline-block;}
+
+/* Generic table layout */
+table {
+  width: 100%;
+  font-size: 0.75rem;
+  /* IMPORTANT: collapse give problems on top row and the sticky of thead borders doens't work */
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Selected row */
+tr.selected td {
+  background-color: var(--fzj-color-yellow) !important;
+  color: #000000 !important;
+}
+
+.table-hover {
+  border: none;
+  border-bottom: 1px solid rgb(222, 226, 230);
+}
+
+/* Reproducing behaviour of "collapse" by hand, removing duplicate borders */
+.table-hover tbody tr td:not(:last-child) {
+  border-bottom: none;
+  border-right: none;
+}
+
+/* .table-hover tbody tr:last-child td{
+  border-right: none;
+} */
+.table-hover tbody tr td:last-child{
+  border-bottom: none;
+}
+
+
+/* Hovered row */
+.table-hover tbody tr:hover td {
+  border-top: 1px double #444 !important;
+  border-bottom: 1px double #444 !important;
+}
+.table-hover tbody tr:hover td:first-child {
+  border-left: 1px double #444 !important;
+}
+.table-hover tbody tr:hover td:last-child {
+  border-right: 1px double #444 !important;
+}
+/* Removing top border of next row to avoid double borders on hover */
+.table-hover tbody tr:hover +tr td {
+  border-top: none !important;
+}
+/* Removing bottom border of table when last row is hovered */
+.table-hover:has(tbody tr:last-child:hover) {
+  border-bottom: none !important;
+}
+
+th {
+  position: sticky !important;
+  top: 0px;
+  font-weight: bold;
+  background-color: var(--fzj-color-blue);
+  border-color: var(--fzj-color-blue) !important;
+  color: #fff;
+  text-align: center !important;
+}
+
+th input {
+  width:100%;
+}
+
+th input:not(:placeholder-shown) {
+  background-color: var(--fzj-color-green);
+}
+
+#main_content table thead th {
+  top: -10px;
+}
+/* Table on Live view */
+#main_content table#jobs thead th {
+  top: 0px;
+}
+
+#main_content table thead tr.filter th {
+  top: 0.7rem;
+}
+
+#main_content table thead tr.aggregate th {
+  top: 2rem;
+}
+
+tr.filter th, tr.aggregate th {
+  background-color: #ccc;
+  color: #000;
+  border: none;
+  font-weight: normal;
+}
+
+.filtermessage {
+  display: table;
+  justify-self: start;
+  width: calc(100vw - 30px);
+  text-align: center;
+}
+
+td, th {
+  white-space: nowrap;
+}
+
+th.dec span::before {
+  content: "\f078";
+}
+
+th.asc span::before {
+  content: "\f077";
+}
+
+th span {
+  padding-left: .1rem;
+}
+
+.table-sm td, .table-sm th {
+  padding: .1rem !important;
+}
+
+.tooltip-inner {
+  text-align: left;
+}
+
+/* Footer layout */
+footer.container-fluid {
+  position: absolute;
+  padding: 0px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+
+#footer_infoline > hr {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 20px;
+  height: 3px;
+  border-top: 1px solid #777;
+  border-bottom: 1px solid #777;
+  cursor: row-resize;
+}
+
+#footer_infoline {
+  background: #ddd;
+  border-top: 1px solid #999;
+  border-bottom: 1px solid #999;
+  padding: 0px 15px;
+}
+
+#footer_content {
+  padding: 0 1.7rem;
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  margin-bottom: 50px;
+}
+
+#footer_footer {
+  position: fixed;
+  bottom: 0;
+  background-color: var(--fzj-color-blue);
+  color: #ddd !important;
+  padding: 0px 15px;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  flex-direction: row;
+  align-items: center;
+  width: 100%;
+  z-index: 100;
+}
+
+#footer_footer a {
+  color: var(--fzj-color-lightblue);
+}
+
+#graph_selection ul {
+  margin: 0px;
+  /* padding: 0px; */
+  text-align: left;
+  padding-right: 15px;
+  padding-left: 15px;  
+  padding-bottom: 5px;  
+}
+
+#graph_selection li {
+  display: inline-block;
+  /* margin-right: 0.5em; */
+  background-color: #eee;
+  border: 1px solid #bbb;
+  border-top: 0;
+  border-radius: 0rem 0rem 0.3rem 0.3rem;
+  list-style-type: none;
+}
+
+#graph_selection li.active {
+  background-color: #bbb;
+  border: 1px solid #000;
+  font-weight: bold;
+  border-top: 0;
+  border-radius: 0rem 0rem 0.3rem 0.3rem;
+}
+
+#graph_selection li:hover {
+  background-color: #ccc;
+}
+
+#graph_selection li a {
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  color: #000;
+}
+
+#graph_selection li a:hover { 
+  text-decoration: none; 
+}
+
+#graphs {
+  display: flex;
+  padding-right: 1em;
+  padding-top: 5px;
+  border-bottom: 1px solid #bbb;
+  flex-grow: 1;
+  min-height: 75px; /* footer_footer + footer_infoline */
+}
+
+.footer_graph {
+  flex-grow: 1;
+}
+
+.system_graph {
+  padding: 0;
+  height: 15rem; 
+}
+
+.graph_row {
+  margin: 0 !important;
+}
+
+#colorscale_selection > div, #colorscale_selection > div > * {
+  margin: 0 !important;
+  text-align: center;
+}
+#colorscale_selection svg {
+  margin-bottom: 3px;
+}
+.dropdown-item.selected {
+  background-color: #bbb !important;
+}
+
+.footer_graph_legend_kontview {
+  font-size: 0.6rem;
+  background-color: white;	/* #e7e7e7 */
+}
+
+.footer_graph_legend_kontview tr.active {
+  font-weight: bold;
+}
+
+#footer_infoline_page_options span, #footer_infoline_page_options a, #footer_infoline_page_options div {
+  margin-left: 1rem;
+}
+
+#footer_infoline_page_options .dropup a {
+  margin-left: 0rem;
+  padding-left: 0.2rem;
+  padding-right: 0.2rem;
+}
+
+#footer_infoline_page_options .dropup label {
+  cursor: pointer;
+}
+
+#footer_infoline_page_options div.dropup {
+  display: inline-block;
+}
+
+#footer_infoline_page_options div.dropup:hover {
+  background-color: #e7e7e7;
+}
+
+#footer_infoline_page_options a span {
+  margin-left: 0rem;
+}
+
+/* Element specific layout */
+#day_selection_scroll {
+  position: sticky;
+  /* overflow-x:auto; */
+  overflow-y: hidden;
+  top: -10px;
+  background-color: #fff;
+  transform: rotateX(180deg); 
+  padding-right: 15px;
+  padding-left: 15px;
+  }
+
+#day_selection {
+  transform: rotateX(180deg); 
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+
+#day_selection a, #day_selection span {
+  padding: 0.1rem 0.4rem 0.4rem 0.4rem;
+  /* padding-bottom: 0.4rem; */
+  /* margin-right: 0.8rem; */
+  line-height: 1rem;
+}
+
+#day_selection a.active {
+  font-weight: bold;
+  background-color: var(--fzj-color-blue);
+  color: #ffffff;
+  border-radius: 0.3rem 0.3rem 0rem 0rem;
+}
+
+#graphdiv_io_selector a {
+  margin-left: 0.6rem;
+}
+
+#graphdiv_io_selector a.active {
+  font-weight: bold;
+}
+
+#graphdiv_job_id, #graphdiv_type, #graphdiv_queue, #graphdiv_max_size, #graph_info {
+  font-size: 0.8rem;
+  margin: auto 0;
+}
+
+#graphdiv_budget,#graphdiv_project,#graphdiv_system,#graphdiv_filesystem {
+  background-color: var(--fzj-color-blue);
+  color: #ffffff;
+  font-size: 0.7rem;
+}

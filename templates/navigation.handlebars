@@ -1,0 +1,30 @@
+<ul id="navigation" class="navbar-nav mr-auto">
+    {{#each pages}}
+    {{#if pages}}
+        <li id="{{{section}}}_dropdown_button" class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#"
+            data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> {{#if icon}} <span
+                class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
+        </a>
+        <div class="dropdown-menu" aria-labelledby="{{{section}}}_dropdown_button">
+        {{#each pages}}
+        {{#if href}}
+            <a class="dropdown-item" href="{{{href}}}"> {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>
+        {{else}}
+            <a class="dropdown-item" href="#" onclick="view.selectPage('{{{section}}}'); return false;" id="{{{section}}}_dropdown_item"> {{#if icon}} <span
+                class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>
+        {{/if}}
+        {{/each}}
+        </div>
+        </li>
+    {{else}}
+        <li id="{{{section}}}_button" class="nav-item">
+            {{#if href}}
+                <a class="nav-link h-100" href="{{{href}}}"> {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>
+            {{else}}
+                <a class="nav-link h-100" href="#" onclick="view.selectPage('{{{section}}}'); return false;"> {{#if icon}} <span
+                    class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>
+            {{/if}}
+        </li>
+    {{/if}}
+    {{/each}}
+</ul>

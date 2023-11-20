@@ -1,0 +1,34 @@
+Satisfy all
+AuthName "LLviewJobReport (JSC web service account)"
+AuthType Basic
+# To be filled/changed and uncommented:
+#AuthBasicProvider ldap
+#AuthLDAPURL 
+#AuthLDAPBindDN 
+#AuthLDAPBindPassword 
+#Require ldap-attribute 
+#ErrorDocument 404 /system/error404.html
+Require valid-user
+Header set Cache-Control "max-age=60, private"
+<IfModule mod_headers.c>
+    # Serve gzip compressed HTML files if they exist
+    #RewriteCond "%{HTTP:Accept-encoding}" "gzip" ignore browser capabilities
+    RewriteCond "%{REQUEST_FILENAME}\.gz" -s
+    RewriteRule "^(.*)\.(html|json|csv|pdf)"         "$1\.$2\.gz" [QSA]
+
+    # Serve correct content types, and prevent mod_deflate double gzip.
+    RewriteRule "\.html\.gz$" "-" [T=text/html,E=no-gzip:1]
+    RewriteRule "\.json\.gz$" "-" [T=application/json,E=no-gzip:1]
+    RewriteRule "\.csv\.gz$" "-" [T=text/csv,E=no-gzip:1]
+    RewriteRule "\.pdf\.gz$" "-" [T=application/pdf,E=no-gzip:1]
+
+    <FilesMatch "(\.html\.gz|\.json\.gz|\.csv\.gz|.pdf.gz)$">
+      # Serve correct encoding type.
+      Header append Content-Encoding gzip
+
+      # Force proxies to cache gzipped &
+      # non-gzipped html files separately.
+      Header append Vary Accept-Encoding
+    </FilesMatch>
+</IfModule>
+
