@@ -70,21 +70,19 @@ body {
   align-self: center;
 }
 /* Auto-refresh and presentation buttons */
-#presentation, #refresh {
+.button {
   align-self: center;
   font-size: 0.8em;
 }
-#presentation, #refresh 
+.button
 {
   width: var(--size);
   height: var(--size);
   margin: 0;
   position: relative;
 }
-#presentation .outer-circle, 
-#presentation .inner-circle, 
-#refresh .outer-circle, 
-#refresh .inner-circle
+.button .outer-circle, 
+.button .inner-circle
 {
   z-index: 4;
   position: absolute;
@@ -92,8 +90,7 @@ body {
   height: 100%;
   border-radius: 100%;
 }
-#presentation .inner-circle,
-#refresh .inner-circle 
+.button .inner-circle 
 {
   top: 50%;
   left: 50%;
@@ -109,25 +106,21 @@ body {
   justify-content: center; /* center the content horizontally */
   align-items: center; /* center the content vertically */
 }
-#presentation span,
-#refresh span {
+.button span {
   padding: 0px;
   margin-left: calc(-1*(var(--size) - var(--ring-size))/4);
   margin-top: calc(-1*(var(--size) - var(--ring-size) + 5px)/4);
   position: absolute;
 }
-#presentation > button.active,
-#refresh > button.active {
+.button > button.active {
   border-style: inset;
   background-color: var(--fzj-color-gray);
   color: #444;
 }
-#presentation > button:focus,
-#refresh > button:focus {
+.button > button:focus {
   outline: none;
 }
-#presentation .hold,
-#refresh .hold 
+.button .hold 
 {
   position: absolute;
   width: 100%;
@@ -136,15 +129,12 @@ body {
   border-radius: 100%;
   background-color: var(--fzj-color-blue) /* #9A9A9A; */ /* Not-filled part of circle */
 }
-#presentation .fill, 
-#presentation .dot span,
-#refresh .fill, 
-#refresh .dot span 
+.button .fill, 
+.button .dot span 
 {
   background-color: var(--fzj-color-yellow);  /* Filled part of circle */
 }
-#presentation .fill, 
-#refresh .fill 
+.button .fill 
 {
   position: absolute;
   width: 100%;
@@ -152,8 +142,7 @@ body {
   border-radius: 100%;
   clip-path: polygon(50% 0, 0 0, 0 100%, 50% 100%);
 }
-#presentation .left .fill, 
-#refresh .left .fill 
+.button .left .fill 
 {
   z-index: 1;
   animation: left var(--time) linear both;
@@ -164,13 +153,11 @@ body {
   50%{ transform: rotate(180deg); }
   100%{ transform: rotate(180deg); }
 }
-#presentation .right,
-#refresh .right {
+.button .right {
   z-index: 3;
   transform: rotate(180deg);
 }
-#presentation .right .fill,
-#refresh .right .fill {
+.button .right .fill {
   z-index: 3;
   animation: right var(--time) linear both;
   animation-iteration-count: infinite;
@@ -483,6 +470,10 @@ th span {
 
 .tooltip-inner {
   text-align: left;
+}
+
+.monospace {
+  font-family: monospace, 'Liberation Mono', 'Courier New';
 }
 
 /* Footer layout */

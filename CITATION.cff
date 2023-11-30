@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+title: JURI
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - family-names: Souza Mendes Guimarães
+    given-names: Filipe
+    orcid: 'https://orcid.org/0000-0002-5618-6727'
+  - family-names: Lührs
+    given-names: Sebastian
+    orcid: 'https://orcid.org/0000-0001-8496-8630'
+  - family-names: Frings
+    given-names: Wolfgang
+    orcid: 'https://orcid.org/0000-0002-9463-9264'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.10232352
+    description: The concept DOI of this software
+repository-code: 'https://github.com/FZJ-JSC/JURI'
+license: GPL-3.0-or-later
+
