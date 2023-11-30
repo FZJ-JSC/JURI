@@ -1,5 +1,7 @@
 # JURI - Jülich Reporting Interface
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10232352.svg)](https://doi.org/10.5281/zenodo.10232352)
+
 JURI provides a template driven fully client based web framework to visualize data lists
 and associated data graphs.
 
