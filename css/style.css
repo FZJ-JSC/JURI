@@ -486,15 +486,21 @@ footer.container-fluid {
   z-index: 50;
 }
 
-#footer_infoline > hr {
+#footer_infoline > #dragger {
   position: absolute;
-  top: -5px;
+  margin-top: 3px;
+  /* top: -1px; */
   left: 50%;
   width: 20px;
-  height: 3px;
-  border-top: 1px solid #777;
-  border-bottom: 1px solid #777;
-  cursor: row-resize;
+  fill: #555;
+  height: 17px;
+  cursor: move; /* fallback if grab cursor is unsupported */
+  cursor: grab;
+}
+
+/* "Closed-hand" cursor during drag operation */
+#footer_infoline > #dragger:active {
+  cursor: grabbing;
 }
 
 #footer_infoline {
