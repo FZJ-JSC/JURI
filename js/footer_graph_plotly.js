@@ -112,38 +112,40 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
     // Default height for footer
     $("footer").height(280);
   }
-  $('#footer_infoline').append('<hr />');
-  let drag = $('#footer_infoline > hr')
-  let self = this;
-  const BORDER_SIZE = 4;
-  const footer = $("footer");
+  let drag = $('#footer_infoline > #dragger')
+  drag.show();
+  // Adding listener if it was not added already
+  if(!drag.hasClass('listener')) {
+    drag.addClass('listener');
+    let self = this;
+    const BORDER_SIZE = 17;
+    const footer = $("footer");
 
-  let m_pos;
-  function resize_footer(e){
-    const dy = m_pos - e.y;
-    m_pos = e.y;
-    footer.height(footer.height() + dy);
-    view.footersize = footer.height();
-    return;
-  }
-  function on_mouse_up() {
-    document.removeEventListener("mousemove", resize_footer, false);
-    document.removeEventListener("mouseup", on_mouse_up, false);
-    self.resize_graph()
-    return;
-  }
-
-  drag.on('mousedown', function(e){
-    if(e.preventDefault) e.preventDefault();
-    if(e.offsetY < BORDER_SIZE) {
-      document.addEventListener("mouseup", on_mouse_up, false);
-    
+    let m_pos;
+    function resize_footer(e){
+      const dy = m_pos - e.y;
       m_pos = e.y;
-      document.addEventListener("mousemove", resize_footer, false);
+      footer.height(footer.height() + dy);
+      view.footersize = footer.height();
+      return;
     }
-    return;
-  });
-
+    function on_mouse_up() {
+      document.removeEventListener("mousemove", resize_footer, false);
+      document.removeEventListener("mouseup", on_mouse_up, false);
+      self.resize_graph()
+      return;
+    }
+    drag.on('mousedown', function(e){
+      if(e.preventDefault) e.preventDefault();
+      if(e.offsetY < BORDER_SIZE) {
+        document.addEventListener("mouseup", on_mouse_up, false);
+      
+        m_pos = e.y;
+        document.addEventListener("mousemove", resize_footer, false);
+      }
+      return;
+    });
+  }
   return;
 }
 

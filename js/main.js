@@ -281,7 +281,7 @@ View.prototype.show = function () {
     $("#main_content").empty();
     $("#footer_content").empty();
     $("#footer_infoline_page_options").empty();
-    $('#footer_infoline').find('hr').remove();
+    $('#footer_infoline > #dragger').hide();
     $("footer").height($("#footer_infoline").height() + $("#footer_footer").height());
 
     // Search for page entry
