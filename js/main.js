@@ -197,10 +197,10 @@ View.prototype.show = function () {
           }
 
           // Add logo
-          $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5}))
+          $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5, width: 72}))
           if (self.navdata.home) {
             $("#logo").click(function () {
-              window.location.href = "https://www.fz-juelich.de/jsc/llview";
+              window.location.href = "https://llview.fz-juelich.de/";
               return;
             });
             $("#logo").addClass("clickable");

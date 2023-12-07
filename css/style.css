@@ -30,6 +30,10 @@ body {
   font-family: Weissenhof Grotesk,Helvetica Neue,Arial,Helvetica,sans-serif;
 }
 
+a {
+  color: var(--fzj-color-blue);
+}
+
 /* Header and navigation layout */
 #header {
   position: relative;
