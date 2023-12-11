@@ -305,9 +305,10 @@ function set_initial_columns() {
 function add_column_selector() {
   let column_selection = $("<div>").addClass("dropup clickable")
                    .attr("id","column_selection")
-                   .attr("title","show/hide column groups")
+                   .attr("title","Show/Hide column groups")
                    .attr("data-placement","left")
-                   .append($("<a>")
+                   .append($("<a>").attr("href","#")
+                   .attr("aria-label","Show/Hide column groups")
                    .addClass("dropdown-toggle")
                    .attr("data-toggle","dropdown")
                    .text("Columns"));
@@ -481,7 +482,7 @@ function set_filter() {
     key_filter($(this).closest("table")[0]);
     return;
   });
-  let clear_filter_link = $("<a>").attr("href","#").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
+  let clear_filter_link = $("<a>").attr("href","#").attr("aria-label","Clear filter").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
   if (! $("#num_visible_rows").length) {
     view.add_to_footer_infoline($("<span>").attr("id","num_visible_rows")[0],30);
     view.add_to_footer_infoline(clear_filter_link[0],30);

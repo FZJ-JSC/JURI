@@ -330,9 +330,10 @@ Handlebars.registerHelper('cell_color', function(value) {
     }
     let ind = Math.round((1.0-value) * (color_wheel.length-1)); 
     // Add colorscale controls
-    view.add_colorscale_controls()
     if (color_wheel[ind] && text_wheel[ind]) {
-      return "background-color: "+color_wheel[ind]+"; color: "+text_wheel[ind]+";";
+      // Add colorscale controls
+      view.add_colorscale_controls()
+      return `background-color: ${color_wheel[ind]}; color: ${text_wheel[ind]};`;
     } else {
       return "";
     }
@@ -355,10 +356,9 @@ Handlebars.registerHelper('pdf_link', function(grp,user,filename) {
 //    console.log("pdf_link: "+grp+" "+user+" "+filename);
   if ( (filename) && (filename!='-') ) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
-    result = '<a href="'+url+'" >' +
-      '<span class="fa fa-file-pdf-o" title="Download job report"/></a>';
+    result = `<a href="${url}" ><span class="fa fa-file-pdf-o" title="Download job report" aria-label="Download PDF job report"/></a>`;
   } else {
-    result = '<span style="color: grey;" class="fa fa-file-pdf-o" title="No job report available"/>';
+    result = `<span style="color: grey;" class="fa fa-file-pdf-o" title="No job report available" aria-label="No job report available"/>`;
   }
   return new Handlebars.SafeString(result);
 });
@@ -366,10 +366,9 @@ Handlebars.registerHelper('pdf_link', function(grp,user,filename) {
 Handlebars.registerHelper('html_link', function(grp,user,filename) {
   if ( (filename) && (filename!='-') ) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
-    result = '<a href="'+url+'" >' +
-      '<span class="fa fa-area-chart" title="Show job report"/></a>';
+    result = `<a href="${url}" ><span class="fa fa-area-chart" title="Show job report" aria-label="Show HTML job report"/></a>`;
   } else {
-    result = '<span style="color: grey;" class="fa fa-area-chart" title="No job report available"/>';
+    result = `<span style="color: grey;" class="fa fa-area-chart" title="No job report available" aria-label="No job report available"/>`;
   }
   return new Handlebars.SafeString(result);
 });

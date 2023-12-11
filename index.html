@@ -14,10 +14,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<meta name="description" content="Juelich Reporting Interface displaying information about system usage">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 <link id="favicon" rel="shortcut icon" type="image/x-icon" href="img/favicon.ico">
+<link rel="preload" as="style" href="css/ext/font-awesome.min.css" onload="this.rel='stylesheet'"/>
 <link rel="stylesheet" href="css/ext/bootstrap.min.css">
-<link rel="stylesheet" href="css/ext/font-awesome.min.css">
 <link rel="stylesheet" href="css/style.css">
 <title>LLview: Job Reporting</title>
 </head>
@@ -48,31 +49,6 @@
     </main>
     <footer class="fixed-bottom container-fluid bg-light">
         <div id="footer_infoline">
-            <svg version="1.1" id="dragger" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-                viewBox="0 0 512 512" xml:space="preserve">
-                <g>
-                    <path d="M0,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89c-0.02-31.43-25.46-56.87-56.89-56.89
-                        C25.46,113.8,0.02,139.24,0,170.67c0,15.71,12.74,28.44,28.44,28.44s28.44-12.74,28.44-28.44v0v0h0
-                        c0-15.71-12.74-28.44-28.44-28.44S0,154.96,0,170.67L0,170.67z"/>
-                    <path d="M0,341.33c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89c-0.02-31.43-25.46-56.87-56.89-56.89
-                        C25.46,284.46,0.02,309.9,0,341.33c0,15.71,12.74,28.44,28.44,28.44s28.44-12.74,28.44-28.44v0v0h0
-                        c0-15.71-12.74-28.44-28.44-28.44S0,325.62,0,341.33L0,341.33z"/>
-                    <path d="M199.11,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89
-                        c-0.02-31.43-25.46-56.87-56.89-56.89C224.57,113.8,199.13,139.24,199.11,170.67c0,15.71,12.74,28.44,28.44,28.44
-                        S256,186.38,256,170.67v0v0h0c0-15.71-12.74-28.44-28.44-28.44S199.11,154.96,199.11,170.67L199.11,170.67z"/>
-                    <path d="M199.11,341.33c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89
-                        c-0.02-31.43-25.46-56.87-56.89-56.89C224.57,284.46,199.13,309.9,199.11,341.33c0,15.71,12.74,28.44,28.44,28.44
-                        S256,357.04,256,341.33v0v0h0c0-15.71-12.74-28.44-28.44-28.44S199.11,325.62,199.11,341.33L199.11,341.33z"/>
-                    <path d="M398.22,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89
-                        c-0.02-31.43-25.46-56.87-56.89-56.89C423.68,113.8,398.24,139.24,398.22,170.67c0,15.71,12.73,28.44,28.44,28.44
-                        c15.71,0,28.44-12.74,28.44-28.44v0v0h0c0-15.71-12.74-28.44-28.44-28.44C410.96,142.22,398.22,154.96,398.22,170.67L398.22,170.67
-                        z"/>
-                    <path d="M398.22,341.33c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89
-                        c-0.02-31.43-25.46-56.87-56.89-56.89C423.68,284.46,398.24,309.9,398.22,341.33c0,15.71,12.73,28.44,28.44,28.44
-                        c15.71,0,28.44-12.74,28.44-28.44v0v0h0c0-15.71-12.74-28.44-28.44-28.44C410.96,312.89,398.22,325.62,398.22,341.33L398.22,341.33
-                        z"/>
-                </g>
-            </svg>
             <div class="d-inline-block" id="view_data_info"></div>
             <div class="d-none d-md-inline-block float-right" id="footer_infoline_page_options"></div>
         </div>
@@ -82,7 +58,7 @@
             <div>
                 <a href="https://www.fz-juelich.de/en/legal-notice" style="padding-right:15px;">Legal Notice</a>
                 <a href="http://www.fz-juelich.de/ias/jsc">
-                    <img id="institution_logo" src="img/Logo_FZ_Juelich_CMYK_jsc_white.svg">
+                    <img id="institution_logo" alt="Institution Logo" src="img/Logo_FZ_Juelich_CMYK_jsc_white.svg">
                 </a>
             </div>
         </div>
@@ -90,6 +66,8 @@
     <script src="js/ext/jquery-3.6.0.min.js"></script>
     <script src="js/ext/bootstrap.bundle.min.js"></script>
     <script src="js/ext/handlebars.min-v4.7.7.js"></script>
+    <script defer src="js/ext/plotly-2.25.2.min.js"></script>
+    <script defer src="js/ext/d3.min.js"></script>
     <script src="js/helpers.js"></script>
     <script src="js/main.js"></script>
 </body>

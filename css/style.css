@@ -47,6 +47,7 @@ a {
 
 #institution_logo {
   height: 50px;
+  width: 270px;
 }
 
 .clickable {
@@ -326,7 +327,9 @@ li > .dropdown-menu {
   grid-auto-rows: min-content;
 }
 
-.hidden {display: none;}
+.hidden {
+  display: none;
+}
 
 .loading {
   position: absolute;
@@ -416,6 +419,7 @@ th {
 
 th input {
   width:100%;
+  font-size: 0.9em;
 }
 
 th input:not(:placeholder-shown) {
@@ -492,26 +496,30 @@ footer.container-fluid {
 
 #footer_infoline > #dragger {
   position: absolute;
-  margin-top: 3px;
-  /* top: -1px; */
-  left: 50%;
-  width: 20px;
-  fill: #555;
-  height: 17px;
-  cursor: move; /* fallback if grab cursor is unsupported */
+  width: 100vw;
+  height: 5px;
+  left: 0;
+  top: 0;
+  height: 23px;
   cursor: grab;
 }
-
-/* "Closed-hand" cursor during drag operation */
 #footer_infoline > #dragger:active {
   cursor: grabbing;
+}
+#footer_infoline > #dragger > #dragger_grip {
+  position: absolute;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  top: calc(50% - 18px / 2);
+  fill: #555;
 }
 
 #footer_infoline {
   background: #ddd;
   border-top: 1px solid #999;
   border-bottom: 1px solid #999;
-  padding: 0px 15px;
+  padding: 0px 30px;
 }
 
 #footer_content {
