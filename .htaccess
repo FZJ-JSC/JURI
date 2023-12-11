@@ -10,6 +10,7 @@ AuthType Basic
 #ErrorDocument 404 /system/error404.html
 Require valid-user
 Header set Cache-Control "max-age=60, private"
+AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
 <IfModule mod_headers.c>
     # Serve gzip compressed HTML files if they exist
     #RewriteCond "%{HTTP:Accept-encoding}" "gzip" ignore browser capabilities

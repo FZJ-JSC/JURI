@@ -82,7 +82,7 @@ function download_table() {
 
 function enable_table_download() {
     if (! $("#download_link").length) {
-        let download_link = $("<a>").attr("href","#").attr("id","download_link").append($("<span>").addClass("fa fa-download").attr("title","Download as CSV")).click(function(){download_table(); return false;});
+        let download_link = $("<a>").attr("href","#").attr("aria-label","Download as CSV").attr("id","download_link").append($("<span>").addClass("fa fa-download").attr("title","Download as CSV")).click(function(){download_table(); return false;});
         view.add_to_footer_infoline(download_link[0],40);
     }
 }

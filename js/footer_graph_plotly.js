@@ -106,59 +106,83 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
 /* Add mouse drag to resize footer */
 /* Adapted from: https://stackoverflow.com/a/53220241/3142385 */
 View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
+  let self = this;
   if (view.footersize) {
     $("footer").height(view.footersize);
   } else {
     // Default height for footer
     $("footer").height(280);
   }
-  let drag = $('#footer_infoline > #dragger')
-  drag.show();
-  // Adding listener if it was not added already
-  if(!drag.hasClass('listener')) {
-    drag.addClass('listener');
-    let self = this;
-    const BORDER_SIZE = 17;
-    const footer = $("footer");
 
-    let m_pos;
-    function resize_footer(e){
-      const dy = m_pos - e.y;
-      m_pos = e.y;
-      footer.height(footer.height() + dy);
-      view.footersize = footer.height();
-      return;
-    }
-    function on_mouse_up() {
-      document.removeEventListener("mousemove", resize_footer, false);
-      document.removeEventListener("mouseup", on_mouse_up, false);
-      self.resize_graph()
-      return;
-    }
-    drag.on('mousedown', function(e){
-      if(e.preventDefault) e.preventDefault();
-      if(e.offsetY < BORDER_SIZE) {
-        document.addEventListener("mouseup", on_mouse_up, false);
-      
-        m_pos = e.y;
-        document.addEventListener("mousemove", resize_footer, false);
-      }
-      return;
-    });
+  let drag = $('<div>').attr('id','dragger');
+  $('#footer_infoline').prepend(drag)
+  drag.append('            <svg version="1.1" id="dragger_grip" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 512 512" xml:space="preserve">\
+  <g>\
+  <path d="M0,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89c-0.02-31.43-25.46-56.87-56.89-56.89\
+      C25.46,113.8,0.02,139.24,0,170.67c0,15.71,12.74,28.44,28.44,28.44s28.44-12.74,28.44-28.44v0v0h0\
+      c0-15.71-12.74-28.44-28.44-28.44S0,154.96,0,170.67L0,170.67z"/>\
+  <path d="M0,341.33c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89c-0.02-31.43-25.46-56.87-56.89-56.89\
+      C25.46,284.46,0.02,309.9,0,341.33c0,15.71,12.74,28.44,28.44,28.44s28.44-12.74,28.44-28.44v0v0h0\
+      c0-15.71-12.74-28.44-28.44-28.44S0,325.62,0,341.33L0,341.33z"/>\
+  <path d="M199.11,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89\
+      c-0.02-31.43-25.46-56.87-56.89-56.89C224.57,113.8,199.13,139.24,199.11,170.67c0,15.71,12.74,28.44,28.44,28.44\
+      S256,186.38,256,170.67v0v0h0c0-15.71-12.74-28.44-28.44-28.44S199.11,154.96,199.11,170.67L199.11,170.67z"/>\
+  <path d="M199.11,341.33c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89\
+      c-0.02-31.43-25.46-56.87-56.89-56.89C224.57,284.46,199.13,309.9,199.11,341.33c0,15.71,12.74,28.44,28.44,28.44\
+      S256,357.04,256,341.33v0v0h0c0-15.71-12.74-28.44-28.44-28.44S199.11,325.62,199.11,341.33L199.11,341.33z"/>\
+  <path d="M398.22,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89\
+      c-0.02-31.43-25.46-56.87-56.89-56.89C423.68,113.8,398.24,139.24,398.22,170.67c0,15.71,12.73,28.44,28.44,28.44\
+      c15.71,0,28.44-12.74,28.44-28.44v0v0h0c0-15.71-12.74-28.44-28.44-28.44C410.96,142.22,398.22,154.96,398.22,170.67L398.22,170.67\
+      z"/>\
+  <path d="M398.22,341.33c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89\
+      c-0.02-31.43-25.46-56.87-56.89-56.89C423.68,284.46,398.24,309.9,398.22,341.33c0,15.71,12.73,28.44,28.44,28.44\
+      c15.71,0,28.44-12.74,28.44-28.44v0v0h0c0-15.71-12.74-28.44-28.44-28.44C410.96,312.89,398.22,325.62,398.22,341.33L398.22,341.33\
+      z"/>\
+      </g>\
+      </svg>');
+  drag.height($("#footer_infoline").outerHeight());
+  const BORDER_SIZE = drag.height();
+
+  let m_pos;
+  function resize_footer(e){
+    const footer = $("footer");
+    const dy = m_pos - e.y;
+    m_pos = e.y;
+    footer.height(footer.height() + dy);
+    view.footersize = footer.height();
+    return;
   }
+  function on_mouse_up() {
+    document.removeEventListener("mousemove", resize_footer, false);
+    document.removeEventListener("mouseup", on_mouse_up, false);
+    self.resize_graph()
+    return;
+  }
+  drag.on('mousedown', function(e){
+    // if(e.preventDefault) e.preventDefault();
+    if(e.offsetY < BORDER_SIZE) {
+      document.addEventListener("mouseup", on_mouse_up, false);
+    
+      m_pos = e.y;
+      document.addEventListener("mousemove", resize_footer, false);
+    }
+    return;
+  });
   return;
 }
 
 
 // Function to apply x-range relayout to all the elements to sync graphes
 View.prototype.FooterGraph.prototype.relayout = function (ed) {
-  sync_relayout(ed, this.graphs) ;
+  let self = this;
+  sync_relayout(ed, self.graphs) ;
 }
 
 /* Resize footer graph area and all graphs */
 View.prototype.FooterGraph.prototype.resize_graph = function () {
+  let self = this;
   // Resize graphs
-  for (let graph of this.graphs) {
+  for (let graph of self.graphs) {
     graph.resize();
   }
   // Resize table window
@@ -251,23 +275,24 @@ View.prototype.FooterGraph.prototype.hide_hover = function (ed) {
 
 /* Create graphs for current page */
 View.prototype.FooterGraph.prototype.create_graphs = function () {
-  this.graphs = [];
+  let self = this;
+  self.graphs = [];
   // Creating divs for the graphs
-  let graphs_data = this.config.find(o => { return o.name === this.current_page }).graphs;
+  let graphs_data = self.config.find(o => { return o.name === self.current_page }).graphs;
   let element_width = Math.floor(12 / graphs_data.length);
   for (let graph_data of graphs_data) {
     let id = "graph_" + graph_data.name.replaceAll(' ', '_');
     let graph_div = $("<div>").attr("id", id).addClass("footer_graph").addClass("col-" + element_width);
     graph_data.div = graph_div;
     $("#graphs").append(graph_div);
-    this.graphs.push(new PlotlyGraph(graph_data));
-    this.graphs.at(-1).plot();
+    self.graphs.push(new PlotlyGraph(graph_data));
+    self.graphs.at(-1).plot();
     // Synchronizing zoom between different graphs
-    graph_div[0].on("plotly_relayout", (ed) => { this.relayout(ed); });
+    graph_div[0].on("plotly_relayout", (ed) => { self.relayout(ed); });
     // Creating hover event listener to couple hover information across divs
-    graph_div[0].on("plotly_hover", (ed) => { this.couple_hover(ed, id); });
+    graph_div[0].on("plotly_hover", (ed) => { self.couple_hover(ed, id); });
     // Creating mouse leave event listener to hide hover over all graphs
-    graph_div.find(".nsewdrag").on("mouseleave", (ed) => { this.hide_hover(ed); });
+    graph_div.find(".nsewdrag").on("mouseleave", (ed) => { self.hide_hover(ed); });
   }
   resize();
 }

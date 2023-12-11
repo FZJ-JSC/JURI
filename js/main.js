@@ -113,7 +113,7 @@ View.prototype.show = function () {
     if (self.navdata.pages) {
       self.navdata.pages.forEach(function (elem) {
         // Adding d3 script to use colorscales on 'cell_color' helper function
-        self.addons.scripts = new Set([...self.addons.scripts, ...["ext/d3.min.js"]])
+        // self.addons.scripts = new Set([...self.addons.scripts])
 
         // If there are (sub-)pages inside
         if (elem.pages) {
@@ -173,7 +173,7 @@ View.prototype.show = function () {
         $(document).attr("title", $("#title").text());
         // System picture from configuration and link to home
         if (self.navdata.image) {
-          $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"Page picture", height: $("#header").height()-5}))
+          $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
           if (self.navdata.home) {
             $("#system_picture").click(function () {
               window.location.href = self.navdata.home;
@@ -261,6 +261,7 @@ View.prototype.show = function () {
   // Remove keydown events
   $(document).off("keydown");
 
+  // If the page has changed
   if (self.selected_page != page) {
     // Adding or updating loading screen
     self.loading(true)
@@ -281,7 +282,7 @@ View.prototype.show = function () {
     $("#main_content").empty();
     $("#footer_content").empty();
     $("#footer_infoline_page_options").empty();
-    $('#footer_infoline > #dragger').hide();
+    $('#footer_infoline > #dragger').remove();
     $("footer").height($("#footer_infoline").height() + $("#footer_footer").height());
 
     // Search for page entry
@@ -300,6 +301,7 @@ View.prototype.show = function () {
         $("#" + page + "_button").addClass("active");
       }
     });
+
     // Add reference data, that is added from the "ref" keyword on yaml
     self.add_refdata(page_data)
     // TODO: Should we enforce this or do we leave for the scripts in the configuration only (either scripts or ref)?
@@ -467,10 +469,9 @@ View.prototype.add_colorscale_controls = function () {
   if (! $("#colorscale_selection").length) {
     // Create selector id colorscale_selection
     let colorscale_selection = $("<div>").addClass("dropup clickable")
-    .attr("id","colorscale_selection")
-    .attr("title","select colorscale")
-    .attr("data-placement","left")
-
+                                          .attr("id","colorscale_selection")
+                                          .attr("title","Select colorscale")
+                                          .attr("data-placement","left")
     let dropup_menu = $("<div>").addClass("dropdown-menu");
     let svg = null;
     let selected = null;
@@ -542,7 +543,8 @@ View.prototype.add_colorscale_controls = function () {
         return;
       });
       // Append the selected SVG to the colorscale_selector
-      colorscale_selection.append($("<a>")
+      colorscale_selection.append($("<a>").attr("href","#")
+                .attr("aria-label","Select colorscale")
                 .addClass("dropdown-toggle")
                 .attr("data-toggle","dropdown")    
                 .append(selected_svg));
@@ -560,15 +562,18 @@ View.prototype.add_colorscale_controls = function () {
  */
 View.prototype.add_autorefresh = function () {
   let self = this;
-
-  let button = $('<button>',{type: "button", class: 'inner-circle', title: `Auto-refresh is ${view.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`}).addClass("fa").addClass("fa-refresh");
+  let text = `Auto-refresh is ${view.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`;
+  let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-refresh");
   // If disable refresh is not active (from URL), activate it
   if (! view.inital_data.refresh.disablerefresh) {
     button.addClass('active');
-    button.attr("data-original-title","Auto-refresh is ON").removeClass("fa").removeClass("fa-refresh");
+    button.attr("data-original-title","Auto-refresh is ON")
+          .attr("aria-label","Auto-refresh is ON")
+          .removeClass("fa")
+          .removeClass("fa-refresh");
     let seconds = 60;
     self.refreshinterval = setInterval(function () {
-      button.text(seconds);
+      button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
       seconds = seconds - 1;
       if (seconds === 0) {
         seconds = 60;
@@ -585,18 +590,24 @@ View.prototype.add_autorefresh = function () {
     if (! view.inital_data.refresh.disablerefresh) {
       // If it exists when clicking the button, then turn it off
       button.text('');
-      button.attr("data-original-title","Auto-refresh is OFF").addClass("fa").addClass("fa-refresh");
+      button.attr("data-original-title","Auto-refresh is OFF")
+            .attr("aria-label","Auto-refresh is OFF")
+            .addClass("fa")
+            .addClass("fa-refresh");
       self.inital_data.refresh = { 'disablerefresh': 'true' };
       self.setHash();
       // Remove Intervals
       clearInterval(self.refreshinterval);
     } else {
       delete view.inital_data.refresh.disablerefresh;
-      button.attr("data-original-title","Auto-refresh is ON").removeClass("fa").removeClass("fa-refresh");
+      button.attr("data-original-title","Auto-refresh is ON")
+            .attr("aria-label","Auto-refresh is ON")
+            .removeClass("fa")
+            .removeClass("fa-refresh");
       self.setHash();
       let seconds = 60;
       self.refreshinterval = setInterval(function () {
-        button.text(seconds);
+        button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
         seconds = seconds - 1;
         if (seconds === 0) {
           seconds = 60;
@@ -693,12 +704,16 @@ View.prototype.reloadPage = function () {
  */
 View.prototype.add_presentation = function () {
   let self = this;
-  let button = $('<button>',{type: "button", class: 'inner-circle', title: `Presentation Mode is ${view.inital_data.presentation?.present ? "ON" : "OFF"}`}).addClass("fa").addClass("fa-play");
+  let text = `Presentation Mode is ${view.inital_data.presentation?.present ? "ON" : "OFF"}`;
+  let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-play");
   var timebetweenjobs = 30000; // In microseconds
   // If presentation mode is active (from URL), activate it
   if (view.inital_data.presentation?.present) {
     button.addClass('active');
-    button.attr("data-original-title","Presentation Mode is ON").toggleClass("fa-play").toggleClass("fa-pause");
+    button.attr("data-original-title","Presentation Mode is ON")
+          .attr("aria-label","Presentation Mode is ON")
+          .toggleClass("fa-play")
+          .toggleClass("fa-pause");
     self.loopFooterTabs(self,timebetweenjobs)
     self.presentationjobinterval = setInterval(self.loopFooterTabs, timebetweenjobs, self, timebetweenjobs);
   }
@@ -710,7 +725,8 @@ View.prototype.add_presentation = function () {
     // Turns on and off presentation mode
     if (view.inital_data.presentation?.present) {
       // If it presentation mode exists when clicking the button, then turn it off
-      button.attr("data-original-title","Presentation Mode is OFF");
+      button.attr("data-original-title","Presentation Mode is OFF")
+            .attr("aria-label","Presentation Mode is OFF");
       delete view.inital_data.presentation.present;
       self.setHash();
       // Remove Intervals
@@ -718,7 +734,8 @@ View.prototype.add_presentation = function () {
       clearInterval(self.presentationjobinterval);
     } else {
       // If it presentation mode does not exist when clicking the button, then turn it on
-      button.attr("data-original-title","Presentation Mode is ON");
+      button.attr("data-original-title","Presentation Mode is ON")
+            .attr("aria-label","Presentation Mode is ON");
       self.inital_data.presentation = { 'present': 'true' };
       self.setHash();
       self.loopFooterTabs(self,timebetweenjobs)
@@ -944,7 +961,7 @@ View.prototype.getPagesInfo = function (elem) {
   self.all_page_sections.push(elem.section);
   // If footer page or graph page is used, add corresponding scripts
   if (elem.footer_graph_config || elem.graph_page_config) {
-    self.addons.scripts = new Set([...self.addons.scripts, ...["ext/d3.min.js", "ext/plotly-2.25.2.min.js", "plotly_graph.js", elem.footer_graph_config ? "footer_graph_plotly.js" : "page_graph.js" ]])
+    self.addons.scripts = new Set([...self.addons.scripts, ...["plotly_graph.js", elem.footer_graph_config ? "footer_graph_plotly.js" : "page_graph.js" ]])
   }
 
   // Getting scripts needed on the website and removing from config
