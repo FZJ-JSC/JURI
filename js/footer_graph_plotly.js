@@ -209,7 +209,13 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
       if (page.show_pattern) {         // Testing if "show_pattern" exists
         for (const [key, values] of Object.entries(page.show_pattern)) {  // Looping over the patterns
           let patterns = Array.isArray(values) ? values : [values] // Transforming to array if necessary, to handle many patterns
-          if (! patterns.some(pattern => replaceDataPlaceholder("#"+key+"#", params).includes(pattern))) {  // If at least one pattern is matched
+          if (! params) { // If params is not defined, then no line was selected, and the pattern should not be shown
+            match_pattern = false;
+            break;
+          }
+          if (! Object.keys(params).includes(key)) continue // If params is defined, but does not include given key, ignore this rule (to be able to use in different types of tables)
+          if (! patterns.some(pattern => {let regex = new RegExp(pattern); return regex.test(replaceDataPlaceholder("#"+key+"#", params))})) {  // If at least one pattern is matched
+          // if (! patterns.some(pattern => replaceDataPlaceholder("#"+key+"#", params).includes(pattern))) {  // If at least one pattern is matched
             match_pattern = false;
             break ;
           };

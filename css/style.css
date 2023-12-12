@@ -494,13 +494,17 @@ footer.container-fluid {
   z-index: 50;
 }
 
+#footer_infoline_page_options > * {
+  z-index: 2;
+  position: relative;
+}
+
 #footer_infoline > #dragger {
   position: absolute;
+  z-index: 1;
   width: 100vw;
-  height: 5px;
   left: 0;
   top: 0;
-  height: 23px;
   cursor: grab;
 }
 #footer_infoline > #dragger:active {
