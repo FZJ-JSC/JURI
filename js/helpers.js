@@ -311,29 +311,55 @@ Handlebars.registerHelper('supportsnapshot_link', function(spec,config_prefix) {
   return new Handlebars.SafeString(result);
 });
 
-Handlebars.registerHelper('cell_color', function(value) {
+Handlebars.registerHelper('cell_color', function(value,defscale) {
   if (typeof value === "number" && value >= 0 && value <= 1) {
-    let text_wheel;
+    let colorscale_name;
     let color_wheel;
-    text_wheel = ['#ffffff','#ffffff','#ffffff',
-            '#000000','#000000','#000000','#000000','#000000',
-            '#ffffff','#ffffff','#ffffff'];
-    if (view.inital_data.colors.colorscale) {
-      let [colorscale,reverse] = view.inital_data.colors.colorscale.split('_');
-      if (reverse) {
-        color_wheel = [...d3[`scheme${colorscale}`][11]];
-      } else {
-        color_wheel = [...d3[`scheme${colorscale}`][11]].reverse();
-      }
+    // Getting colorscale name
+    if (!(typeof defscale === "string")) {
+      // from initial_data or default
+      colorscale_name = view.inital_data.colors.colorscale ?? view.default_colorscale;
     } else {
-      color_wheel = ['#2d004b', '#542788', '#8073ac', '#b2abd2', '#d8daeb', '#f7f7f7', '#fee0b6', '#fdb863', '#e08214', '#b35806', '#7f3b08']
+      // From argument passed in the column config
+      colorscale_name = defscale;
     }
-    let ind = Math.round((1.0-value) * (color_wheel.length-1)); 
+    // If colorscale was already created, use it. Otherwise, create it and save in view object
+    if(colorscale_name in view.used_colorscales) {
+      color_wheel = view.used_colorscales[colorscale_name];
+    } else {
+      function ramp(name,n) {
+        /* Function to return a colorscale with a given number of elements 'n'
+        Adapted from https://observablehq.com/@d3/color-schemes
+        */
+        let colors;
+        if (d3[`scheme${name}`] && d3[`scheme${name}`][n]) {
+          colors = d3[`scheme${name}`][n];
+        } else {
+          const interpolate = d3[`interpolate${name}`];
+          colors = [];
+          for (let i = 0; i < n; ++i) {
+            colors.push(d3.rgb(interpolate(i / (n - 1))).hex());
+          }
+        }
+        return colors
+      }
+      let n = 11; // Number of colors in the colorscale
+      let [colorscale,reverse] = colorscale_name.split('_');
+      color_wheel = ramp(colorscale,n);
+      if (reverse) {
+        color_wheel = color_wheel.reverse();
+      }
+      view.used_colorscales[colorscale_name] = color_wheel;
+    }
+    let ind = Math.round((value) * (color_wheel.length-1)); 
     // Add colorscale controls
-    if (color_wheel[ind] && text_wheel[ind]) {
-      // Add colorscale controls
-      view.add_colorscale_controls()
-      return `background-color: ${color_wheel[ind]}; color: ${text_wheel[ind]};`;
+    if (color_wheel) {
+      // Add colorscale controls if colorscale was not defined in argument
+      if (!(typeof defscale === "string")) {
+        view.add_colorscale_controls()
+      }
+      let dark = d3.lab(color_wheel[ind]).l < 50;
+      return `background-color: ${color_wheel[ind]}; color: ${dark ? '#fff' : '#000'};`;
     } else {
       return "";
     }

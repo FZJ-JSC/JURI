@@ -28,9 +28,9 @@ function View(parameters) {
   this.inital_data = parameters.inital;
   // Store all the scripts and styles required for the pages
   this.addons = { 
-          scripts: new Set(),
-          styles: new Set(),
-          }
+                  scripts: new Set(),
+                  styles: new Set(),
+                }
   // Deferrer array to store items to be waited
   this.deferrer = [];
   // Deferrer counter
@@ -61,7 +61,9 @@ function View(parameters) {
   // Flag to store empty pages
   this.empty = true;
   // Available colorscales on dropdown
-  this.colorscale = ['PuOr_r','BrBG','PRGn','PiYG','RdBu','RdGy','RdYlBu','RdYlGn','Spectral'];
+  this.colorscale = ['RdYlGn','Spectral','RdYlBu','RdGy','RdBu','PiYG','PRGn','BrBG','PuOr_r'];
+  this.default_colorscale = 'RdYlGn';
+  this.used_colorscales = {}; // Object to store generated colorscales
   // Headers on main table of the current page
   this.headers = [];
   // map of jobID to day
@@ -481,7 +483,7 @@ View.prototype.add_colorscale_controls = function () {
     if (self.inital_data.colors.colorscale) {
       selected = self.inital_data.colors.colorscale
     } else {
-      selected = "PuOr_r"
+      selected = self.default_colorscale;
     }
     // Define colorscale sizes
     let width = "50px";
