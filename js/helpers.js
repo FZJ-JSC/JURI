@@ -320,6 +320,10 @@ Handlebars.registerHelper('cell_color', function(value,defscale) {
       // from initial_data or default
       colorscale_name = view.inital_data.colors.colorscale ?? view.default_colorscale;
     } else {
+      if (value <= 0.01 ) {
+        // return white background if value is too small (only for colorscales passed in argument)
+        return 'background-color: #fff; color: #000;';
+      }
       // From argument passed in the column config
       colorscale_name = defscale;
     }
