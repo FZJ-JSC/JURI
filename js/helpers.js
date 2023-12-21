@@ -320,7 +320,7 @@ Handlebars.registerHelper('cell_color', function(value,defscale) {
       // from initial_data or default
       colorscale_name = view.inital_data.colors.colorscale ?? view.default_colorscale;
     } else {
-      if (value <= 0.01 ) {
+      if (value <= 0.00005 ) {
         // return white background if value is too small (only for colorscales passed in argument)
         return 'background-color: #fff; color: #000;';
       }
@@ -441,6 +441,19 @@ Handlebars.registerHelper('round_number', function(number, dec_places) {
 
 Handlebars.registerHelper('round_number_or_null', function(number,dec_places) {
   return round_number_generic(number, true, dec_places);
+});
+
+Handlebars.registerHelper('percent_or_null', function(number) {
+  let dec_places = 2;
+  let value = parseFloat(number*100.0).toLocaleString('en',{minimumFractionDigits: dec_places, maximumFractionDigits: dec_places});
+  if (number !== undefined) {
+    if (value == '0.00') {
+      value = ""
+    } else {
+      value += "%";
+    }
+  }
+  return value;
 });
 
 Handlebars.registerHelper('percent', function(number) {

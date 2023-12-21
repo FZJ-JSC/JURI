@@ -271,15 +271,18 @@ View.prototype.show = function () {
     // Automatically close navbar on small devices
     $(".navbar-collapse").collapse('hide');
     reset_initial_params = (typeof (reset_initial_params) !== "undefined") ? reset_initial_params : false;
+
     // Stop all view specific timer
     while (self.runningTimer.length > 0) {
       clearInterval(self.runningTimer.pop());
     }
+
     // Remove old page data
     self.page_data = null;
     self.footer_graph = null;
     self.resize_function = [];
     view.graph = null;
+
     // Clean old content sections
     $("#main_content").empty();
     $("#footer_content").empty();
@@ -315,6 +318,7 @@ View.prototype.show = function () {
 
     // Store current data, template, context and functions to reuse when needed
     self.page_data = (page_data.data) ? page_data.data : null;
+    self.page_description = (page_data.description) ? page_data.description : null;
     self.page_template = (page_data.template) ? page_data.template : null;
     self.page_context = (page_data.context) ? page_data.context : null;
     self.page_functions = (page_data.functions) ? page_data.functions : null;
@@ -374,6 +378,13 @@ View.prototype.show = function () {
 
       // Getting table headers (when present)
       self.getHeaders($("#main_content table"));
+
+      // Add button that shows more information about current page (when a description is given)
+      if (self.page_description) {
+        self.add_infobutton(self.page_description);
+      } else {
+        $("#information").empty()
+      }
 
       // Change selected page and subpage to the new input page
       self.selected_page = page;
@@ -558,6 +569,93 @@ View.prototype.add_colorscale_controls = function () {
   }
 }
 
+
+/**
+ * Add show-info button
+ */
+View.prototype.add_infobutton = function (description) {
+  let self = this;
+  let text = 'Click to show description of page';
+  let button = $('#information > button')
+  if (!button.length) {
+    button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-info");
+    $('#information').append(button)
+  }
+  let desc = description
+  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(description);
+
+  // If show info is active (from URL), activate it
+  if (view.inital_data.description?.showinfo) {
+    button.addClass('active');
+    button.attr("data-original-title","Click to hide description of page")
+          .attr("aria-label","Click to hide description of page")
+    $('main').prepend(infotext)
+  }
+  
+  // On show-info button click:
+  button.off('click'); // Turning off first, to avoid adding multiple events
+  button.on('click',() => {
+    // Toggle class 'active' on button to change its colors
+    button.toggleClass('active');
+    // Turns on and off show information
+    if (view.inital_data.description?.showinfo) {
+      // If it show-info exists when clicking the button, then turn it off
+      button.attr("data-original-title","Click to show description of page")
+            .attr("aria-label","Click to show description of page");
+      delete view.inital_data.description.showinfo;
+      $('#infotext').remove();
+      self.setHash();
+    } else {
+      // If it presentation mode does not exist when clicking the button, then turn it on
+      button.attr("data-original-title","Click to hide description of page")
+            .attr("aria-label","Click to hide description of page");
+      self.inital_data.description = { 'showinfo': 'true' };
+      self.setHash();
+      $('#main_content').prepend(infotext)
+    }
+    return;
+  });
+  return;
+
+
+
+  // On show-info button click:
+  button.on('click',() => {
+    // Toggle class 'active' on button to change its colors
+    button.toggleClass('active');
+    // Turns off and on auto-refresh
+    if (view.inital_data.description.showinfo) {
+      // If it exists when clicking the button, then turn it off
+      button.text('');
+      button.attr("data-original-title","Auto-refresh is OFF")
+            .attr("aria-label","Auto-refresh is OFF")
+            .addClass("fa")
+            .addClass("fa-refresh");
+      self.inital_data.refresh = { 'disablerefresh': 'true' };
+      self.setHash();
+      // Remove Intervals
+      clearInterval(self.refreshinterval);
+    } else {
+      delete view.inital_data.refresh.disablerefresh;
+      button.attr("data-original-title","Auto-refresh is ON")
+            .attr("aria-label","Auto-refresh is ON")
+            .removeClass("fa")
+            .removeClass("fa-refresh");
+      self.setHash();
+      let seconds = 60;
+      self.refreshinterval = setInterval(function () {
+        button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
+        seconds = seconds - 1;
+        if (seconds === 0) {
+          seconds = 60;
+          self.reloadPage();
+        }
+      }, 1000);
+    }
+    return;
+  });
+  return;
+}
 
 /**
  * Add auto-refresh button
@@ -1073,6 +1171,10 @@ View.prototype.setHash = function (keep_history) {
   if (this.inital_data.presentation) {
     Object.assign(parameter, this.inital_data.presentation);
   }
+  // Add description box
+  if (this.inital_data.description) {
+    Object.assign(parameter, this.inital_data.description);
+  }
 
   // Build hash into URL
   for (let key in parameter) {
@@ -1306,7 +1408,8 @@ function getURLParameter() {
       "sort": {},
       "colors": {},
       "refresh": {},
-      "presentation": {}
+      "presentation": {},
+      "description": {}
     }
   };
   for (let key in paras) {
@@ -1335,6 +1438,8 @@ function getURLParameter() {
           target = paras[key].refresh;
         } else if (entry == "present") {
           target = paras[key].presentation;
+        } else if (entry == "showinfo") {
+          target = paras[key].description;
         } else {
           target = paras[key].filter;
           entry = entry.toLowerCase();
