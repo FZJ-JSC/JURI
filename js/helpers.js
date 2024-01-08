@@ -406,7 +406,7 @@ Handlebars.registerHelper('html_link', function(grp,user,filename) {
 
 Handlebars.registerHelper('ioi_link', function(objectid) {
   if ( (objectid) && (objectid!='-') && (objectid!='-1') ) {
-    let url = `http://dp-ioi/#/dashboard/job-details/${objectid}`;
+    let url = `http://dp-ioi:8090/ioi/gui/#/dashboard/job-details/${objectid}`;
     result = '<a href="'+url+'" >' +
       '<span class="fa fa-puzzle-piece" title="IOI report (external)"/></a>';
   } else {
@@ -417,7 +417,7 @@ Handlebars.registerHelper('ioi_link', function(objectid) {
 
 Handlebars.registerHelper('ioi_wf_link', function(objectid) {
   if ( (objectid) && (objectid!='-') && (objectid!='-1') ) {
-    let url = `http://dp-ioi/#/dashboard/workflow-details/${objectid}`;
+    let url = `http://dp-ioi:8090/ioi/gui/#/dashboard/workflow-details/${objectid}`;
     result = '<a href="'+url+'" >' +
       '<span class="fa fa-puzzle-piece" title="IOI WF report (external)"/></a>';
   } else {

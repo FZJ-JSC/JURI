@@ -582,14 +582,15 @@ View.prototype.add_infobutton = function (description) {
     $('#information').append(button)
   }
   let desc = description
-  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(description);
+  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(description).hide();
 
   // If show info is active (from URL), activate it
   if (view.inital_data.description?.showinfo) {
     button.addClass('active');
     button.attr("data-original-title","Click to hide description of page")
           .attr("aria-label","Click to hide description of page")
-    $('main').prepend(infotext)
+    $('main').prepend(infotext);
+    infotext.slideDown();
   }
   
   // On show-info button click:
@@ -603,7 +604,9 @@ View.prototype.add_infobutton = function (description) {
       button.attr("data-original-title","Click to show description of page")
             .attr("aria-label","Click to show description of page");
       delete view.inital_data.description.showinfo;
-      $('#infotext').remove();
+      $('#infotext').slideUp(function() {
+        $(this).remove();
+      });
       self.setHash();
     } else {
       // If it presentation mode does not exist when clicking the button, then turn it on
@@ -611,7 +614,8 @@ View.prototype.add_infobutton = function (description) {
             .attr("aria-label","Click to hide description of page");
       self.inital_data.description = { 'showinfo': 'true' };
       self.setHash();
-      $('#main_content').prepend(infotext)
+      $('#main_content').prepend(infotext);
+      infotext.slideDown();
     }
     return;
   });

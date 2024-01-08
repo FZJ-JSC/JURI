@@ -245,7 +245,7 @@ a {
   font-weight: bold;
   font-size: 1.1em;
   background: var(--fzj-color-gray);
-  margin-top: -11px;
+  transform: translateY(-11px);
   margin-bottom: 10px;  
 }
 
