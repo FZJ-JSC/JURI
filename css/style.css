@@ -237,6 +237,17 @@ a {
 }
 /*** End of Alert banner ***/
 
+#infotext {
+  border: 1px solid black;
+  border-radius: 0 0 5px 5px;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1em;
+  background: var(--fzj-color-gray);
+  transform: translateY(-11px);
+  margin-bottom: 10px;  
+}
 
 @media (max-width: 575.98px) {
   h2 {font-size: 1.3rem;}

@@ -13,14 +13,14 @@ Installation instructions can be currently found on [LLview's documentation page
 
 ## Further Information
 
-For further information please see: http://www.fz-juelich.de/jsc/llview
+For further information please see: https://www.fz-juelich.de/jsc/llview
 
 Contact: [llview.jsc@fz-juelich.de](mailto:llview.jsc@fz-juelich.de)
 
 ## Copyright, License and CLA
 
 Copyright (c) 2023 Forschungszentrum Juelich GmbH, Juelich Supercomputing Centre  
-http://www.fz-juelich.de/jsc/llview  
+https://www.fz-juelich.de/jsc/llview  
 
 This is an open source software distributed under the GPLv3 license. More information see the LICENSE file at the top level.
 
