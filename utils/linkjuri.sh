@@ -42,8 +42,6 @@ rm $TO/js 2> /dev/null
 ln -sf $FROM/js $TO/js
 rm $TO/json 2> /dev/null
 ln -sf $FROM/json $TO/json
-rm $TO/php 2> /dev/null
-ln -sf $FROM/php $TO/php
 rm $TO/templates 2> /dev/null
 ln -sf $FROM/templates $TO/templates
 rm $TO/config 2> /dev/null
