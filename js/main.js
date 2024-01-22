@@ -285,7 +285,7 @@ View.prototype.show = function () {
 
     // Clean old content sections
     $("#main_content").empty();
-    $("#footer_content").empty();
+    $("#footer_graphs").empty();
     $("#footer_infoline_page_options").empty();
     $('#footer_infoline > #dragger').remove();
     $("footer").height($("#footer_infoline").height() + $("#footer_footer").height());
@@ -616,45 +616,6 @@ View.prototype.add_infobutton = function (description) {
       self.setHash();
       $('#main_content').prepend(infotext);
       infotext.slideDown();
-    }
-    return;
-  });
-  return;
-
-
-
-  // On show-info button click:
-  button.on('click',() => {
-    // Toggle class 'active' on button to change its colors
-    button.toggleClass('active');
-    // Turns off and on auto-refresh
-    if (view.inital_data.description.showinfo) {
-      // If it exists when clicking the button, then turn it off
-      button.text('');
-      button.attr("data-original-title","Auto-refresh is OFF")
-            .attr("aria-label","Auto-refresh is OFF")
-            .addClass("fa")
-            .addClass("fa-refresh");
-      self.inital_data.refresh = { 'disablerefresh': 'true' };
-      self.setHash();
-      // Remove Intervals
-      clearInterval(self.refreshinterval);
-    } else {
-      delete view.inital_data.refresh.disablerefresh;
-      button.attr("data-original-title","Auto-refresh is ON")
-            .attr("aria-label","Auto-refresh is ON")
-            .removeClass("fa")
-            .removeClass("fa-refresh");
-      self.setHash();
-      let seconds = 60;
-      self.refreshinterval = setInterval(function () {
-        button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
-        seconds = seconds - 1;
-        if (seconds === 0) {
-          seconds = 60;
-          self.reloadPage();
-        }
-      }, 1000);
     }
     return;
   });
@@ -1368,7 +1329,7 @@ View.prototype.applyTemplates = function (templates, postprocess) {
  */
 function resize() {
   // Add margin-bottom to footer content to avoid it to be hidden behind footer_footer
-  $("#footer_content").css("margin-bottom",$("#footer_footer").height())
+  $("#footer_graphs").css("margin-bottom",$("#footer_footer").height())
   // Set height of the footer (that can be dragged with the mouse)
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
   // Height of main content is window size - the height of the header - height of the footer - 10 for padding(?)
