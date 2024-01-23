@@ -17,17 +17,17 @@ var graphs = {};
 function resize_graph(size) {
     switch (size) {
     case "small":
-        $("#footer_content").show();
-        $("#footer_content").removeClass("large");
+        $("#footer_graphs").show();
+        $("#footer_graphs").removeClass("large");
         show_graph({},false);
         break;
     case "large":
-        $("#footer_content").show();
-        $("#footer_content").addClass("large");
+        $("#footer_graphs").show();
+        $("#footer_graphs").addClass("large");
         show_graph({},false);
         break;
     case "hidden":
-        $("#footer_content").hide();
+        $("#footer_graphs").hide();
         break;
     }
     resize();
