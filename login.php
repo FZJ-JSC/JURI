@@ -19,6 +19,7 @@ function debug_to_console($data) {
 
     echo "<script>console.log('PhP debug: " . $output . "' );</script>";
 }
+
 $dir=dirname($_SERVER['SCRIPT_FILENAME']);
 if (!isset($_SERVER['PHP_AUTH_USER'])) {
     header('WWW-Authenticate: Basic realm="Job Monitor"');
@@ -27,8 +28,9 @@ if (!isset($_SERVER['PHP_AUTH_USER'])) {
     exit;
 }
 
+
 // Get info from mapping
-$user = strtolower($_SERVER['PHP_AUTH_USER']);
+$user = strtolower($_SERVER['REMOTE_USER']);
 $demo = false;
 if (strpos($dir, 'demo') !== false) {
 	$demo = " DEMO";
