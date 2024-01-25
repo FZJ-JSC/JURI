@@ -23,7 +23,7 @@ AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javasc
     RewriteRule "\.csv\.gz$" "-" [T=text/csv,E=no-gzip:1]
     RewriteRule "\.pdf\.gz$" "-" [T=application/pdf,E=no-gzip:1]
 
-    <FilesMatch "(\.html\.gz|\.json\.gz|\.csv\.gz|.pdf.gz)$">
+    <FilesMatch "(\.html\.gz|\.json\.gz|\.csv\.gz|\.pdf\.gz)$">
       # Serve correct encoding type.
       Header append Content-Encoding gzip
 
