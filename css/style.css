@@ -484,7 +484,8 @@ th span {
 }
 
 .table-sm td, .table-sm th {
-  padding: .1rem !important;
+  padding: .1rem; 
+  vertical-align: middle;
 }
 
 .tooltip-inner {
@@ -493,6 +494,14 @@ th span {
 
 .monospace {
   font-family: monospace, 'Liberation Mono', 'Courier New';
+}
+
+.corepattern {
+  font-family: CorePattern; 
+  font-size: 1.5em;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  text-align: center !important;
 }
 
 /* Footer layout */

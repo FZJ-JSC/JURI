@@ -1,0 +1,39 @@
+@font-face {
+  font-family: 'CorePattern';
+  src:  url('../fonts/CorePattern.eot?ta6f0f');
+  src:  url('../fonts/CorePattern.eot?ta6f0f#iefix') format('embedded-opentype'),
+    url('../fonts/CorePattern.ttf?ta6f0f') format('truetype'),
+    url('../fonts/CorePattern.woff?ta6f0f') format('woff'),
+    url('../fonts/CorePattern.svg?ta6f0f#CorePattern') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+[class^="icon-"], [class*=" icon-"] {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'CorePattern' !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-00:before {
+  content: "\c00";
+}
+.icon-01:before {
+  content: "\c01";
+}
+.icon-10:before {
+  content: "\c10";
+}
+.icon-11:before {
+  content: "\c11";
+}
