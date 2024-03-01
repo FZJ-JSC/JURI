@@ -171,8 +171,42 @@ View.prototype.show = function () {
 
 
         // Title from configuration (including eventual logo)
-        $("#title").html(`<b>${self.navdata.data.system.replace('_', ' ')}</b>: ${self.navdata.data.permission.capitalize()} view`);
-        $(document).attr("title", $("#title").text());
+        const current_system_name = self.navdata.data.system.replace('_', ' ').toUpperCase()
+        var systemname_menu = $("<div>")
+        if (self.navdata.systems && Object.keys(self.navdata.systems).length > 0) {
+          systemname_menu.addClass("dropdown-menu")
+                     .attr("aria-labelledby","systemname_dropdown_button")
+          var systemname_link = $('<a>').attr("id","system_name")
+                                        .text(current_system_name)
+                                        .attr("href","#")
+                                        .addClass('dropdown-toggle')
+                                        .attr("data-toggle","dropdown")
+                                        .attr("aria-haspopup","true")
+                                        .attr("aria-expanded","false")
+          Object.entries(self.navdata.systems).forEach(([system, folder]) => {
+            const current = new URL(window.location)
+            current.pathname = current.pathname.replace(/^\/(.*?)\//, `/${folder}/`)
+            let this_system_name = system.toUpperCase()
+            // Creating submenu for this system
+            current_link = $("<a>").addClass("dropdown-item")
+                                    .text(this_system_name)
+                                    .attr("href",current.href)
+            // Checking current system name to select it
+            if (this_system_name == current_system_name) {
+              current_link.addClass("selected");
+            }
+            // // Append to the menu
+            systemname_menu.append(current_link)
+            return;
+          });
+        } else {
+          var systemname_link = $('<div>').attr("id","system_name")
+                                          .text(current_system_name)
+        }
+        $("#title").append(systemname_link)
+                   .append(systemname_menu)
+                   .append($('<div>').text(`${self.navdata.data.permission.capitalize()} view`));
+        $(document).attr("title", `${self.navdata.data.system.replace('_', ' ')}: ${self.navdata.data.permission.capitalize()} view`);
         // System picture from configuration and link to home
         if (self.navdata.image) {
           $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
@@ -200,13 +234,11 @@ View.prototype.show = function () {
 
           // Add logo
           $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5, width: 72}))
-          if (self.navdata.home) {
-            $("#logo").click(function () {
-              window.location.href = "https://llview.fz-juelich.de/";
-              return;
-            });
-            $("#logo").addClass("clickable");
-          }
+          $("#logo").click(function () {
+            window.location.href = "https://llview.fz-juelich.de/";
+            return;
+          });
+          $("#logo").addClass("clickable");
         }
 
         let inital_page = ""
@@ -528,7 +560,7 @@ View.prototype.add_colorscale_controls = function () {
         // Defining the SVG DOM element
         // NOTE: SVG must be added as text, otherwise it is not loaded correctly
         svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${lineargradient.prop('outerHTML')}</defs><g>${rect.prop('outerHTML')}</g></svg>`
-        // Creading div for this given colorscale
+        // Creating div for this given colorscale
         current_div = $("<div>")
             .addClass("dropdown-item")
             .addClass("colorscale")

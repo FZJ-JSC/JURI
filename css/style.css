@@ -65,6 +65,33 @@ a {
   padding-right: 10px;
   align-self: center;
   font-size: 20px;
+  display: flex;
+  flex-direction: row;
+}
+
+#title > .dropdown-toggle {
+  cursor: pointer;
+}
+
+#title > a {
+  color: white;
+  text-decoration: none; 
+}
+
+#title > .dropdown-toggle::after {
+  vertical-align: 0.1em;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 3px;
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+}
+
+#system_name {
+  padding-right: 10px;
+  font-weight: bold;
+  text-transform: capitalize;
 }
 
 #system_picture {

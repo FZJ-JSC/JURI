@@ -1,35 +1,71 @@
 Satisfy all
-AuthName "LLviewJobReport (JSC web service account)"
-AuthType Basic
 # To be filled/changed and uncommented:
+#-----
+# Authentication with .htpasswd file:
+# This file can be created with `htpasswd -c .htpasswd <username>`
+# Further users can be added with `htpasswd .htpasswd <username>`
+#AuthType Basic
+#AuthName "Restricted Content"
+#AuthUserFile <full path for .htpasswd>
+#Require valid-user
+#-----
+# LDAP:
+#AuthName 
+#AuthType Basic
 #AuthBasicProvider ldap
 #AuthLDAPURL 
 #AuthLDAPBindDN 
 #AuthLDAPBindPassword 
 #Require ldap-attribute 
+#Require valid-user
+#-----
+# OIDC (To be put on Apache's configuration - can't be on .htaccess)
+#LoadModule auth_openidc_module modules/mod_auth_openidc.so
+##OIDCProviderMetadataURL https://login.jsc.fz-juelich.de/oauth2/.well-known/openid-configuration
+# When a discovery page is used, the metadata folder must contain 3 files (as explained here: https://indigo-dc.gitbook.io/keystone-with-oidc-documentation/admin-iam-conf/admin-multi-conf)
+#OIDCMetadataDir /var/cache/mod_auth_openidc/metadata/
+#OIDCDiscoverURL 
+# If no discovery page is used, the client ID and secret are needed - IMPORTANT: after redirect, the fragment part of the URL is lost!
+##OIDCClientID
+##OIDCClientSecret
+#OIDCRedirectURI
+#OIDCCryptoPassphrase "exec:/bin/bash -c \"head /dev/urandom | tr -dc A-Za-z0-9 | head -c 32\""
+#OIDCAuthRequestParams 
+#OIDCScope "openid,profile"
+#OIDCRemoteUserClaim preferred_username
+#OIDCSessionInactivityTimeout 864000
+#-- This can be on .htaccess:
+#AuthType openid-connect
+#Require valid-user
+#-----
+
+# 404 page that should be edited to a fixed location
 #ErrorDocument 404 /system/error404.html
-Require valid-user
+
 Header set Cache-Control "max-age=60, private"
-AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+</IfModule>
 <IfModule mod_headers.c>
-    # Serve gzip compressed HTML files if they exist
-    #RewriteCond "%{HTTP:Accept-encoding}" "gzip" ignore browser capabilities
-    RewriteCond "%{REQUEST_FILENAME}\.gz" -s
-    RewriteRule "^(.*)\.(html|json|csv|pdf)"         "$1\.$2\.gz" [QSA]
+  # Ignore browser capabilities
+  RewriteCond "%{HTTP:Accept-encoding}" "gzip"
+  # Serve gzip compressed HTML files if they exist
+  RewriteCond "%{REQUEST_FILENAME}\.gz" -s
+  RewriteRule "^(.*)\.(html|json|csv|pdf)"         "$1\.$2\.gz" [QSA]
 
-    # Serve correct content types, and prevent mod_deflate double gzip.
-    RewriteRule "\.html\.gz$" "-" [T=text/html,E=no-gzip:1]
-    RewriteRule "\.json\.gz$" "-" [T=application/json,E=no-gzip:1]
-    RewriteRule "\.csv\.gz$" "-" [T=text/csv,E=no-gzip:1]
-    RewriteRule "\.pdf\.gz$" "-" [T=application/pdf,E=no-gzip:1]
+  # Serve correct content types, and prevent mod_deflate double gzip.
+  RewriteRule "\.html\.gz$" "-" [T=text/html,E=no-gzip:1]
+  RewriteRule "\.json\.gz$" "-" [T=application/json,E=no-gzip:1]
+  RewriteRule "\.csv\.gz$" "-" [T=text/csv,E=no-gzip:1]
+  RewriteRule "\.pdf\.gz$" "-" [T=application/pdf,E=no-gzip:1]
 
-    <FilesMatch "(\.html\.gz|\.json\.gz|\.csv\.gz|\.pdf\.gz)$">
-      # Serve correct encoding type.
-      Header append Content-Encoding gzip
+  <FilesMatch "(\.html\.gz|\.json\.gz|\.csv\.gz|\.pdf\.gz)$">
+    # Serve correct encoding type.
+    Header append Content-Encoding gzip
 
-      # Force proxies to cache gzipped &
-      # non-gzipped html files separately.
-      Header append Vary Accept-Encoding
-    </FilesMatch>
+    # Force proxies to cache gzipped &
+    # non-gzipped html files separately.
+    Header append Vary Accept-Encoding
+  </FilesMatch>
 </IfModule>
 

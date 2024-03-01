@@ -28,6 +28,23 @@ body {
 #header {
     height: 38.59px;
 }
+#title > .dropdown-toggle {
+  cursor: pointer;
+}
+#title > .dropdown-toggle::after {
+  vertical-align: 0.1em;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 3px;
+  transform: rotate(45deg);
+  -webkit-transform: rotate(45deg);
+}
+#system_name {
+  padding-right: 10px;
+  font-weight: bold;
+  text-transform: capitalize;
+}
 #main_content {
     padding-top: 0;
 }
@@ -91,8 +108,10 @@ label, input {
         <div id="system_picture" class="d-none d-lg-block"> 
             <img src="img/@@image@@" alt="System picture" style="height: 32.5938px; width: 50px; object-fit: contain">
         </div>
+
         <div id="title">
-            <b>@@system@@@@demo@@: @@username@@ </b>
+            <div id="system_name">@@system@@@@demo@@</div>
+            <div>@@username@@</div>
         </div>
         <div id="title_wrapper" class="mx-2">
         </div>
