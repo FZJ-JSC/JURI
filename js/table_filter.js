@@ -225,13 +225,25 @@ function no_results() {
   $("#main_content").append($("<span>").addClass('filtermessage').text("No results found. ").append(clear_filter_link));
 }
 
+
+/**
+ * Function to escape special characters by adding two slashes before
+ * Adapted from https://stackoverflow.com/a/25376775/3142385
+ * @param {string} string String to be escaped
+ */
+function escapeSpecialCaseChar(string) {
+  return string.replace(/([^a-zA-Z0-9])/g, '\\$&');
+}
+
 /**
  * Clear the filter values of the table (or given column(s))
  * and updates the table
  * @param {string} column Class of column(s) to clean filter
  */
 function clear_filter(column) {
-  $(`tr.filter th${column ? '.'+column : ""} input`).val("");
+  // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
+  column_escaped = escapeSpecialCaseChar(column);
+  $(`tr.filter th${column_escaped ? '.'+column_escaped : ""} input`).val("");
   $("tr.filter").closest("table").each(function() {
     filter(this);
     return;
@@ -347,19 +359,21 @@ function add_column_selector() {
     groups.forEach(function(group) {
       // inital checkbox state is given by last session setting, default value or false (in this order) 
       let checked = false;
+      // group_escaped = group.replace("(","\\(").replace(")","\\)").replace("/","\\/");
+      group_escaped = escapeSpecialCaseChar(group);
       if (typeof(default_columns) !== "undefined") {
         checked = default_columns.includes(group);
       }
       if (view.page_data && typeof(view.page_data.default_columns) == "object") {
         checked = view.page_data.default_columns.includes(group);
       }
-      if (typeof(Storage) !== "undefined" && sessionStorage.getItem("group_"+group)) {
-        checked = sessionStorage.getItem("group_"+group) == "true";
+      if (typeof(Storage) !== "undefined" && sessionStorage.getItem("group_"+group_escaped)) {
+        checked = sessionStorage.getItem("group_"+group_escaped) == "true";
       }
       // Checking current group if it's used on URL
       checked = used_groups.has(group) ? true : checked
       dropup_menu.append($("<label>").addClass("dropdown-item form-check-label")
-                    .text(group)
+                    .text(group.replace("_"," "))
                     .prepend($("<input>")
                     .addClass("form-check-input")
                     .attr("type","checkbox")
@@ -447,7 +461,9 @@ function add_column_css() {
   // Creating stylesheet to hide columns
   let styles = "";
   groups.forEach((group) => {
-    styles = `${styles}.hide-group_${group} .group_${group}, `
+    // group_escaped = group.replace("(","\\(").replace(")","\\)").replace("/","\\/");
+    group_escaped = escapeSpecialCaseChar(group);
+    styles = `${styles}.hide-group_${group_escaped} .group_${group_escaped}, `
   });
   styles = `${styles.slice(0,-2)} {\n  display: none;\n}\n`
   // Adding stylesheet to the document
