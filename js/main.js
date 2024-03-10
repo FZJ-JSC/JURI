@@ -184,13 +184,13 @@ View.prototype.show = function () {
                                         .attr("aria-haspopup","true")
                                         .attr("aria-expanded","false")
           Object.entries(self.navdata.systems).forEach(([system, folder]) => {
-            const current = new URL(window.location)
-            current.pathname = current.pathname.replace(/^\/(.*?)\//, `/${folder}/`)
             let this_system_name = system.toUpperCase()
             // Creating submenu for this system
             current_link = $("<a>").addClass("dropdown-item")
                                     .text(this_system_name)
-                                    .attr("href",current.href)
+                                    .attr("href","#")
+                                    .attr("onclick",`view.changeSystem('${folder}')`)
+
             // Checking current system name to select it
             if (this_system_name == current_system_name) {
               current_link.addClass("selected");
@@ -266,6 +266,18 @@ View.prototype.show = function () {
     );
     return;
   });
+}
+
+/**
+ * Function to change between the systems when clicking on the system selector
+ * This considers that the address is of the form: (...)/system_name/(...)
+ * @param {string} system system name to be redirected to
+ */
+View.prototype.changeSystem = function (system) { 
+  const current = new URL(window.location); 
+  current.pathname = current.pathname.replace(/^\/(.*?)\//, `/${system}/`); 
+  window.location.href = current.href ; 
+  return; 
 }
 
 /**
