@@ -24,7 +24,7 @@ View.prototype.initDates = function(active_date) {
         let date = new Date()
         date.setDate(date.getDate() - i);
         let date_str = String(date.getDate()).padStart(2, '0')+"."+String(date.getMonth() + 1).padStart(2, '0')+"."+date.getFullYear();
-        let link = $("<a>").attr("href","#").text(date_str).click(function() {self.selectPage([self.selected_page,i]); return false;});
+        let link = $("<a>").text(date_str).click(function() {self.selectPage([self.selected_page,i]); return false;});
         if (i == active_date) {
             link.addClass("active");
         }

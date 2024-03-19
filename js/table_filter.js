@@ -179,10 +179,10 @@ function apply_search(header,filter,follow) {
         let date = new Date()
         date.setDate(date.getDate() - value);
         let date_str = String(date.getDate()).padStart(2, '0') + "." + String(date.getMonth() + 1).padStart(2, '0') + "." + date.getFullYear();
-        let link = $("<a>").attr("href", "#").text(date_str).click(function () { changePage(value); return; });
+        let link = $("<a>").text(date_str).click(function () { changePage(value); return; });
         $("#main_content").append($("<span>").addClass('filtermessage').text(`JobID ${key} found on `).append(link));
       } else {
-        let link = $("<a>").attr("href", "#").text('currently active').click(function () { changePage(value); return; });
+        let link = $("<a>").text('currently active').click(function () { changePage(value); return; });
         $("#main_content").append($("<span>").addClass('filtermessage').text(`JobID ${key} is `).append(link));
       }
       found = true;
@@ -220,7 +220,7 @@ function changePage(value) {
  * Adds "no result" message at the end of main_content
  */
 function no_results() {
-  let clear_filter_link = $("<a>").attr("href", "#").append($("<span>").text("Clear filter.").click(function () { clear_filter(); return false; }));
+  let clear_filter_link = $("<a>").append($("<span>").text("Clear filter.").click(function () { clear_filter(); return false; }));
   // Add "no results" filter message
   $("#main_content").append($("<span>").addClass('filtermessage').text("No results found. ").append(clear_filter_link));
 }
@@ -319,7 +319,7 @@ function add_column_selector() {
                    .attr("id","column_selection")
                    .attr("title","Show/Hide column groups")
                    .attr("data-placement","left")
-                   .append($("<a>").attr("href","#")
+                   .append($("<a>")
                    .attr("aria-label","Show/Hide column groups")
                    .addClass("dropdown-toggle")
                    .attr("data-toggle","dropdown")
@@ -498,7 +498,7 @@ function set_filter() {
     key_filter($(this).closest("table")[0]);
     return;
   });
-  let clear_filter_link = $("<a>").attr("href","#").attr("aria-label","Clear filter").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
+  let clear_filter_link = $("<a>").attr("aria-label","Clear filter").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
   if (! $("#num_visible_rows").length) {
     view.add_to_footer_infoline($("<span>").attr("id","num_visible_rows")[0],30);
     view.add_to_footer_infoline(clear_filter_link[0],30);

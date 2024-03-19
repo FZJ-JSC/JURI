@@ -386,7 +386,6 @@ PlotlyGraph.prototype.plot = function (params) {
           } else {
             trace.x = data.map(function (x)  { return new Date(Date.parse(x['date'])) });
           }
-
           // Parsing values and min/max when present
           values = data.map(function (y) {
             let val = y[trace_data.ycol].split(";");

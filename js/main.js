@@ -178,17 +178,15 @@ View.prototype.show = function () {
                      .attr("aria-labelledby","systemname_dropdown_button")
           var systemname_link = $('<a>').attr("id","system_name")
                                         .text(current_system_name)
-                                        .attr("href","#")
                                         .addClass('dropdown-toggle')
                                         .attr("data-toggle","dropdown")
                                         .attr("aria-haspopup","true")
                                         .attr("aria-expanded","false")
-          Object.entries(self.navdata.systems).forEach(([system, folder]) => {
+          Object.entries(self.navdata.systems).sort().forEach(([system, folder]) => {
             let this_system_name = system.toUpperCase()
             // Creating submenu for this system
             current_link = $("<a>").addClass("dropdown-item")
                                     .text(this_system_name)
-                                    .attr("href","#")
                                     .attr("onclick",`view.changeSystem('${folder}')`)
 
             // Checking current system name to select it
@@ -207,19 +205,28 @@ View.prototype.show = function () {
                    .append(systemname_menu)
                    .append($('<div>').text(`${self.navdata.data.permission.capitalize()} view`));
         $(document).attr("title", `${self.navdata.data.system.replace('_', ' ')}: ${self.navdata.data.permission.capitalize()} view`);
-        // System picture from configuration and link to home
-        if (self.navdata.image) {
-          $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
-          if (self.navdata.home) {
-            $("#system_picture").click(function () {
-              window.location.href = self.navdata.home;
-              return;
-            });
-            $("#system_picture").addClass("clickable");
-          }
-        }
 
-        // If logo is set on configuration (currently only on LLview and not on Kontview)
+        // Add Home button to go to login page
+        let button = $('<button>',{type: "button", class: 'inner-circle', title: 'Go to login page'}).attr("aria-label",'Go to login page').addClass("fa").addClass("fa-home");
+        $('#home').prepend(button)
+        button.on('click',() => {
+          button.toggleClass('active');
+          window.location.href = self.navdata.home;
+          return;
+        });
+        // Add system image to go to login page
+        // if (self.navdata.image) {
+        //   $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
+        //   if (self.navdata.home) {
+        //     $("#system_picture").click(function () {
+        //       window.location.href = self.navdata.home;
+        //       return;
+        //     });
+        //     $("#system_picture").addClass("clickable");
+        //   }
+        // }
+
+        // If logo is set on configuration (currently only on LLview and not on KontView)
         if (self.navdata.logo) {
           // Change favicon
           $("#favicon").attr("href","data:image/svg+xml,%3Csvg height='100%25' stroke-miterlimit='10' style='fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;' version='1.1' viewBox='0 0 32 32' width='100%25' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'%3E%3Cpath d='M8.02154 13.6133L8.03331 23.6475L10.2411 23.6597L12.4489 23.6718L12.4489 25.7506L12.4489 27.8294L18.7334 27.8294L25.018 27.8294L25.018 26.6379L25.018 25.4464L20.0885 25.4464L15.1589 25.4464L15.1589 24.5587L15.1589 23.6709L17.869 23.6709L20.5791 23.6709L20.5791 22.456L20.5791 21.2412L17.869 21.2412L15.1589 21.2412L15.1589 14.4894L15.1589 7.73754L13.8039 7.73754L12.4489 7.73754L12.4489 14.4894L12.4489 21.2412L11.5844 21.2412L10.72 21.2412L10.72 12.4101L10.72 3.57898L9.36489 3.57898L8.00972 3.57898L8.02154 13.6133' fill='%23023d6b' fill-rule='evenodd' opacity='1' stroke='none'/%3E%3Cpath d='M15.0868 0.0309399C9.2877 0.347224 4.09586 3.83135 1.56139 9.10753C-0.520462 13.4413-0.520462 18.5745 1.56139 22.9083C5.1584 30.3963 13.8239 33.894 21.607 30.9994C25.9088 29.3995 29.3916 25.9168 30.9915 21.615C32.5077 17.538 32.307 12.997 30.4386 9.10753C28.097 4.233 23.5169 0.89078 18.1603 0.147847C17.6781 0.080936 16.1368-0.0254576 15.8598-0.0109727C15.7956-0.0076085 15.4477 0.0112218 15.0868 0.0309399M8.02154 13.6133L8.03331 23.6475L10.2411 23.6597L12.4489 23.6718L12.4489 25.7506L12.4489 27.8294L18.7334 27.8294L25.018 27.8294L25.018 26.6379L25.018 25.4464L20.0885 25.4464L15.1589 25.4464L15.1589 24.5587L15.1589 23.6709L17.869 23.6709L20.5791 23.6709L20.5791 22.456L20.5791 21.2412L17.869 21.2412L15.1589 21.2412L15.1589 14.4894L15.1589 7.73754L13.8039 7.73754L12.4489 7.73754L12.4489 14.4894L12.4489 21.2412L11.5844 21.2412L10.72 21.2412L10.72 12.4101L10.72 3.57898L9.36489 3.57898L8.00972 3.57898L8.02154 13.6133' fill='%23ffffff' fill-rule='evenodd' opacity='1' stroke='none'/%3E%3C/svg%3E");
@@ -600,7 +607,7 @@ View.prototype.add_colorscale_controls = function () {
         return;
       });
       // Append the selected SVG to the colorscale_selector
-      colorscale_selection.append($("<a>").attr("href","#")
+      colorscale_selection.append($("<a>")
                 .attr("aria-label","Select colorscale")
                 .addClass("dropdown-toggle")
                 .attr("data-toggle","dropdown")    
@@ -815,7 +822,7 @@ View.prototype.add_presentation = function () {
   let self = this;
   let text = `Presentation Mode is ${view.inital_data.presentation?.present ? "ON" : "OFF"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-play");
-  var timebetweenjobs = 30000; // In microseconds
+  var timebetweenjobs = 30000; // Time to alternate between jobs (in microseconds)
   // If presentation mode is active (from URL), activate it
   if (view.inital_data.presentation?.present) {
     button.addClass('active');
@@ -1023,7 +1030,7 @@ View.prototype.add_graph_data = function (data) {
   if (data.footer_graph_config || data.graph_page_config) {
     let contents = [
       // {
-      //     values: ["ext/d3.min.js", "ext/plotly.min.js", "plotly_graph.js", data.footer_graph_config ? "footer_graph_plotly.js" : "page_graph.js" ],
+      //     values: ["ext/d3.min.js", "ext/plotly.min.js", "plotly_graph.js", data.footer_graph_config ? "footer_graphs.js" : "page_graph.js" ],
       //     target: "scripts"
       // }, 
       // {
@@ -1070,7 +1077,7 @@ View.prototype.getPagesInfo = function (elem) {
   self.all_page_sections.push(elem.section);
   // If footer page or graph page is used, add corresponding scripts
   if (elem.footer_graph_config || elem.graph_page_config) {
-    self.addons.scripts = new Set([...self.addons.scripts, ...["plotly_graph.js", elem.footer_graph_config ? "footer_graph_plotly.js" : "page_graph.js" ]])
+    self.addons.scripts = new Set([...self.addons.scripts, ...["plotly_graph.js","mermaid_graph.js", elem.footer_graph_config ? "footer_graphs.js" : "page_graph.js" ]])
   }
 
   // Getting scripts needed on the website and removing from config
