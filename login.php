@@ -64,7 +64,7 @@ if(isset($_GET["jobid"])) {
     header('Location: error404.html');
   } else {
     // Building correct link
-    $newURL = "data/projects/".$project."/".$user."/jobreport_".$systemname."_".$project."_".$user."_".$jobid.".html";
+    $newURL = "data/projects/".$project."/".$user."/jobreport_".strtoupper($systemname)."_".$project."_".$user."_".$jobid.".html";
     header('Location: '.$newURL);
   }
   exit();
@@ -76,24 +76,40 @@ if (strcmp($systemname, 'jureca') == 0) {
   $systemname .= "-dc";
 }
 // Image filename
-$image=strtolower($systemname).".jpg";
+if (isset($inifile["config"]["image"])) {
+  $image=$inifile["config"]["image"];
+} else {
+  $image="img/".strtolower($systemname).".jpg";
+}
+// Adding suffix '_demo' to folder in case it is demo mode
 if ($demo) {
   $folder .= "_demo";
-}
+}  
+
 // $remarks .= "<br>system name: <b>". $systemname ."</b><br>";
 
 $inputfield="";
 $script="";
 if(isset($inifile["supporter"][$user])) {
-  $inputfield="<label for='loginasuser'>Login as user: <input type='text' placeholder='username' id='loginasuser' /></label>";
+  $inputfield="<label for='loginasuser'>Login as user: <input type='text' placeholder='username' id='loginasuser' /></label><input type='button' id='loginasuserbutton' class='submit'/>";
   $script="
 <script>
+  function loginAsUser() {
+    const loginasuser = document.getElementById('loginasuser');
+    if (node.value) {
+      window.location.replace(`login.php?loginasuser=\${loginasuser.value}`);
+    }
+  }
+  // Adding listener when pressing the enter key
   const node = document.getElementById('loginasuser');
   node.addEventListener('keyup', function(event) {
     if (event.key === 'Enter') {
-      window.location.replace(`login.php?loginasuser=\${node.value}`);
+      loginAsUser();
     }
   });
+  // Adding listener when pressing the button
+  const loginasuserbutton = document.getElementById('loginasuserbutton');
+  loginasuserbutton.addEventListener('click',loginAsUser);
 </script>
 ";
   if(isset($_GET["loginasuser"]) && $_GET["loginasuser"]!=$user) {

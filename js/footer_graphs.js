@@ -181,9 +181,13 @@ View.prototype.FooterGraph.prototype.relayout = function (ed) {
 /* Resize footer graph area and all graphs */
 View.prototype.FooterGraph.prototype.resize_graph = function () {
   let self = this;
+  // let height = $("#graph_depgraph").height(); // This doesn't work when decreasing the size of the div
+  // 5 is due to the padding of #graphs: $("#graphs").css('padding-top') + 3 of borders
+  let height = $("footer").height()-$("#footer_infoline").height()-8-$("#graph_selection").height()-$("#footer_footer").height();
+  let width = $("#graph_depgraph").width()
   // Resize graphs
   for (let graph of self.graphs) {
-    graph.resize();
+    graph.resize(height,width);
   }
   // Resize table window
   resize();
@@ -191,20 +195,21 @@ View.prototype.FooterGraph.prototype.resize_graph = function () {
 
 /* Take care of specifc parameter selection in table. */
 View.prototype.FooterGraph.prototype.apply_data = function (params) {
+  let self = this;
   /* Store selected parameter in object to be reused when page is changed */
   if (params) {
-    this.selected_parameter = params
+    self.selected_parameter = params
   } else {
-    params = this.selected_parameter;
+    params = self.selected_parameter;
   }
   if (params) {
     /* Adding info text below graphs */
-    let info = this.config.find(o => { return o.name === this.current_page }).info;
+    let info = self.config.find(o => { return o.name === self.current_page }).info;
     if (info) {
       $("#graph_info").text(replaceDataPlaceholder(info, params));
     }
     /* Check if all pages should be shown (configurable via "show_pattern" key) */
-    this.config.forEach(page => { // Looping through the pages
+    self.config.forEach(page => { // Looping through the pages
       let match_pattern = true;
       if (page.show_pattern) {         // Testing if "show_pattern" exists
         for (const [key, values] of Object.entries(page.show_pattern)) {  // Looping over the patterns
@@ -226,13 +231,13 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
         return ;
       } else {
         $("#page_" + page.name.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '')).hide();
-        if (this.current_page == page.name) { // If the selected page is the hidden one
-          return this.select_page($("#graph_selection ul li").first().text()); // Select first available page by default
+        if (self.current_page == page.name) { // If the selected page is the hidden one
+          return self.select_page($("#graph_selection ul li").first().text()); // Select first available page by default
         };
       };
 
     });
-    for (let graph of this.graphs) {
+    for (let graph of self.graphs) {
       graph.add_data_to_graph(params);
     }
   }
@@ -242,7 +247,7 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
 View.prototype.FooterGraph.prototype.apply_config = function () {
   let self = this;
   this.config.forEach(element => {
-    let link = $("<a>").attr("href", "#").attr("title", "Graph page: " + element.name).text(element.name).click(function () {
+    let link = $("<a>").attr("title", "Graph page: " + element.name).text(element.name).click(function () {
       self.select_page(element.name);
       return;
     });
@@ -255,13 +260,14 @@ View.prototype.FooterGraph.prototype.apply_config = function () {
 
 /* Select a specifc graph page */
 View.prototype.FooterGraph.prototype.select_page = function (page) {
+  let self = this;
   $("#graph_selection ul li").removeClass("active");
   $("#page_" + page.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '')).addClass("active");
-  $(this).parent().addClass("active");
-  this.current_page = page;
-  this.clear();
-  this.create_graphs();
-  this.apply_data();
+  $(self).parent().addClass("active");
+  self.current_page = page;
+  self.clear();
+  self.create_graphs();
+  self.apply_data();
 }
 
 /* Clear the footer graph area */
@@ -291,14 +297,18 @@ View.prototype.FooterGraph.prototype.create_graphs = function () {
     let graph_div = $("<div>").attr("id", id).addClass("footer_graph").addClass("col-" + element_width);
     graph_data.div = graph_div;
     $("#graphs").append(graph_div);
-    self.graphs.push(new PlotlyGraph(graph_data));
-    self.graphs.at(-1).plot();
-    // Synchronizing zoom between different graphs
-    graph_div[0].on("plotly_relayout", (ed) => { self.relayout(ed); });
-    // Creating hover event listener to couple hover information across divs
-    graph_div[0].on("plotly_hover", (ed) => { self.couple_hover(ed, id); });
-    // Creating mouse leave event listener to hide hover over all graphs
-    graph_div.find(".nsewdrag").on("mouseleave", (ed) => { self.hide_hover(ed); });
+    if (graph_data.type == "mermaid") {
+      self.graphs.push(new MermaidGraph(graph_data));
+    } else {
+      self.graphs.push(new PlotlyGraph(graph_data));
+      self.graphs.at(-1).plot();
+      // Synchronizing zoom between different graphs
+      graph_div[0].on("plotly_relayout", (ed) => { self.relayout(ed); });
+      // Creating hover event listener to couple hover information across divs
+      graph_div[0].on("plotly_hover", (ed) => { self.couple_hover(ed, id); });
+      // Creating mouse leave event listener to hide hover over all graphs
+      graph_div.find(".nsewdrag").on("mouseleave", (ed) => { self.hide_hover(ed); });
+    }
   }
   resize();
 }

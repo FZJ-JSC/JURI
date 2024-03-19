@@ -101,16 +101,16 @@ a {
 #logo {
   align-self: center;
 }
-/* Auto-refresh and presentation buttons */
-.button {
-  align-self: center;
-  font-size: 0.8em;
-}
+/* Buttons on header (Home, auto-refresh and presentation) */
 .button
 {
+  align-self: center;
+  font-size: 0.8em;
   width: var(--size);
   height: var(--size);
   margin: 0;
+  margin-left: 5px;
+  margin-right: 5px;
   position: relative;
 }
 .button .outer-circle, 
@@ -657,6 +657,10 @@ footer.container-fluid {
 
 .footer_graph {
   flex-grow: 1;
+}
+
+.mermaid {
+  margin: 0;
 }
 
 .system_graph {

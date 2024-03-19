@@ -94,9 +94,9 @@ function add_event_handler_generic(keys) {
     $("#main_content table tbody tr").addClass("clickable");
     if (! $("#graph_size").length) {
         let control = $("<span>").text("Graph size:").attr("id","graph_size");
-        control.append($("<a>").attr("href","#").append($("<span>").attr("title","large").addClass("fa fa-angle-up")).click(function(){resize_graph("large"); return false;}));
-        control.append($("<a>").attr("href","#").append($("<span>").attr("title","small").addClass("fa fa-angle-down")).click(function(){resize_graph("small"); return false;}));
-        control.append($("<a>").attr("href","#").append($("<span>").attr("title","hidden").addClass("fa fa-angle-double-down")).click(function(){resize_graph("hidden"); return false;}));
+        control.append($("<a>").append($("<span>").attr("title","large").addClass("fa fa-angle-up")).click(function(){resize_graph("large"); return false;}));
+        control.append($("<a>").append($("<span>").attr("title","small").addClass("fa fa-angle-down")).click(function(){resize_graph("small"); return false;}));
+        control.append($("<a>").append($("<span>").attr("title","hidden").addClass("fa fa-angle-double-down")).click(function(){resize_graph("hidden"); return false;}));
         view.add_to_footer_infoline(control[0],20);
     }
 }
