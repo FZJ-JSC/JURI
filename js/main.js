@@ -177,7 +177,7 @@ View.prototype.show = function () {
           systemname_menu.addClass("dropdown-menu")
                      .attr("aria-labelledby","systemname_dropdown_button")
           var systemname_link = $('<a>').attr("id","system_name")
-                                        .text(current_system_name)
+                                        .text(current_system_name+(self.navdata.demo ? " DEMO" : ""))
                                         .addClass('dropdown-toggle')
                                         .attr("data-toggle","dropdown")
                                         .attr("aria-haspopup","true")
@@ -190,10 +190,10 @@ View.prototype.show = function () {
                                     .attr("onclick",`view.changeSystem('${folder}')`)
 
             // Checking current system name to select it
-            if (this_system_name == current_system_name) {
+            if (this_system_name == current_system_name+(self.navdata.demo ? " DEMO" : "")) {
               current_link.addClass("selected");
             }
-            // // Append to the menu
+            // Append to the menu
             systemname_menu.append(current_link)
             return;
           });
