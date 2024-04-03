@@ -44,21 +44,22 @@ Satisfy all
 
 Header set Cache-Control "max-age=60, private"
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/csv text/javascript application/json application/pdf application/javascript
 </IfModule>
 <IfModule mod_headers.c>
   RewriteEngine on
   # Serve gzip compressed HTML files if they exist
   RewriteCond "%{REQUEST_FILENAME}\.gz" -s
-  RewriteRule "^(.*)\.(html|json|csv|pdf)"         "$1\.$2\.gz" [QSA]
+  RewriteRule "^(.*)\.(html|json|dat|csv|pdf)"         "$1\.$2\.gz" [QSA]
 
   # Serve correct content types, and prevent mod_deflate double gzip.
   RewriteRule "\.html\.gz$" "-" [T=text/html,E=no-gzip:1]
   RewriteRule "\.json\.gz$" "-" [T=application/json,E=no-gzip:1]
+  RewriteRule "\.dat\.gz$" "-" [T=text/plain,E=no-gzip:1]
   RewriteRule "\.csv\.gz$" "-" [T=text/csv,E=no-gzip:1]
   RewriteRule "\.pdf\.gz$" "-" [T=application/pdf,E=no-gzip:1]
 
-  <FilesMatch "(\.html\.gz|\.json\.gz|\.csv\.gz|\.pdf\.gz)$">
+  <FilesMatch "(\.html\.gz|\.json\.gz|\.dat\.gz|\.csv\.gz|\.pdf\.gz)$">
     # Serve correct encoding type.
     Header append Content-Encoding gzip
 

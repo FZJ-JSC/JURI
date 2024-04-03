@@ -242,8 +242,7 @@ function escapeSpecialCaseChar(string) {
  */
 function clear_filter(column) {
   // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
-  column_escaped = escapeSpecialCaseChar(column);
-  $(`tr.filter th${column_escaped ? '.'+column_escaped : ""} input`).val("");
+  $(`tr.filter th${column ? '.'+escapeSpecialCaseChar(column) : ""} input`).val("");
   $("tr.filter").closest("table").each(function() {
     filter(this);
     return;
