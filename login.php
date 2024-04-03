@@ -76,7 +76,7 @@ if (strcmp($systemname, 'jureca') == 0) {
   $systemname .= "-dc";
 }
 // Image filename
-if (isset($inifile["config"]["image"])) {
+if (isset($inifile["config"]["image"]) && !empty($inifile["config"]["image"])) {
   $image=$inifile["config"]["image"];
 } else {
   $image="img/".strtolower($systemname).".jpg";
