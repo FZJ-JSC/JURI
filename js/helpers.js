@@ -37,7 +37,7 @@ Handlebars.registerHelper('gen_user_projects_link', function(config,user,project
     }
     result += '<a href="'+url+'">'+project+'</a>';
   } else {
-    result += user;
+    result += project;
   }
   });
   return new Handlebars.SafeString(result);
@@ -63,7 +63,7 @@ Handlebars.registerHelper('gen_projects_link', function(config,projects) {
     }
     result += '<a href="'+url+'">'+project+'</a>';
   } else {
-    result += user;
+    result += project;
   }
   });
   return new Handlebars.SafeString(result);
@@ -262,7 +262,7 @@ Handlebars.registerHelper('tagonly_link', function(tag,config_prefix) {
 Handlebars.registerHelper('user_link', function(project,budget,login,config_prefix) {
   let config = ((!config_prefix || typeof config_prefix != "string")?view.navdata.data.system:config_prefix)+'_user';
   // console.log("user_link2: "+project+" "+budget+" "+login);
-   let result = "";
+  let result = "";
   let url = 'index.html?config='+config+((view.navdata.data.demo || view.url_data.demo)?"&demo":"")+'&project='+project+'&budget='+budget+'&user='+login;
   if (view.navdata.data.permission && ["observer","support","advisor","mentor","project","user"].indexOf(view.navdata.data.permission) != -1) {
     result = '<a href="'+url+'">'+login+'</a>';
@@ -384,6 +384,7 @@ Handlebars.registerHelper('mreporttemplate_link', function(filename,mentor) {
 
 Handlebars.registerHelper('pdf_link', function(grp,user,filename) {
 //    console.log("pdf_link: "+grp+" "+user+" "+filename);
+  let result = "";
   if ( (filename) && (filename!='-') ) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
     result = `<a href="${url}" ><span class="fa fa-file-pdf-o" title="Download job report" aria-label="Download PDF job report"/></a>`;
@@ -394,6 +395,7 @@ Handlebars.registerHelper('pdf_link', function(grp,user,filename) {
 });
 
 Handlebars.registerHelper('html_link', function(grp,user,filename) {
+  let result = "";
   if ( (filename) && (filename!='-') ) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
     result = `<a href="${url}" ><span class="fa fa-area-chart" title="Show job report" aria-label="Show HTML job report"/></a>`;
@@ -405,6 +407,7 @@ Handlebars.registerHelper('html_link', function(grp,user,filename) {
 
 
 Handlebars.registerHelper('ioi_link', function(objectid) {
+  let result = "";
   if ( (objectid) && (objectid!='-') && (objectid!='-1') ) {
     let url = `http://dp-ioi:8090/ioi/gui/#/dashboard/job-details/${objectid}`;
     result = '<a href="'+url+'" >' +
@@ -416,6 +419,7 @@ Handlebars.registerHelper('ioi_link', function(objectid) {
 });
 
 Handlebars.registerHelper('ioi_wf_link', function(objectid) {
+  let result = "";
   if ( (objectid) && (objectid!='-') && (objectid!='-1') ) {
     let url = `http://dp-ioi:8090/ioi/gui/#/dashboard/workflow-details/${objectid}`;
     result = '<a href="'+url+'" >' +
