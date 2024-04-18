@@ -497,7 +497,7 @@ function set_filter() {
     key_filter($(this).closest("table")[0]);
     return;
   });
-  let clear_filter_link = $("<a>").attr("href", "#").attr("aria-label","Clear filter").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
+  let clear_filter_link = $("<a>").attr("aria-label","Clear filter").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
   if (! $("#num_visible_rows").length) {
     view.add_to_footer_infoline($("<span>").attr("id","num_visible_rows")[0],30);
     view.add_to_footer_infoline(clear_filter_link[0],30);
