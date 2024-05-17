@@ -66,8 +66,17 @@ function View(parameters) {
   this.used_colorscales = {}; // Object to store generated colorscales
   // Headers on main table of the current page
   this.headers = [];
+  this.headerToName = {}; // Mapping of header title to headerName
+  this.nameToHeader = {}; // Mapping of headerName to header title
   // map of jobID to day
   this.mapjobid_to_day = {};
+  // Store contexts (contents of tables) to be used for applying the data to the grid
+  this.contexts = {};
+  // Store the Grid (table)
+  this.gridApi = null;
+  this.gridState = null;
+  // Store column definitions for grid
+  this.columnDefs = null;
 }
 
 /**
@@ -332,14 +341,17 @@ View.prototype.changeSystem = function (system) {
     self.page_data = null;
     self.footer_graph = null;
     self.resize_function = [];
-    view.graph = null;
+    self.graph = null;
 
-    // Clean old content sections
+    // Clean old content, footer, infoline and filter elements
     $("#main_content").empty();
+    $("#main_content").empty();
+    $("#filter").empty();
     $("#footer_graphs").empty();
     $("#footer_infoline_page_options").empty();
     $('#footer_infoline > #dragger').remove();
     $("footer").height($("#footer_infoline").height() + $("#footer_footer").height());
+    self.gridApi = null;
 
     // Search for page entry
     // Toggle navigation entry
@@ -413,7 +425,10 @@ View.prototype.changeSystem = function (system) {
 
       // Resize view and reset autoresize
       resize();
-      if (page != 'live') {
+      // Remove loading element
+      if (self.gridApi) {
+        self.gridApi.setGridOption('onGridReady', () => self.loading(false));
+      } else if (page != 'live') {
         self.loading(false);
       }
       // Set title overlay handling
@@ -428,7 +443,7 @@ View.prototype.changeSystem = function (system) {
       $(`#${page}_dropdown_item`).addClass("selected");
 
       // Getting table headers (when present)
-      self.getHeaders($("#main_content table"));
+      self.getHeaders();
 
       // Add button that shows more information about current page (when a description is given)
       if (self.page_description) {
@@ -636,7 +651,7 @@ View.prototype.add_infobutton = function (description) {
   let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(description).hide();
 
   // If show info is active (from URL), activate it
-  if (view.inital_data.description?.showinfo) {
+  if (self.inital_data.description?.showinfo) {
     button.addClass('active');
     button.attr("data-original-title","Click to hide description of page")
           .attr("aria-label","Click to hide description of page")
@@ -650,11 +665,11 @@ View.prototype.add_infobutton = function (description) {
     // Toggle class 'active' on button to change its colors
     button.toggleClass('active');
     // Turns on and off show information
-    if (view.inital_data.description?.showinfo) {
+    if (self.inital_data.description?.showinfo) {
       // If it show-info exists when clicking the button, then turn it off
       button.attr("data-original-title","Click to show description of page")
             .attr("aria-label","Click to show description of page");
-      delete view.inital_data.description.showinfo;
+      delete self.inital_data.description.showinfo;
       $('#infotext').slideUp(function() {
         $(this).remove();
       });
@@ -678,10 +693,10 @@ View.prototype.add_infobutton = function (description) {
  */
 View.prototype.add_autorefresh = function () {
   let self = this;
-  let text = `Auto-refresh is ${view.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`;
+  let text = `Auto-refresh is ${self.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-refresh");
   // If disable refresh is not active (from URL), activate it
-  if (! view.inital_data.refresh.disablerefresh) {
+  if (! self.inital_data.refresh.disablerefresh) {
     button.addClass('active');
     button.attr("data-original-title","Auto-refresh is ON")
           .attr("aria-label","Auto-refresh is ON")
@@ -703,7 +718,7 @@ View.prototype.add_autorefresh = function () {
     // Toggle class 'active' on button to change its colors
     button.toggleClass('active');
     // Turns off and on auto-refresh
-    if (! view.inital_data.refresh.disablerefresh) {
+    if (! self.inital_data.refresh.disablerefresh) {
       // If it exists when clicking the button, then turn it off
       button.text('');
       button.attr("data-original-title","Auto-refresh is OFF")
@@ -715,7 +730,7 @@ View.prototype.add_autorefresh = function () {
       // Remove Intervals
       clearInterval(self.refreshinterval);
     } else {
-      delete view.inital_data.refresh.disablerefresh;
+      delete self.inital_data.refresh.disablerefresh;
       button.attr("data-original-title","Auto-refresh is ON")
             .attr("aria-label","Auto-refresh is ON")
             .removeClass("fa")
@@ -744,9 +759,9 @@ View.prototype.add_autorefresh = function () {
 //                           .append( $("<div>").addClass('hold left').append($("<div>").addClass('fill')) )
 //                           .append( $("<div>").addClass('hold right').append($("<div>").addClass('fill')) );
 //   let refresh_span = $("<div>").addClass("fa").addClass("fa-refresh");
-//   let button = $('<button>',{type: "button", class: 'inner-circle', title: `Auto-refresh is ${view.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`}).prepend(refresh_span);
+//   let button = $('<button>',{type: "button", class: 'inner-circle', title: `Auto-refresh is ${self.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`}).prepend(refresh_span);
 //   // If disable refresh is not active (from URL), activate it
-//   if (! view.inital_data.refresh.disablerefresh) {
+//   if (! self.inital_data.refresh.disablerefresh) {
 //     button.addClass('active');
 //     refresh_span.addClass('slow-spin');
 //     $('#refresh').prepend(counter);
@@ -763,7 +778,7 @@ View.prototype.add_autorefresh = function () {
 //     button.toggleClass('active');
 //     refresh_span.toggleClass('slow-spin');
 //     // Turns off and on auto-refresh
-//     if (! view.inital_data.refresh.disablerefresh) {
+//     if (! self.inital_data.refresh.disablerefresh) {
 //       // If it exists when clicking the button, then turn it off
 //       button.attr("data-original-title","Auto-refresh is OFF");
 //       self.inital_data.refresh = { 'disablerefresh': 'true' };
@@ -773,7 +788,7 @@ View.prototype.add_autorefresh = function () {
 //       clearInterval(self.refreshinterval);
 //     } else {
 //       $('#refresh').prepend(counter);
-//       delete view.inital_data.refresh.disablerefresh;
+//       delete self.inital_data.refresh.disablerefresh;
 //       button.attr("data-original-title","Auto-refresh is ON");
 //       self.setHash();
 //       // Adding interval to reload page every 60s
@@ -793,16 +808,32 @@ View.prototype.reloadPage = function () {
   var self = this;
   if (self.selected_page != 'live') {
     // Storing jobid that is selected before
-    index = self.headers.indexOf('jobid');
-    selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()
+    index = self.headers.indexOf('JobID');
+    if($("#main_content table").length){
+      selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
+    } else if (self.gridApi) {
+      self.gridState = self.gridApi.getState(); // Save current state to recover after refresh
+      selected_jobid = self.gridApi.getSelectedNodes(); // Get selected job
+    }
     // Re-select current page and subpage
     self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
       // When there is a selected job...
-      if (selected_jobid) {
-        // ...reselecting row with the same jobid (when present)
-        jobid_row = $(`#main_content table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
-        if (jobid_row) {
-          jobid_row.click()
+      if (selected_jobid.length) {
+        if($("#main_content table").length){
+          // ...reselecting row with the same jobid (when present)
+          jobid_row = $(`#main_content table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
+          if (jobid_row) {
+            jobid_row.click()
+          }
+        } else if (self.gridApi) {
+          self.gridApi.forEachNode((node) => {
+            if (node.data.jobid == selected_jobid[0].data.jobid) {
+              // Making it visible
+              self.gridApi.ensureIndexVisible(node.rowIndex,'middle');
+              // Selecting it
+              node.setSelected(true);
+            }
+          });
         }
       }
     });
@@ -820,11 +851,11 @@ View.prototype.reloadPage = function () {
  */
 View.prototype.add_presentation = function () {
   let self = this;
-  let text = `Presentation Mode is ${view.inital_data.presentation?.present ? "ON" : "OFF"}`;
+  let text = `Presentation Mode is ${self.inital_data.presentation?.present ? "ON" : "OFF"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-play");
   var timebetweenjobs = 30000; // Time to alternate between jobs (in microseconds)
   // If presentation mode is active (from URL), activate it
-  if (view.inital_data.presentation?.present) {
+  if (self.inital_data.presentation?.present) {
     button.addClass('active');
     button.attr("data-original-title","Presentation Mode is ON")
           .attr("aria-label","Presentation Mode is ON")
@@ -839,14 +870,14 @@ View.prototype.add_presentation = function () {
     // Toggle class 'active' on button to change its colors, and icons play/pause
     button.toggleClass('active').toggleClass("fa-play").toggleClass("fa-pause");
     // Turns on and off presentation mode
-    if (view.inital_data.presentation?.present) {
+    if (self.inital_data.presentation?.present) {
       // If it presentation mode exists when clicking the button, then turn it off
       button.attr("data-original-title","Presentation Mode is OFF")
             .attr("aria-label","Presentation Mode is OFF");
-      delete view.inital_data.presentation.present;
+      delete self.inital_data.presentation.present;
       self.setHash();
       // Remove Intervals
-      clearInterval(self.presentationtabinterval);
+      if (self.presentationtabinterval) clearInterval(self.presentationtabinterval);
       clearInterval(self.presentationjobinterval);
     } else {
       // If it presentation mode does not exist when clicking the button, then turn it on
@@ -869,12 +900,13 @@ View.prototype.add_presentation = function () {
  * @returns 
  */
 View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
-  var self = view_self;
-  var graphtabs, timebetweentabs, count;
+  let self = view_self;
+  let graphtabs, timebetweentabs, count, randomjob;
   // Selecting a random job from the table
-  var randomtd = Math.floor(Math.random() * $('#main_content > table > tbody tr:visible').length);
-  var randomjob = $('#main_content > table > tbody tr:visible').eq(randomtd)[0];
-  if (randomjob) {
+  if ($('#main_content > table').length) {
+    let randomtd = Math.floor(Math.random() * $('#main_content > table > tbody tr:visible').length);
+    randomjob = $('#main_content > table > tbody tr:visible').eq(randomtd)[0];
+    if (!randomjob) return
     // Scroll the job into view
     randomjob.scrollIntoView({
       behavior: 'auto',
@@ -883,8 +915,18 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
     });
     // Click on the job
     randomjob.click();
-    // Get all tabs in footer
-    graphtabs = $('#graph_selection > ul > li:visible > a');
+
+  } else if (self.gridApi) {
+    let randomtd = Math.floor(Math.random() * self.gridApi.getDisplayedRowCount());
+    // Scroll the job into view
+    self.gridApi.ensureIndexVisible(randomtd,'middle');
+    // Selecting the job
+    randomjob = self.gridApi.getDisplayedRowAtIndex(randomtd)
+    self.gridApi.setNodesSelected({ nodes: [randomjob], newValue: true });
+  }
+  // Get all tabs in footer
+  graphtabs = $('#graph_selection > ul > li:visible > a');
+  if (graphtabs.length > 1) {
     // Calculate time to spend on each tab as total/#tabs
     timebetweentabs = timebetweenjobs/graphtabs.length;
     count = 1;
@@ -904,14 +946,30 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
 
 
 /**
- * 
- * @param {*} state 
+ *  Get the headers of a table or a grid and stores into self.headers
  * @returns 
  */
-View.prototype.getHeaders = function (table) {
+View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
-  self.headers = table.find("thead tr:first th").toArray().map(function(i){ return i.innerText.toLowerCase() });
+  if($("#main_content table").length){
+    self.headers = $("#main_content table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
+  } else if (self.gridApi) {
+    let header;
+    self.gridApi.getColumns().forEach((column) => {
+      if(Object.keys(column.originalParent.colGroupDef).length) {
+        // If the original parent group definition has keys
+        // this is a column group. Get the conversion header<->name also from those
+        header = column.originalParent.colGroupDef.headerName;
+        self.headerToName[header] = column.originalParent.groupId;
+        self.nameToHeader[column.originalParent.groupId] = header;
+      }
+      header = self.gridApi.getDisplayNameForColumn(column);
+      self.headerToName[header] = column.getColId();
+      self.nameToHeader[column.getColId()] = header;
+      self.headers.push(header);
+    });
+  }
   return
 }
 
@@ -1158,38 +1216,39 @@ View.prototype.addStyle = function (style, deferred) {
  * @param {boolean} keep_history Flag to keep page in history
  */
 View.prototype.setHash = function (keep_history) {
+  self = this;
   let hash = "";
   parameter = {};
   // Add active page
-  if (this.inital_data.page) {
-    parameter["page"] = this.inital_data.page;
+  if (self.inital_data.page) {
+    parameter["page"] = self.inital_data.page;
   }
   // Add active filter
-  if (this.inital_data.filter) {
-    // parameter = Object.assign({}, parameter, this.inital_data.filter);
-    Object.assign(parameter, this.inital_data.filter);
+  if (self.inital_data.filter) {
+    // parameter = Object.assign({}, parameter, self.inital_data.filter);
+    Object.assign(parameter, self.inital_data.filter);
   }
   // Add active sort
-  if (this.inital_data.sort) {
-    // parameter = Object.assign({}, parameter, this.inital_data.sort);
-    Object.assign(parameter, this.inital_data.sort);
+  if (self.inital_data.sort) {
+    // parameter = Object.assign({}, parameter, self.inital_data.sort);
+    Object.assign(parameter, self.inital_data.sort);
   }
   // Add colorscale
-  if (this.inital_data.colors) {
-    // parameter = Object.assign({}, parameter, this.inital_data.colors);
-    Object.assign(parameter, this.inital_data.colors);
+  if (self.inital_data.colors) {
+    // parameter = Object.assign({}, parameter, self.inital_data.colors);
+    Object.assign(parameter, self.inital_data.colors);
   }
   // Add auto-refresh
-  if (this.inital_data.refresh) {
-    Object.assign(parameter, this.inital_data.refresh);
+  if (self.inital_data.refresh) {
+    Object.assign(parameter, self.inital_data.refresh);
   }
   // Add Presentation Mode
-  if (this.inital_data.presentation) {
-    Object.assign(parameter, this.inital_data.presentation);
+  if (self.inital_data.presentation) {
+    Object.assign(parameter, self.inital_data.presentation);
   }
   // Add description box
-  if (this.inital_data.description) {
-    Object.assign(parameter, this.inital_data.description);
+  if (self.inital_data.description) {
+    Object.assign(parameter, self.inital_data.description);
   }
 
   // Build hash into URL
@@ -1294,7 +1353,13 @@ View.prototype.applyTemplates = function (templates, postprocess) {
         self.deferrer.push($.get(template_path, function () { return; }, "text"));
         if (templates[i].context_location) {
           // If a context if given, create deferrer for its file too
-          self.deferrer.push($.getJSON(templates[i].context_location, function () { return; }));
+          if (templates[i].context_location.endsWith(".json")) {
+            self.deferrer.push($.getJSON(templates[i].context_location, function (data) { self.contexts[templates[i].context_location] = data; return; }));
+          } else if (templates[i].context_location.endsWith(".csv")) {
+            self.deferrer.push($.get(templates[i].context_location, function (data) { self.contexts[templates[i].context_location] = csvToArr(data, ";"); return; }, "text"));
+          } else {
+            self.deferrer.push($.get(templates[i].context_location, function () { return; }, "text"));
+          }
         }
       }
     }
@@ -1324,6 +1389,7 @@ View.prototype.applyTemplates = function (templates, postprocess) {
               context = templates[i].context ? templates[i].context : {};
             }
             // Compiling 'template', applying with 'context', and adding to HTML 'element'
+            // This will create the repetitions defined in the templates (from Handlebars)
             let template = Handlebars.compile(template_data);
             $(templates[i].element).html(template(context));
           }
@@ -1342,7 +1408,7 @@ View.prototype.applyTemplates = function (templates, postprocess) {
       // Template was not loaded, page is empty
       self.empty = true;
       self.deferrer.length = 0;
-      view.loading(false);
+      self.loading(false);
       // Restarting counter for next call
       self.counter = 0;
       // Running post-processing function when it is present
@@ -1358,6 +1424,30 @@ View.prototype.applyTemplates = function (templates, postprocess) {
   }
   return;
 }
+
+
+/**
+ * Convert csv stored in a string variable into an array of objects
+ * Adapted from https://hasnode.byrayray.dev/convert-a-csv-to-a-javascript-array-of-objects-the-practical-guide
+ * @param {string} text Contents of csv file
+ * @param {string} delimiter delimiter used to split the lines
+ * @returns {Array} Array of objects
+ */
+function csvToArr(text, delimiter) {
+  let re = new RegExp(String.raw`(?<!\\)${delimiter}`, "g");
+  const [keys, ...rest] = text
+    .trim()
+    .split("\n")
+    .map((item) => item.split(re));
+
+  const formedArr = rest.map((item) => {
+    const object = {};
+    keys.forEach((key, index) => (object[key] = item.at(index).match(/^[+-]?\d+(\.\d+)?$/) ? parseFloat(item.at(index)) : item.at(index)));
+    return object;
+  });
+  return formedArr;
+}
+
 
 /**
  * Check if given path starts with /, in this case the path is seen relative to the root of the webserver
@@ -1388,7 +1478,10 @@ function resize() {
   $("#main_content th").css("top", $("#day_selection_scroll").height() - 10);
   $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height() + $("#day_selection_scroll").height()- 10);
   $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
-    $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
+                        $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
+  if ($("#myGrid")) {
+    $("#myGrid").height($("#main_content").height());
+  }
   for (let i = 0; i < view.resize_function.length; ++i) {
     view.resize_function[i]();
   }
@@ -1440,13 +1533,13 @@ function getURLParameter() {
         if (content.length == 0)
           content = true;
         else {
-          content = content.toLowerCase() === "true";
+          content = content === "true";
         }
       }
       if (key == "inital") {
         if (entry == "page") {
           target = paras[key];
-        } else if (entry == "sort_col" || entry == "sort_dir") {
+        } else if (entry == "colId" || entry == "sort") {
           target = paras[key].sort;
         } else if (entry == "colorscale") {
           target = paras[key].colors;
@@ -1458,7 +1551,7 @@ function getURLParameter() {
           target = paras[key].description;
         } else {
           target = paras[key].filter;
-          entry = entry.toLowerCase();
+          entry = entry;
         }
       }
       target[entry] = content;

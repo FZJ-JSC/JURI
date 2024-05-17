@@ -97,7 +97,7 @@ Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {
   // console.log("gen_search_jobid_link: ",jobid);
   let result = "";
   if (jobid in view.mapjobid_to_day && view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
-    result = '<a href="javascript:void(0)" onclick="apply_search(\'jobid\','+jobid+',true)">'+jobid+'</a>';
+    result = '<a href="javascript:void(0)" onclick="apply_search(\'JobID\','+jobid+',true)">'+jobid+'</a>';
   } else {
     result = jobid;
   }
@@ -114,7 +114,7 @@ Handlebars.registerHelper('gen_jobid_list_link', function(jobidlist) {
     jobstatus = matches[2] ?? "";
     newline = matches[3] ?? "";
     if (matches[1] in view.mapjobid_to_day) {
-      result += '<a href="javascript:void(0)" onclick="apply_search(\'jobid\','+jobid+',true)">'+jobid+'</a>'+jobstatus+newline+" ";
+      result += '<a href="javascript:void(0)" onclick="apply_search(\'JobID\','+jobid+',true)">'+jobid+'</a>'+jobstatus+newline+" ";
     } else {
       result += jobidstatus+" ";
     }

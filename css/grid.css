@@ -1,0 +1,104 @@
+/* 
+* Copyright (c) 2023 Forschungszentrum Juelich GmbH.
+* This file is part of JURI. 
+*
+* This is an open source software distributed under the GPLv3 license. More information see the LICENSE file at the top level.
+*
+* Contributions must follow the Contributor License Agreement. More information see the CONTRIBUTING.md file at the top level.
+*
+* Contributors:
+*    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*/
+.ag-cell .fa {
+  line-height: inherit !important;
+}
+
+.ag-theme-balham {
+  /* --ag-header-height: 30px; */
+  --ag-cell-horizontal-padding: 1px;
+  --ag-header-foreground-color: white;
+  --ag-header-background-color: var(--fzj-color-blue);
+  --ag-selected-row-background-color: var(--fzj-color-yellow);
+  --ag-odd-row-background-color: var(--fzj-color-gray);
+  /* --ag-header-cell-hover-foreground-color: black; */
+  /* --ag-header-cell-hover-background-color: var(--fzj-color-lightblue); */
+  /* --ag-header-cell-moving-background-color: var(--fzj-color-red); */
+}
+
+
+.ag-theme-balham .ag-ltr .ag-cell {
+  /* display: table; */
+  border-right: 1px solid rgba(189, 195, 199, 0.58);
+}
+
+.ag-cell {
+  /* display: table; */
+  height: 100%;
+  width: 100%;
+  padding: 0 2px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.ag-cell-wrapper {
+  /* display: table-cell; */
+  text-align: inherit;
+  vertical-align: middle;
+}
+
+/* .ag-cell {
+  height: 100%;
+  display: grid;
+  justify-content: center;
+  align-items: center ;
+  text-overflow: ellipsis;
+  overflow: hidden;
+} */
+  /* white-space: nowrap;
+  text-wrap: wrap; */
+
+.ag-theme-balham .ag-header {
+  --ag-icon-font-color: white;
+  /* font-family: cursive; */
+}
+/* .ag-theme-balham .ag-header-group-cell {
+  font-weight: bold;
+  font-size: 22px;
+} */
+
+.ag-theme-balham .ag-header-cell {
+  font-weight: bold;
+  /* font-size: 18px; */
+}
+
+.ag-header-cell-label {
+  justify-content: center;
+}
+
+.ag-header-cell-filtered, .ag-header-cell-filtered:hover {
+  background-color: var(--fzj-color-green) !important;
+  color: var(--fzj-color-blue) !important;
+}
+
+.ag-input-field-input {
+  text-align: center !important;
+}
+
+.ag-floating-filter-input {
+  color: black;
+  /* font-family: cursive; */
+}
+
+
+.ag-header-row-column-filter  {
+  background-color: var(--fzj-color-gray);   
+}
+
+.ag-header-group-cell-label {
+  padding-left: 5px;
+}
+
+
+#filter-text-box {
+  border-radius: 0.3rem;
+}

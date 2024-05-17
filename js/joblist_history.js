@@ -12,33 +12,33 @@
 */
 
 function init_dates(active_date) {
-    view.initDates(active_date);
+  view.initDates(active_date);
 }
 
 View.prototype.initDates = function(active_date) {
-    let self = this;
-    active_date = (typeof(active_date) === "undefined")?0:active_date;
-    $("#day_selection").empty();
-    $("#day_selection").append($("<span>").text("Jobs ended on:"));
-    for (let i=0; i<=21; ++i) {
-        let date = new Date()
-        date.setDate(date.getDate() - i);
-        let date_str = String(date.getDate()).padStart(2, '0')+"."+String(date.getMonth() + 1).padStart(2, '0')+"."+date.getFullYear();
-        let link = $("<a>").attr("href","#").text(date_str).click(function() {self.selectPage([self.selected_page,i]); return false;});
-        if (i == active_date) {
-            link.addClass("active");
-        }
-        $("#day_selection").append(link);
+  let self = this;
+  active_date = (typeof(active_date) === "undefined")?0:active_date;
+  $("#day_selection").empty();
+  $("#day_selection").append($("<span>").text("Jobs ended on:"));
+  for (let i=0; i<=21; ++i) {
+    let date = new Date()
+    date.setDate(date.getDate() - i);
+    let date_str = String(date.getDate()).padStart(2, '0')+"."+String(date.getMonth() + 1).padStart(2, '0')+"."+date.getFullYear();
+    let link = $("<a>").attr("href","#").text(date_str).click(function() {self.selectPage([self.selected_page,i]); return false;});
+    if (i == active_date) {
+      link.addClass("active");
     }
+    $("#day_selection").append(link);
+  }
 }
 
 View.prototype.get_history_context = function(nr) {
-    if (nr == 0) {
-        context = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/today.json");
-    } else {
-        context = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/jobbyday_" + String(nr).padStart(3, '0') + ".json");
-    }
-    return context;
+  if (nr == 0) {
+    context = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/today.json");
+  } else {
+    context = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/jobbyday_" + String(nr).padStart(3, '0') + ".json");
+  }
+  return context;
 }
 
 // View.prototype.select_date = function (nr) {
