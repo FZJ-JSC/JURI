@@ -104,6 +104,7 @@ a {
 /* Buttons on header (Home, auto-refresh and presentation) */
 .button
 {
+  display: flex;
   align-self: center;
   font-size: 0.8em;
   width: var(--size);
@@ -498,7 +499,7 @@ td, th {
   white-space: nowrap;
 }
 
-th.dec span::before {
+th.desc span::before {
   content: "\f078";
 }
 

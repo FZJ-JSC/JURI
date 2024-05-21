@@ -564,6 +564,7 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 
   // Creating the plot
+  if (params) layout.datarevision = params.JobID
   Plotly.react(self.id, traces, layout, self.config);
 
   // Moving the rangeslider when that is the case

@@ -35,10 +35,10 @@ View.prototype.FooterGraph = function (config_file) {
 View.prototype.FooterGraph.prototype.add_event_handler = function () {
   let self = this;
   // Getting names of all header cells as keys
-  let keys = [];
-  $("#main_content table thead tr:first").find("th").each(function () {
-    keys.push($(this).text());
-  });
+  if (!self.headers) {
+    View.prototype.getHeaders.call(this);
+  }
+  let keys = view.headers;
 
   // Selecting or de-selecting a line
   $("#main_content table tbody tr").click(function () {
@@ -204,7 +204,10 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
   }
   if (params) {
     /* Adding info text below graphs */
-    let info = self.config.find(o => { return o.name === self.current_page }).info;
+    let info;
+    if (self.config) {
+      info = self.config.find(o => { return o.name === self.current_page }).info;
+    }
     if (info) {
       $("#graph_info").text(replaceDataPlaceholder(info, params));
     }
@@ -238,6 +241,7 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
 
     });
     for (let graph of self.graphs) {
+      //Then plot
       graph.add_data_to_graph(params);
     }
   }

@@ -36,68 +36,68 @@
  * @param {string} dateformat format for non-standard date (obsolete?)
  */
 function sort_table(caller, type, dateformat) {
-    // Getting type of sorting ('T'ext if not set)
-    type = (typeof type !== 'undefined') ? type.toUpperCase() : "T";
-    // Getting date format for date sorting (obsolete?)
-    dateformat = (typeof dateformat !== 'undefined') ? dateformat : "";
-    // Getting index of column to be sorted
-    var sortColumn = $(caller).parent().children().index($(caller));
-    // Direction (default: descending): if already is descending, change to ascending
-    var direction = $(caller).hasClass("dec") ? "asc" : "dec";
-    // Remove existing classes
-    $(caller).parent().children().removeClass("asc").removeClass("dec");
-    // Adding current class
-    $(caller).addClass(direction);
-    // Getting body of table to sort
-    var tbody = $(caller).parents("table:first").children("tbody");
-    // Getting all rows of table to sort
-    var rows = tbody.children("tr");
-    var arrayOfRows = new Array();
-    for (var i = 0, len = rows.length; i < len; ++i) {
-        arrayOfRows[i] = new Object();
-        arrayOfRows[i].oldIndex = i;
-        var celltext = rows.eq(i).children("td").eq(sortColumn).html()
-                           .replace(/<[^>]*>/g, "");
-        if (type == 'D' || type == 'D2') {
-            arrayOfRows[i].value = celltext;
-        } else {
-            var re = type == "N" ? /[^\.\-\+\d]/g : /[^a-zA-Z0-9]/g;
-            arrayOfRows[i].value = celltext.replace(re, "").substring(0, 25)
-                .toLowerCase();
-        }
+  // Getting type of sorting ('T'ext if not set)
+  type = (typeof type !== 'undefined') ? type.toUpperCase() : "T";
+  // Getting date format for date sorting (obsolete?)
+  dateformat = (typeof dateformat !== 'undefined') ? dateformat : "";
+  // Getting index of column to be sorted
+  var sortColumn = $(caller).parent().children().index($(caller));
+  // Direction (default: descending): if already is descending, change to ascending
+  var direction = $(caller).hasClass("desc") ? "asc" : "desc";
+  // Remove existing classes
+  $(caller).parent().children().removeClass("asc").removeClass("desc");
+  // Adding current class
+  $(caller).addClass(direction);
+  // Getting body of table to sort
+  var tbody = $(caller).parents("table:first").children("tbody");
+  // Getting all rows of table to sort
+  var rows = tbody.children("tr");
+  var arrayOfRows = new Array();
+  for (var i = 0, len = rows.length; i < len; ++i) {
+    arrayOfRows[i] = new Object();
+    arrayOfRows[i].oldIndex = i;
+    var celltext = rows.eq(i).children("td").eq(sortColumn).html()
+               .replace(/<[^>]*>/g, "");
+    if (type == 'D' || type == 'D2') {
+      arrayOfRows[i].value = celltext;
+    } else {
+      var re = type == "N" ? /[^\.\-\+\d]/g : /[^a-zA-Z0-9]/g;
+      arrayOfRows[i].value = celltext.replace(re, "").substring(0, 25)
+        .toLowerCase();
     }
-    switch (type) {
-        case "N": // number
-            arrayOfRows.sort(CompareRowOfNumbers);
-            break;
-        case "D": // date (standard format)
-            arrayOfRows.sort(CompareRowOfDates);
-            break;
-        case "D2": // date (non-standard format)
-            arrayOfRows.sort(CompareRowOfDates2);
-            break;
-        default: //text
-            arrayOfRows.sort(CompareRowOfText);
-    }
-    if (direction == "dec") {
-        arrayOfRows.reverse();
-    }
-    var newTableBody = $("<tbody>");
-    for (var i = 0, len = arrayOfRows.length; i < len; ++i) {
-        newTableBody.append(rows[arrayOfRows[i].oldIndex]);
-    }
-    tbody.replaceWith(newTableBody);
-    view.inital_data.sort = {
-        sort_col: $(caller).text(),
-        sort_dir: direction,
-    };
-    view.setHash();
-    // Default bootstrap table striping does not work for filtered tables.
-    // Reapply manual stripes also after sorting, to avoid problem if the data was filtered before
-    $(caller).parents("table:first").find("tbody tr:visible").each(function (index) {
-        $(this).css("background-color", !!(index & 1) ? "rgba(0,0,0,.05)" : "rgba(0,0,0,0)");
-    });
-    return;
+  }
+  switch (type) {
+    case "N": // number
+      arrayOfRows.sort(CompareRowOfNumbers);
+      break;
+    case "D": // date (standard format)
+      arrayOfRows.sort(CompareRowOfDates);
+      break;
+    case "D2": // date (non-standard format)
+      arrayOfRows.sort(CompareRowOfDates2);
+      break;
+    default: //text
+      arrayOfRows.sort(CompareRowOfText);
+  }
+  if (direction == "desc") {
+    arrayOfRows.reverse();
+  }
+  var newTableBody = $("<tbody>");
+  for (var i = 0, len = arrayOfRows.length; i < len; ++i) {
+    newTableBody.append(rows[arrayOfRows[i].oldIndex]);
+  }
+  tbody.replaceWith(newTableBody);
+  view.inital_data.sort = {
+    colId: $(caller).text(),
+    sort: direction,
+  };
+  view.setHash();
+  // Default bootstrap table striping does not work for filtered tables.
+  // Reapply manual stripes also after sorting, to avoid problem if the data was filtered before
+  $(caller).parents("table:first").find("tbody tr:visible").each(function (index) {
+    $(this).css("background-color", !!(index & 1) ? "rgba(0,0,0,.05)" : "rgba(0,0,0,0)");
+  });
+  return;
 }
 
 /* 
@@ -105,59 +105,69 @@ function sort_table(caller, type, dateformat) {
  * to recreate the last sort ordering.
  */
 function set_initial_sort() {
-    if (view.inital_data.sort && view.inital_data.sort.sort_col) {
-        let element = $("th").filter(function () { return $(this).text().toLowerCase() == view.inital_data.sort.sort_col.toLowerCase(); }).first();
-        if (view.inital_data.sort.sort_dir) {
-            element.addClass((view.inital_data.sort.sort_dir == "asc") ? "dec" : "asc");
-        }
-        element.trigger("click");
+  if (Object.keys(view.inital_data.sort).length) {
+    if($("#main_content table").length){
+      let element = $("th").filter(function () { return $(this).text().toLowerCase() == view.inital_data.sort.colId.toLowerCase(); }).first();
+      if (view.inital_data.sort.sort) {
+        element.addClass((view.inital_data.sort.sort == "asc") ? "desc" : "asc");
+      }
+      element.trigger("click");
+    } else if (view.gridApi) {
+      view.gridApi.applyColumnState({
+        state: [{ 
+                  colId: view.headerToName[view.inital_data.sort.colId], 
+                  sort: view.inital_data.sort.sort 
+                }],
+        defaultState: { sort: null },
+      });
     }
+  }
 }
 
 /* Sort function, string comparision */
 function CompareRowOfText(a, b) {
-    let aval = a.value;
-    let bval = b.value;
-    return aval == bval ? 0 : (aval > bval ? 1 : -1);
+  let aval = a.value;
+  let bval = b.value;
+  return aval == bval ? 0 : (aval > bval ? 1 : -1);
 }
 
 /* Sort function, number comparision */
 function CompareRowOfNumbers(a, b) {
-    let aval = /\d/.test(a.value) ? parseFloat(a.value) : 0;
-    let bval = /\d/.test(b.value) ? parseFloat(b.value) : 0;
-    return aval == bval ? 0 : (aval > bval ? 1 : -1);
+  let aval = /\d/.test(a.value) ? parseFloat(a.value) : 0;
+  let bval = /\d/.test(b.value) ? parseFloat(b.value) : 0;
+  return aval == bval ? 0 : (aval > bval ? 1 : -1);
 }
 
 /* Sort function, takes care of date format YYYY-MM-DD[T]HH:mm[:ss] */
 function CompareRowOfDates(a, b) {
-    let date_values = a.value.match(/(.+?)[ T](.+)/);
-    let aval = NaN;
-    if (date_values) {
-        aval = new Date(date_values[1] + "T" + date_values[2]);
-    }
-    date_values = b.value.match(/(.+?)[ T](.+)/);
-    let bval = NaN;
-    if (date_values) {
-        bval = new Date(date_values[1] + "T" + date_values[2]);
-    }
-    return aval == bval ? 0 : (isNaN(bval) || aval > bval ? 1 : -1);
+  let date_values = a.value.match(/(.+?)[ T](.+)/);
+  let aval = NaN;
+  if (date_values) {
+    aval = new Date(date_values[1] + "T" + date_values[2]);
+  }
+  date_values = b.value.match(/(.+?)[ T](.+)/);
+  let bval = NaN;
+  if (date_values) {
+    bval = new Date(date_values[1] + "T" + date_values[2]);
+  }
+  return aval == bval ? 0 : (isNaN(bval) || aval > bval ? 1 : -1);
 }
 
 /* Sort function, takes care of date format DD.MM.YY[YY][ HH:mm:ss] */
 function CompareRowOfDates2(a, b) {
-    let values = a.value.match(/(.+?)(?:\s|$)(.+)?/);
-    let aval = NaN;
-    if (values) {
-        let date_values = values[1].split(".");
-        aval = new Date(((parseInt(date_values[2]) < 2000) ? parseInt(date_values[2]) + 2000 : date_values[2]) +
-            "-" + date_values[1] + "-" + date_values[0] + ((typeof (values[2]) != "undefined") ? "T" + values[2] : ""));
-    }
-    values = b.value.match(/(.+?)(?:\s|$)(.+)?/);
-    let bval = NaN;
-    if (values) {
-        let date_values = values[1].split(".");
-        bval = new Date(((parseInt(date_values[2]) < 2000) ? parseInt(date_values[2]) + 2000 : date_values[2]) +
-            "-" + date_values[1] + "-" + date_values[0] + ((typeof (values[2]) != "undefined") ? "T" + values[2] : ""));
-    }
-    return aval == bval ? 0 : (aval > bval ? 1 : -1);
+  let values = a.value.match(/(.+?)(?:\s|$)(.+)?/);
+  let aval = NaN;
+  if (values) {
+    let date_values = values[1].split(".");
+    aval = new Date(((parseInt(date_values[2]) < 2000) ? parseInt(date_values[2]) + 2000 : date_values[2]) +
+      "-" + date_values[1] + "-" + date_values[0] + ((typeof (values[2]) != "undefined") ? "T" + values[2] : ""));
+  }
+  values = b.value.match(/(.+?)(?:\s|$)(.+)?/);
+  let bval = NaN;
+  if (values) {
+    let date_values = values[1].split(".");
+    bval = new Date(((parseInt(date_values[2]) < 2000) ? parseInt(date_values[2]) + 2000 : date_values[2]) +
+      "-" + date_values[1] + "-" + date_values[0] + ((typeof (values[2]) != "undefined") ? "T" + values[2] : ""));
+  }
+  return aval == bval ? 0 : (aval > bval ? 1 : -1);
 }

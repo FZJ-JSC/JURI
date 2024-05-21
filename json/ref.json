@@ -13,6 +13,11 @@
         "styles": ["ext/dygraph.css"],
         "functions": ["init_graphs"]
     },
+    "datatable": {
+        "scripts": ["setup_grid.js","table_sort.js", "table_filter.js", "table_download.js"],
+        "styles": ["grid.css"],
+        "functions": ["init_grid","set_filter", "set_initial_sort", "enable_table_download"]
+    },
     "job_footer_graph": {
         "scripts": [
             ["ext/dygraph.min.js", "ext/synchronizer.js"],

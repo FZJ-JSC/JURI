@@ -19,8 +19,8 @@ function key_filter(table) {
 }
 
 function filter(table) {
-  filter_values = [];
-  search = {}
+  let filter_values = [];
+  let search = {}
   search.headers = Array.isArray(view.navdata.search_field) ? view.navdata.search_field : [view.navdata.search_field]
   search.fields = []
   search.indices = [];
@@ -33,7 +33,7 @@ function filter(table) {
   tr_filter.each(function() {
     // console.log("test length",$(this).find("input").length) // TO CHECK: All fields are added. Is that needed, or only fields with values?
     if ($(this).find("input").length > 0) {
-      let key = tr_first.eq(index).text().toLowerCase();
+      let key = tr_first.eq(index).text();
       let filter = $(this).find("input").val().trim()
       filter_values.push(filter);
       view.inital_data.filter[key] = filter;
@@ -93,32 +93,38 @@ function filter(table) {
   // $(table).find("tbody tr:visible").last().find("td").css("border-bottom","1px solid #dee2e6")
   // Reapply correct borders on hover
   $(table).find("tbody tr:visible").hover(function() { // on hover
-      $(this).nextAll("tr:visible").first().find("td").css("border-top","none");
-      return;
-    },function() { // off hover
-      $(this).nextAll("tr:visible").first().find("td").css("border-top","1px solid #dee2e6");
-      return;
-    });
+    $(this).nextAll("tr:visible").first().find("td").css("border-top","none");
+    return;
+  },function() { // off hover
+    $(this).nextAll("tr:visible").first().find("td").css("border-top","1px solid #dee2e6");
+    return;
+  });
 
+  update_values(search,table);
+}
+
+function update_values(search,table) {
   // Update aggregated values
   update_aggregation();
   // Updating number of visible entries
-  let visible = update_num_count();
+  let visible = update_num_count(table);
   // Adding messages when there is no data to show (no lines)
-  if (tr.length) {
-    if (!visible) {
-      // When the table is not empty but no result is shown (all jobs were filtered)
-      search_jobs(search);
-    } else if (visible == 1) {
-      // When only one result is shown, select
-      // (when not selected, footer is already present and filter is applied)
-      let row = $("#main_content table tbody tr:visible");
-      if (!row.hasClass("selected")) {
-        $("#main_content table tbody tr:visible")[0].click();
-      }
-    }  
-  } else {
-    $("#main_content").append($("<span>").addClass('filtermessage').text("No data available."));
+  if (table) {
+    if ($(table).find("tbody tr").length) {
+      if (!visible) {
+        // When the table is not empty but no result is shown (all jobs were filtered)
+        search_jobs(search);
+      } else if (visible == 1) {
+        // When only one result is shown, select
+        // (when not selected, footer is already present and filter is applied)
+        let row = $("#main_content table tbody tr:visible");
+        if (!row.hasClass("selected")) {
+          $("#main_content table tbody tr:visible")[0].click();
+        }
+      }  
+    } else {
+      $("#main_content").append($("<span>").addClass('filtermessage').text("No data available."));
+    }
   }
 }
 
@@ -170,7 +176,8 @@ function apply_search(header,filter,follow) {
       value = parseInt(value)
       // If 'follow=true' change the page to the corresponding value
       if (follow) {
-        view.inital_data.filter[header] = filter;
+        view.inital_data.filter[header] = filter.toString();
+        view.setHash(true);
         changePage(value)
         return;
       }
@@ -198,8 +205,19 @@ function apply_search(header,filter,follow) {
   }
 }
 
-
+/**
+ * Change the page to the one where the job is located (-1 to 'running')
+ * When page 'jobs' exists, change to that page, as it should contain a grid with all jobs
+ * @param {int} value day where
+ * @returns 
+ */
 function changePage(value) {
+  // If page 'jobs' exist (containing all jobs in a grid/datatable)
+  // change to that page
+  if (view.navdata.pages.map(page=> page.section).includes('jobs')) {
+    view.selectPage('jobs', false); 
+    return;
+  } 
   if (value !== -1) {
     if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
       view.selectPage(['history_three_weeks', value], false); 
@@ -220,9 +238,16 @@ function changePage(value) {
  * Adds "no result" message at the end of main_content
  */
 function no_results() {
-  let clear_filter_link = $("<a>").attr("href", "#").append($("<span>").text("Clear filter.").click(function () { clear_filter(); return false; }));
+  let clear_filter_link = $("<a>").attr("href", "#")
+                                  .append($("<span>").text("Clear filter.")
+                                                     .click(function () { 
+                                                        clear_filter(); 
+                                                        return false; 
+                                                      }));
   // Add "no results" filter message
-  $("#main_content").append($("<span>").addClass('filtermessage').text("No results found. ").append(clear_filter_link));
+  $("#main_content").append($("<span>").addClass('filtermessage')
+                                       .text("No results found. ")
+                                       .append(clear_filter_link));
 }
 
 
@@ -235,41 +260,135 @@ function escapeSpecialCaseChar(string) {
   return string.replace(/([^a-zA-Z0-9])/g, '\\$&');
 }
 
+function unescapeSpecialCaseChar(string) {
+  return string.replace(/\\/g, '');
+}
+
 /**
  * Clear the filter values of the table (or given column(s))
  * and updates the table
- * @param {string} column Class of column(s) to clean filter
+ * @param {string} column Class of column(s) to clean filter (for tables)
+ *                        Column name (not Header!) (for grid)
  */
 function clear_filter(column) {
-  // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
-  $(`tr.filter th${column ? '.'+escapeSpecialCaseChar(column) : ""} input`).val("");
-  $("tr.filter").closest("table").each(function() {
-    filter(this);
-    return;
-  });
+  if($("#main_content table").length){
+    // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
+    $(`tr.filter th${column ? '.group_'+escapeSpecialCaseChar(column) : ""} input`).val("");
+    $("tr.filter").closest("table").each(function() {
+      filter(this);
+      return;
+    });
+  } else if (view.gridApi) {
+    // If no column is given, reset all filters
+    if (!column) {
+      // Clearing all floating filters
+      view.gridApi.setFilterModel(null)
+      // Clearing Quick Filter
+      document.getElementById("filter-text-box").value = ""
+      view.gridApi.setGridOption(
+                                  "quickFilterText",
+                                  document.getElementById("filter-text-box").value,
+                                );
+      return;
+    }
+    let group = view.gridApi.getColumnGroup(column);
+    if (group) {
+      let children = group.getChildren().map((column) => column.colId)
+      children.forEach( (child) => clear_filter(child) )
+    }
+    view.gridApi.destroyFilter(column)
+  }
+}
+
+function get_filter_object(value) {
+  let condition = {};
+  let numberType = false;
+  condition.filter = value;
+  condition.type = 'contains';
+  range = condition.filter.match(/(^\d*\.?\d*)-(\d*\.?\d*)$/);
+  if (condition.filter.startsWith('>')) {
+    numberType = true
+    condition.type = 'greaterThan'
+    condition.filter = condition.filter.slice(1)
+  } else if (condition.filter.startsWith('<')) {
+    numberType = true
+    condition.type = 'lessThan'
+    condition.filter = condition.filter.slice(1)
+  } else if (range) {
+    numberType = true
+    condition.type = 'inRange'
+    condition.filter = range[1];
+    condition.filterTo = range[2];
+  }
+  return [numberType, condition];
 }
 
 function set_initial_filter() {
   let index = 0;
-  $("tr.filter").closest("table").find("tr:first th").each(function() {
-    let key = $(this).text().toLowerCase();
-    if (view.inital_data.filter && view.inital_data.filter[key]) {
-      $(this).closest("table").find("tr.filter th input").eq(index).val(view.inital_data.filter[key]);
+  let table = $("tr.filter").closest("table")
+  if (table.length) {
+    table.find("tr:first th").each(function() {
+      let key = $(this).text();
+      if (view.inital_data.filter && view.inital_data.filter[key]) {
+        $(this).closest("table").find("tr.filter th input").eq(index).val(view.inital_data.filter[key]);
+      }
+      index+=1;
+      return;
+    });
+    $("tr.filter").closest("table").each(function() {
+      filter(this);
+      return;
+    });  
+  } else if (view.gridApi) {
+    // Setting filter from URL
+    if (Object.keys(view.inital_data.filter).length) {
+      let initial_filters = {};
+      Object.entries(view.inital_data.filter).forEach(([key,value]) => {
+        if (!value.length) {return;}
+        let multi = false;
+        initial_filters[view.headerToName[key]] = {}
+        // Checking if there are multiple conditions
+        if (value.includes('&&')) {
+          initial_filters[view.headerToName[key]].operator = 'AND';
+          multi = '&&';
+        } else if (value.includes('||')) {
+          initial_filters[view.headerToName[key]].operator = 'OR';
+          multi = '||';
+        }
+        let numberType = false;
+        // If there are multiple conditions, add them to the conditions array
+        if (multi) {
+          initial_filters[view.headerToName[key]].conditions = []
+          value.split(multi).forEach((cond) => {
+            let [ type , condition ] = get_filter_object(cond)
+            numberType |= type
+            initial_filters[view.headerToName[key]].conditions.push(condition)
+          })
+          initial_filters[view.headerToName[key]].filterType = numberType?'number':'text'
+        } else {
+          let [ type , condition ] = get_filter_object(value)
+          numberType |= type
+          initial_filters[view.headerToName[key]] = condition
+          initial_filters[view.headerToName[key]].filterType = numberType?'number':'text'
+        }
+      })
+      view.gridApi.setFilterModel(initial_filters);
     }
-    index+=1;
-    return;
-  });
-  $("tr.filter").closest("table").each(function() {
-    filter(this);
-    return;
-  });
+  }
   return;
 }
 
-function update_num_count() {
-  let table = $("tr.filter").closest("table");
-  let visible = table.find("tbody tr:visible").length;
-  $("#num_visible_rows").text("Showing "+visible+"/"+table.find("tbody tr").length+" entries");
+function update_num_count(table) {
+  let visible;
+  let total;
+  if (table) {
+    visible = $(table).find("tbody tr:visible").length;
+    total = $(table).find("tbody tr").length
+  } else if (view.gridApi) {
+    visible = view.gridApi.getDisplayedRowCount()
+    total = view.contexts[view.page_context].length
+  }
+  $("#num_visible_rows").text("Showing "+visible+"/"+total+" entries");  
   return visible;
 }
 
@@ -303,8 +422,19 @@ function set_initial_columns() {
     return;
   });
 
-  unchecked.forEach(function(cl) {
-    $("#main_content table").addClass(`hide-${cl}`); 
+  unchecked.forEach(function(group) {
+    // For regular tables, add 'hide-(group)' class
+    $("#main_content table").addClass(`hide-${group}`); 
+    // For datatables/grid, hide them via API
+    if (view.gridApi) {
+      // groupid = view.headerToName[group]
+      // clear_filter(groupid)
+      const colgroup = view.gridApi.getColumnDefs().find((d) => `group_${escapeSpecialCaseChar(view.nameToHeader[d.groupId??d.colId])}` == group);
+      if (colgroup){
+        view.gridApi.setColumnsVisible(colgroup.children?colgroup.children.map((column) => column.colId):[colgroup.colId], false)  
+      }
+    }
+
     return;
   });
   return;
@@ -326,64 +456,93 @@ function add_column_selector() {
   let dropup_menu = $("<div>").addClass("dropdown-menu");
   column_selection.append(dropup_menu);
   let groups = get_column_groups();
-  groups = Array.from(groups).sort();
   // Create dropdown menu when there's more than 1 group
   if (groups.length > 1) {
     // Getting columns that are used in filters or sort to activate column group
     // Get filters that are not empty
     let used_cols = Object.keys(view.inital_data.filter).filter(key => view.inital_data.filter[key] != "")
+
     // Adding sort column when present
-    if (view.inital_data.sort.sort_col) {
-      used_cols.push(view.inital_data.sort.sort_col)
+    if (view.inital_data.sort.colId) {
+      used_cols.push(view.inital_data.sort.colId)
     }
 
-    // Getting all header elements that contain 'group_' classes
-    // And check if the text is included in 'used_cols'
+    // Getting the groups of the used columns (either from the table or grid)
     let used_groups = new Set();
-    $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
-      // If this element is in 'used_cols'
-      if (used_cols.includes($(this).text().toLowerCase())) {
-        // Add its class to 'groups' list to be selected below
-        let classes = $(this).attr("class").split(" ");
-        classes.forEach(function(cl) {
-          matcher = cl.match("group_(.+)");
-          if (matcher) {
-            used_groups.add(matcher[1]);
-          };
-        });
-      }
-      return;
-    });
-  
+    if($("#main_content table").length){
+      // Getting all header elements that contain 'group_' classes
+      // And check if the text is included in 'used_cols'
+      $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
+        // If this element is in 'used_cols'
+        if (used_cols.includes($(this).text())) {
+          // Add its class to 'groups' list to be selected below
+          let classes = $(this).attr("class").split(" ");
+          classes.forEach(function(cl) {
+            matcher = cl.match("group_(.+)");
+            if (matcher) {
+              used_groups.add(matcher[1]);
+            };
+          });
+        }
+        return;
+      });
+    } else if (view.gridApi) {
+      used_cols.forEach((col) => {
+        if(Object.keys(view.gridApi.getColumn(view.headerToName[col]).originalParent.colGroupDef).length) {
+          // If the original parent group definition has keys
+          // this is a column group. Get the headerName from there
+          used_groups.add(view.gridApi.getColumn(view.headerToName[col]).originalParent.colGroupDef.headerName);
+        } else {
+          // If not, this is a regular column without a parent
+          // so we can get the headerName direcly from colDef
+          used_groups.add(view.gridApi.getColumn(view.headerToName[col]).colDef.headerName);
+        }
+      })
+    }
+
     groups.forEach(function(group) {
       // inital checkbox state is given by last session setting, default value or false (in this order) 
       let checked = false;
-      // group_escaped = group.replace("(","\\(").replace(")","\\)").replace("/","\\/");
+
       group_escaped = escapeSpecialCaseChar(group);
-      if (typeof(default_columns) !== "undefined") {
-        checked = default_columns.includes(group);
-      }
-      if (view.page_data && typeof(view.page_data.default_columns) == "object") {
-        checked = view.page_data.default_columns.includes(group);
-      }
       if (typeof(Storage) !== "undefined" && sessionStorage.getItem("group_"+group_escaped)) {
         checked = sessionStorage.getItem("group_"+group_escaped) == "true";
+      } else if (view.page_data && typeof(view.page_data.default_columns) == "object") {
+        checked = view.page_data.default_columns.includes(group);
+      } else if (typeof(default_columns) !== "undefined") {
+        checked = default_columns.includes(group);
       }
-      // Checking current group if it's used on URL
+      // Forcing show used groups (groups that are used on URL)
       checked = used_groups.has(group) ? true : checked
+
+
+      // Creating column list selection
       dropup_menu.append($("<label>").addClass("dropdown-item form-check-label")
                     .text(group.replace("_"," "))
                     .prepend($("<input>")
                     .addClass("form-check-input")
                     .attr("type","checkbox")
-                    .attr("name","group_"+group)
+                    .attr("name","group_"+group_escaped)
                     .on("change",function() { 
-                        // If hide-class is not present (i.e., the column is shown) clear filter, 
-                        if(!$("#main_content table").hasClass(`hide-group_${group}`)) {
-                          clear_filter(`group_${group}`)
+                        // For regular tables
+                        if($("#main_content table").length){
+                          // If hide-class is not present (i.e., the column is shown) clear filter, 
+                          if(!$("#main_content table").hasClass(`hide-group_${group_escaped}`)) {
+                            clear_filter(group)
+                          }
+                          // Toggle hide class on table (to show or hide respective column group)
+                          $("#main_content table").toggleClass(`hide-group_${group_escaped}`);
+                        // For datatables / grids
+                        } else if (view.gridApi) {
+                          groupid = view.headerToName[group]
+                          clear_filter(groupid)
+                          const gp = view.gridApi.getColumnDefs().find((d) => d.groupId === groupid);
+                          if (gp) {
+                            view.gridApi.setColumnsVisible(gp.children.map((column) => column.colId), !gp.children.map((col) => view.gridApi.getColumn(col.colId).visible).every(v => v === true))
+                          } else {
+                            view.gridApi.setColumnsVisible([groupid], !view.gridApi.getColumn(groupid).visible)
+                          }
                         }
-                        // Toggle hide class on table (to show or hide respective column group)
-                        $("#main_content table").toggleClass(`hide-group_${group}`); 
                         // Check if all elements were selected to update "de/select all" checkbox
                         let all_checked = true;
                         $("#column_selection input").slice(1).each((i,el) => {
@@ -396,6 +555,8 @@ function add_column_selector() {
                           $("#group_all").prop("checked",false)
                                 .attr("data-original-title","select all");
                         }
+                        // Setting storage
+                        sessionStorage.setItem($(this).attr("name"),$(this).is(":checked"));
                         return; 
                       }).prop("checked",checked)));
       return;
@@ -477,31 +638,50 @@ function add_column_css() {
  * @returns Set containing all column groups
  */
 function get_column_groups() {
-  let groups = new Set();
+  let groups;
   // Search for available groups
-  $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
-    let classes = $(this).attr("class").split(" ");
-    classes.forEach(function(cl) {
-      matcher = cl.match("group_(.+)");
-      if (matcher) {
-        groups.add(matcher[1]);
-      };
+  if($("#main_content table").length){
+    groups = new Array();
+    $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
+      let classes = $(this).attr("class").split(" ");
+      classes.forEach(function(cl) {
+        matcher = cl.match("group_(.+)");
+        if (matcher) { // If there's a match
+          if (!groups.includes(matcher[1])) { // and match is not on the Array
+            groups.push(matcher[1]);
+          }
+        };
+      });
+      return;
     });
-    return;
-  });
+  } else if (view.gridApi) {
+    groups = view.gridApi.getColumnDefs().map((column) => column.headerName);
+  }
   return groups;
 }
 
 function set_filter() {
-  $("tr.filter th input").keyup(function() {
-    key_filter($(this).closest("table")[0]);
-    return;
-  });
-  let clear_filter_link = $("<a>").attr("aria-label","Clear filter").append($("<span>").addClass("fa fa-filter").attr("title","Clear filter")).click(function(){clear_filter(); return false;});
+  add_filter_to_table()
+
+  // Add text with number of rows to infoline
   if (! $("#num_visible_rows").length) {
     view.add_to_footer_infoline($("<span>").attr("id","num_visible_rows")[0],30);
+    update_num_count();
+  }
+
+  // Add "clear filter" icon and link to infoline
+  if (! $("#clear_filter").length) {
+    let clear_filter_link = $("<a>").attr("id","clear_filter")
+                                    .attr("aria-label","Clear filter")
+                                    .append($("<span>").addClass("fa fa-filter")
+                                                       .attr("title","Clear filter"))
+                                    .click(function(){ 
+                                      clear_filter(); 
+                                      return false;
+                                    });
     view.add_to_footer_infoline(clear_filter_link[0],30);
   }
+
   // If not there, add the column selector
   if (! $("#column_selection").length) {
     add_column_selector();
@@ -510,6 +690,14 @@ function set_filter() {
   set_initial_columns();
   set_initial_filter();
   return;
+}
+
+function add_filter_to_table() {
+  // If there's a table with filters, add the filter function to them
+  $("tr.filter th input").keyup(function() {
+    key_filter($(this).closest("table")[0]);
+    return;
+  });
 }
 
 function update_aggregation() {
