@@ -252,16 +252,22 @@ function no_results() {
 
 
 /**
- * Function to escape special characters by adding two slashes before
+ * Function to escape special characters by adding two slashes before 
+ * the character that is not a letter, a number or '_'
  * Adapted from https://stackoverflow.com/a/25376775/3142385
  * @param {string} string String to be escaped
  */
 function escapeSpecialCaseChar(string) {
-  return string.replace(/([^a-zA-Z0-9])/g, '\\$&');
+  return string.replace(/([^a-zA-Z0-9_])/g, '\\$&');
 }
 
+/**
+ * Function to un-escape special characters by removing two slashes before
+ * the character that is not a letter, a number or '_'
+ * @param {string} string String to be un-escaped
+ */
 function unescapeSpecialCaseChar(string) {
-  return string.replace(/\\/g, '');
+  return string.replace(/\\(?![a-zA-Z0-9_])/g, '');
 }
 
 /**
@@ -401,7 +407,7 @@ function set_initial_columns() {
   let unchecked = new Set();
   $("#column_selection input").each(function() {
     if (typeof(Storage) !== "undefined") {
-      sessionStorage.setItem($(this).attr("name"),$(this).is(":checked"));
+      sessionStorage.setItem(escapeSpecialCaseChar($(this).attr("name")),$(this).is(":checked"));
     }
     if (!$(this).is(":checked")) {
       unchecked.add($(this).attr("name"));
@@ -429,7 +435,7 @@ function set_initial_columns() {
     if (view.gridApi) {
       // groupid = view.headerToName[group]
       // clear_filter(groupid)
-      const colgroup = view.gridApi.getColumnDefs().find((d) => `group_${escapeSpecialCaseChar(view.nameToHeader[d.groupId??d.colId])}` == group);
+      const colgroup = view.gridApi.getColumnDefs().find((d) => `group_${view.nameToHeader[d.groupId??d.colId]}` == group);
       if (colgroup){
         view.gridApi.setColumnsVisible(colgroup.children?colgroup.children.map((column) => column.colId):[colgroup.colId], false)  
       }
@@ -504,7 +510,7 @@ function add_column_selector() {
       // inital checkbox state is given by last session setting, default value or false (in this order) 
       let checked = false;
 
-      group_escaped = escapeSpecialCaseChar(group);
+      let group_escaped = escapeSpecialCaseChar(group);
       if (typeof(Storage) !== "undefined" && sessionStorage.getItem("group_"+group_escaped)) {
         checked = sessionStorage.getItem("group_"+group_escaped) == "true";
       } else if (view.page_data && typeof(view.page_data.default_columns) == "object") {
@@ -522,16 +528,16 @@ function add_column_selector() {
                     .prepend($("<input>")
                     .addClass("form-check-input")
                     .attr("type","checkbox")
-                    .attr("name","group_"+group_escaped)
+                    .attr("name","group_"+group)
                     .on("change",function() { 
                         // For regular tables
                         if($("#main_content table").length){
                           // If hide-class is not present (i.e., the column is shown) clear filter, 
-                          if(!$("#main_content table").hasClass(`hide-group_${group_escaped}`)) {
+                          if(!$("#main_content table").hasClass(`hide-group_${group}`)) {
                             clear_filter(group)
                           }
                           // Toggle hide class on table (to show or hide respective column group)
-                          $("#main_content table").toggleClass(`hide-group_${group_escaped}`);
+                          $("#main_content table").toggleClass(`hide-group_${group}`);
                         // For datatables / grids
                         } else if (view.gridApi) {
                           groupid = view.headerToName[group]
@@ -556,7 +562,7 @@ function add_column_selector() {
                                 .attr("data-original-title","select all");
                         }
                         // Setting storage
-                        sessionStorage.setItem($(this).attr("name"),$(this).is(":checked"));
+                        sessionStorage.setItem(escapeSpecialCaseChar($(this).attr("name")),$(this).is(":checked"));
                         return; 
                       }).prop("checked",checked)));
       return;
@@ -625,7 +631,7 @@ function add_column_css() {
     group_escaped = escapeSpecialCaseChar(group);
     styles = `${styles}.hide-group_${group_escaped} .group_${group_escaped}, `
   });
-  styles = `${styles.slice(0,-2)} {\n  display: none;\n}\n`
+  styles = `${styles.slice(0,-2)} {display: none;}`
   // Adding stylesheet to the document
   var styleSheet = document.createElement("style")
   styleSheet.innerText = styles
@@ -638,7 +644,7 @@ function add_column_css() {
  * @returns Set containing all column groups
  */
 function get_column_groups() {
-  let groups;
+  let groups = [];
   // Search for available groups
   if($("#main_content table").length){
     groups = new Array();
