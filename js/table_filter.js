@@ -258,7 +258,7 @@ function no_results() {
  * @param {string} string String to be escaped
  */
 function escapeSpecialCaseChar(string) {
-  return string.replace(/([^a-zA-Z0-9_])/g, '\\$&');
+  return string.replace(/([^a-zA-Z0-9_#])/g, '\\$&');
 }
 
 /**
@@ -267,7 +267,7 @@ function escapeSpecialCaseChar(string) {
  * @param {string} string String to be un-escaped
  */
 function unescapeSpecialCaseChar(string) {
-  return string.replace(/\\(?![a-zA-Z0-9_])/g, '');
+  return string.replace(/\\(?![a-zA-Z0-9_#])/g, '');
 }
 
 /**
