@@ -105,7 +105,7 @@ function sort_table(caller, type, dateformat) {
  * to recreate the last sort ordering.
  */
 function set_initial_sort() {
-  if (Object.keys(view.inital_data.sort).length) {
+  if (view.inital_data.sort && Object.keys(view.inital_data.sort).length) {
     if($("#main_content table").length){
       let element = $("th").filter(function () { return $(this).text().toLowerCase() == view.inital_data.sort.colId.toLowerCase(); }).first();
       if (view.inital_data.sort.sort) {
@@ -115,7 +115,7 @@ function set_initial_sort() {
     } else if (view.gridApi) {
       view.gridApi.applyColumnState({
         state: [{ 
-                  colId: view.headerToName[view.inital_data.sort.colId], 
+                  colId: view.headerToName[view.clicked_page][view.inital_data.sort.colId], 
                   sort: view.inital_data.sort.sort 
                 }],
         defaultState: { sort: null },

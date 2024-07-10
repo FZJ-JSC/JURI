@@ -36,7 +36,8 @@ function View(parameters) {
   // Deferrer counter
   this.counter = 0;
   // Store selected page and subpage
-  this.selected_page = null;
+  this.clicked_page = null;     // Page to be shown (after clicking)
+  this.selected_page = null;    // Shown page (before clicking)
   this.selected_subpage = null;
   this.page_data = null;
   this.page_template = null;
@@ -65,16 +66,16 @@ function View(parameters) {
   this.default_colorscale = 'RdYlGn';
   this.used_colorscales = {}; // Object to store generated colorscales
   // Headers on main table of the current page
-  this.headers = [];
-  this.headerToName = {}; // Mapping of header title to headerName
-  this.nameToHeader = {}; // Mapping of headerName to header title
+  this.headers = {};      // Headers per page
+  this.headerToName = {}; // Mapping of header title to headerName, per page
+  this.nameToHeader = {}; // Mapping of headerName to header title, per page
   // map of jobID to day
   this.mapjobid_to_day = {};
   // Store contexts (contents of tables) to be used for applying the data to the grid
   this.contexts = {};
   // Store the Grid (table)
   this.gridApi = null;
-  this.gridState = null;
+  this.gridState = {};
   // Store column definitions for grid
   this.columnDefs = null;
 }
@@ -314,6 +315,9 @@ View.prototype.changeSystem = function (system) {
     subpage = parseInt(page[1]);
     page = page[0];
   }
+
+  // Updating clicked page
+  self.clicked_page = page
 
   if ( !reload && (self.selected_page == page) && (!subpage || (self.selected_subpage == subpage))) {
     // Same page and subpage, nothing to do
@@ -807,12 +811,12 @@ View.prototype.add_autorefresh = function () {
 View.prototype.reloadPage = function () {
   var self = this;
   if (self.selected_page != 'live') {
-    // Storing jobid that is selected before
-    index = self.headers.indexOf('JobID');
     if($("#main_content table").length){
+      // Storing jobid that is selected before
+      index = self.headers[self.clicked_page].indexOf('JobID');
       selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
     } else if (self.gridApi) {
-      self.gridState = self.gridApi.getState(); // Save current state to recover after refresh
+      self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
       selected_jobid = self.gridApi.getSelectedNodes(); // Get selected job
     }
     // Re-select current page and subpage
@@ -827,7 +831,7 @@ View.prototype.reloadPage = function () {
           }
         } else if (self.gridApi) {
           self.gridApi.forEachNode((node) => {
-            if (node.data.jobid == selected_jobid[0].data.jobid) {
+            if (node.id == selected_jobid[0].id && node.displayed) {
               // Making it visible
               self.gridApi.ensureIndexVisible(node.rowIndex,'middle');
               // Selecting it
@@ -946,28 +950,31 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
 
 
 /**
- *  Get the headers of a table or a grid and stores into self.headers
+ *  Get the headers of a table or a grid and stores into self.headers[view.clicked_page]
  * @returns 
  */
 View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
   if($("#main_content table").length){
-    self.headers = $("#main_content table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
+    self.headers[self.clicked_page] = $("#main_content table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
   } else if (self.gridApi) {
     let header;
+    self.headers[self.clicked_page] = []
+    self.headerToName[self.clicked_page] = {}
+    self.nameToHeader[self.clicked_page] = {}
     self.gridApi.getColumns().forEach((column) => {
-      if(Object.keys(column.originalParent.colGroupDef).length) {
+      if(column.originalParent && Object.keys(column.originalParent.colGroupDef).length) {
         // If the original parent group definition has keys
         // this is a column group. Get the conversion header<->name also from those
         header = column.originalParent.colGroupDef.headerName;
-        self.headerToName[header] = column.originalParent.groupId;
-        self.nameToHeader[column.originalParent.groupId] = header;
+        self.headerToName[self.clicked_page][header] = column.originalParent.groupId;
+        self.nameToHeader[self.clicked_page][column.originalParent.groupId] = header;
       }
       header = self.gridApi.getDisplayNameForColumn(column);
-      self.headerToName[header] = column.getColId();
-      self.nameToHeader[column.getColId()] = header;
-      self.headers.push(header);
+      self.headerToName[self.clicked_page][header] = column.getColId();
+      self.nameToHeader[self.clicked_page][column.getColId()] = header;
+      self.headers[self.clicked_page].push(header);
     });
   }
   return

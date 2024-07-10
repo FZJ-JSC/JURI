@@ -35,10 +35,10 @@ View.prototype.FooterGraph = function (config_file) {
 View.prototype.FooterGraph.prototype.add_event_handler = function () {
   let self = this;
   // Getting names of all header cells as keys
-  if (!self.headers) {
+  if (!view.headers[view.clicked_page]) {
     View.prototype.getHeaders.call(this);
   }
-  let keys = view.headers;
+  let keys = view.headers[view.clicked_page];
 
   // Selecting or de-selecting a line
   $("#main_content table tbody tr").click(function () {
@@ -207,6 +207,8 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
     let info;
     if (self.config) {
       info = self.config.find(o => { return o.name === self.current_page }).info;
+    } else {
+      return;
     }
     if (info) {
       $("#graph_info").text(replaceDataPlaceholder(info, params));

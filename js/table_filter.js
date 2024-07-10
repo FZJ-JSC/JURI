@@ -352,30 +352,30 @@ function set_initial_filter() {
       Object.entries(view.inital_data.filter).forEach(([key,value]) => {
         if (!value.length) {return;}
         let multi = false;
-        initial_filters[view.headerToName[key]] = {}
+        initial_filters[view.headerToName[view.clicked_page][key]] = {}
         // Checking if there are multiple conditions
         if (value.includes('&&')) {
-          initial_filters[view.headerToName[key]].operator = 'AND';
+          initial_filters[view.headerToName[view.clicked_page][key]].operator = 'AND';
           multi = '&&';
         } else if (value.includes('||')) {
-          initial_filters[view.headerToName[key]].operator = 'OR';
+          initial_filters[view.headerToName[view.clicked_page][key]].operator = 'OR';
           multi = '||';
         }
         let numberType = false;
         // If there are multiple conditions, add them to the conditions array
         if (multi) {
-          initial_filters[view.headerToName[key]].conditions = []
+          initial_filters[view.headerToName[view.clicked_page][key]].conditions = []
           value.split(multi).forEach((cond) => {
             let [ type , condition ] = get_filter_object(cond)
             numberType |= type
-            initial_filters[view.headerToName[key]].conditions.push(condition)
+            initial_filters[view.headerToName[view.clicked_page][key]].conditions.push(condition)
           })
-          initial_filters[view.headerToName[key]].filterType = numberType?'number':'text'
+          initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
         } else {
           let [ type , condition ] = get_filter_object(value)
           numberType |= type
-          initial_filters[view.headerToName[key]] = condition
-          initial_filters[view.headerToName[key]].filterType = numberType?'number':'text'
+          initial_filters[view.headerToName[view.clicked_page][key]] = condition
+          initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
         }
       })
       view.gridApi.setFilterModel(initial_filters);
@@ -433,9 +433,9 @@ function set_initial_columns() {
     $("#main_content table").addClass(`hide-${group}`); 
     // For datatables/grid, hide them via API
     if (view.gridApi) {
-      // groupid = view.headerToName[group]
+      // groupid = view.headerToName[view.clicked_page][group]
       // clear_filter(groupid)
-      const colgroup = view.gridApi.getColumnDefs().find((d) => `group_${view.nameToHeader[d.groupId??d.colId]}` == group);
+      const colgroup = view.gridApi.getColumnDefs().find((d) => `group_${view.nameToHeader[view.clicked_page][d.groupId??d.colId]}` == group);
       if (colgroup){
         view.gridApi.setColumnsVisible(colgroup.children?colgroup.children.map((column) => column.colId):[colgroup.colId], false)  
       }
@@ -469,7 +469,7 @@ function add_column_selector() {
     let used_cols = Object.keys(view.inital_data.filter).filter(key => view.inital_data.filter[key] != "")
 
     // Adding sort column when present
-    if (view.inital_data.sort.colId) {
+    if (view.inital_data.sort && view.inital_data.sort.colId) {
       used_cols.push(view.inital_data.sort.colId)
     }
 
@@ -494,14 +494,16 @@ function add_column_selector() {
       });
     } else if (view.gridApi) {
       used_cols.forEach((col) => {
-        if(Object.keys(view.gridApi.getColumn(view.headerToName[col]).originalParent.colGroupDef).length) {
-          // If the original parent group definition has keys
-          // this is a column group. Get the headerName from there
-          used_groups.add(view.gridApi.getColumn(view.headerToName[col]).originalParent.colGroupDef.headerName);
-        } else {
-          // If not, this is a regular column without a parent
-          // so we can get the headerName direcly from colDef
-          used_groups.add(view.gridApi.getColumn(view.headerToName[col]).colDef.headerName);
+        if (col in view.headerToName[view.clicked_page] && view.gridApi.getColumn(view.headerToName[view.clicked_page][col])) {
+          if(view.gridApi.getColumn(view.headerToName[view.clicked_page][col]).originalParent && Object.keys(view.gridApi.getColumn(view.headerToName[view.clicked_page][col]).originalParent.colGroupDef).length) {
+            // If the original parent group definition has keys
+            // this is a column group. Get the headerName from there
+            used_groups.add(view.gridApi.getColumn(view.headerToName[view.clicked_page][col]).originalParent.colGroupDef.headerName);
+          } else {
+            // If not, this is a regular column without a parent
+            // so we can get the headerName direcly from colDef
+            used_groups.add(view.gridApi.getColumn(view.headerToName[view.clicked_page][col]).colDef.headerName);
+          }
         }
       })
     }
@@ -540,7 +542,8 @@ function add_column_selector() {
                           $("#main_content table").toggleClass(`hide-group_${group}`);
                         // For datatables / grids
                         } else if (view.gridApi) {
-                          groupid = view.headerToName[group]
+                          view.headerToName[view.clicked_page][group]
+                          groupid = view.headerToName[view.clicked_page][group]
                           clear_filter(groupid)
                           const gp = view.gridApi.getColumnDefs().find((d) => d.groupId === groupid);
                           if (gp) {
