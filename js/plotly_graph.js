@@ -254,6 +254,15 @@ PlotlyGraph.prototype.plot = function (params) {
       trace.name = trace_data.name;
       trace.type = trace_data.type ?? "scatter";
       trace.yaxis = trace_data.yaxis ?? "y";
+
+      // Filtering the data when both filter and data are present
+      if (trace_data.where && data) {
+        data = data.filter((item) => {
+            return Object.keys(trace_data.where).every(key => item[key] === trace_data.where[key]);
+        })
+      }
+
+      // If there are still data to be plotted
       if (data) {
         // Calculating factor if present, otherwise set to 1
         let factor = typeof (trace_data.factor) == "string" ? eval(trace_data.factor) : 1;
@@ -375,7 +384,7 @@ PlotlyGraph.prototype.plot = function (params) {
           }
         } else {                                    // SCATTER PLOT 
           // If it's not a heatmap not a bar, we consider it is a scatter plot
-          trace.line = { width: 1, shape: 'hvh', color: trace_data.color ?? 'black' };
+          trace.line = mergeDeep({ width: 1, shape: 'hvh', color: trace_data.color ?? 'black' },trace_data.line??{});
           trace.mode = trace_data.mode ?? 'lines';
           trace.showlegend = trace_data.showlegend ?? true;
           trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
@@ -422,6 +431,23 @@ PlotlyGraph.prototype.plot = function (params) {
             minmax[trace_data.ycol] = { name: trace.name, min: trace.min, max: trace.max, yaxis: trace.yaxis, color: trace.line.color, factor: data.factor };
           } else {
             trace.hovertemplate = '<b>%{y}</b>';
+          }
+
+          // Creating hovertemplate if given on config
+          if (trace_data.onhover) {
+            // Geting data in the correct format in customcustom data
+            // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
+            trace.customdata = data.map(function (d)  {
+              return Object.keys(trace_data.onhover).map((k) => { return trace_data.onhover[k]['factor'] ? parseFloat(d[k])*trace_data.onhover[k]['factor'] : d[k] })
+            })
+            // Preparing the hover template
+            i = 0
+            for (const [key, value] of Object.entries(trace_data.onhover)) {
+              // Add information on new line, when there's already some info there
+              trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
+              trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
+              i++
+            }
           }
 
           // If a map is given for the values:
@@ -485,7 +511,6 @@ PlotlyGraph.prototype.plot = function (params) {
         // Getting min and max values of y for each y axis to adjust ranges below
         ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
         ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
-
       }
       traces.push(trace);
     }

@@ -14,7 +14,7 @@ function init_grid() {
   const gridOptions = {
     rowData: view.contexts[view.page_context],
     columnDefs: view.columnDefs,
-    initialState: view.gridState??null, // Recovering state, if existing
+    initialState: view.gridState[view.clicked_page]??null, // Recovering state, if existing
     // perform a regular expression search
     quickFilterMatcher: (quickFilterParts, rowQuickFilterAggregateText) => {
       return quickFilterParts.every(part => rowQuickFilterAggregateText.match(part));
@@ -85,6 +85,7 @@ function init_grid() {
       suppressHeaderMenuButton:false,     // Show (false) or hide (true) the filter menu from the header
       cellClass: 'text-center',           // Default class of cells
       flex: 1,
+      // minWidth: 50,
       // cellClass: (params) => {
       //   var default_classes = 'text-center';
       //   default_classes += params.column.originalParent.colGroupDef.headerName? ` group_${params.column.originalParent.colGroupDef.headerName}` : "";
@@ -111,15 +112,18 @@ function init_grid() {
     tooltipShowDelay: 0,                // Delay to show tooltip on mousehover over header (0 = no delay)
     enableCellTextSelection: true,      // Enable selection of cell contents
     ensureDomOrder: true,               // Make selection in the correct order
-    autoSizeStrategy: {                 // Automatically resize cells...
-      type: 'fitCellContents'           // ...to fit contents
-    },
+    // autoSizeStrategy: {                 // Automatically resize cells...
+    //   // type: 'fitCellContents'           // ...to fit contents
+    //   type: 'fitGridWidth',             // ...to fit GridWidth
+    //   // defaultMinWidth: 100
+    // },
     // suppressColumnVirtualisation: true, // Supress column virtualisation to take into account non-visible columns in resizing columns, for example
     // suppressRowVirtualisation: true, // Supress row virtualisation to take into account non-visible rows in resizing columns, for example
     headerHeight: 25,                   // Height of header row
     floatingFiltersHeight: 25,          // Header of floating filter row
     rowHeight: 25,                      // Default height of rows
     rowSelection: 'single',             // Select the entire row when clicking (a single one is allowed to be selected)
+    suppressRowClickSelection: view.footer_graph_config?false:true, // Disable row selection when there's no footer
     rowMultiSelectWithClick: true,      // Allow row de-selection
     onRowSelected: onRowSelected,       // Function to run when a row is selected
     onModelUpdated: onChange,           // To run when displayed rows have changed. Triggered after sort, filter or tree expand / collapse events.
@@ -129,6 +133,7 @@ function init_grid() {
     onFilterChanged: onFilterChanged,   // To run after filtering 
     onSortChanged: onSortChanged,       // To run after sorting
     onColumnGroupOpened: onChange,      // A column group was opened / closed.
+    // onFirstDataRendered: onFirstData,     // Fired the first time data is rendered into the grid. 
     // onGridReady: onGridReady,           // When the grid is ready
     // suppressCellFocus: true,         // Turn off cell focus (if turning on, can't move selection with arrows)
     // onSelectionChanged: onSelectionChanged, // Function to run when selected row has changed
@@ -139,9 +144,10 @@ function init_grid() {
     // },
   }; // End gridOptions
 
-  const gridDiv = document.querySelector("#myGrid");
+  // Getting the Grid element and emptying it before creating a new one
+  const gridDiv = $("#myGrid");
   // Creating the grid
-  view.gridApi = agGrid.createGrid(gridDiv, gridOptions);
+  view.gridApi = agGrid.createGrid(gridDiv[0], gridOptions);
   // Adding filter field, when it is not there
   if (!$('#filter > input').length) {
     let filter = $('<input>').attr('type',"text")
@@ -165,7 +171,7 @@ function init_grid() {
   clear_column_filter_link.click(function(e) {
                                   e.stopPropagation(); // Stopping the event to propagate to the sort
                                   // Gets the column Header from the sibling, transform to 'Name' and clear the filter of the specific column
-                                  clear_filter(view.headerToName[$(this).siblings( ".ag-header-cell-text" ).text()])
+                                  clear_filter(view.headerToName[view.clicked_page][$(this).siblings( ".ag-header-cell-text" ).text()])
                                 });
   $('.ag-filter-icon').wrap(clear_column_filter_link);
 
@@ -232,7 +238,7 @@ function onFilterChanged(event) {
       filter = get_filter_string(value);
     }
 
-    view.inital_data.filter[view.nameToHeader[key]] = filter;
+    view.inital_data.filter[view.nameToHeader[view.clicked_page][key]] = filter;
   })
   view.setHash();
   update_values();
@@ -242,7 +248,7 @@ function onSortChanged(event) {
   view.inital_data.sort = event.columns.filter(function (s) {
                               return s.sort != null;
                             }).map(function (s) {
-                              return { colId: view.nameToHeader[s.colId], sort: s.sort };
+                              return { colId: view.nameToHeader[view.clicked_page][s.colId], sort: s.sort };
                             })[0];
   view.setHash();
 }
@@ -279,14 +285,25 @@ function add_filter_placeholder() {
   });
 }
 
-function onChange() {
-  view.gridApi.autoSizeAllColumns(false);
+// function onFirstData() {
+//   view.gridApi.resetColumnState();
+// }
+
+function onChange(event) {
+  if (!view.gridApi) {
+    return;
+  }
+  // if ((event.type!='virtualColumnsChanged')&&(view.gridApi.getAllDisplayedColumns().length*90 > $('#main_content').width())) {
+  //   view.gridApi.autoSizeAllColumns(false);
+  // } else {
+  //   view.gridApi.sizeColumnsToFit();
+  // }
   // If only one row is shown, select it
   if (view.gridApi.getDisplayedRowCount() == 1) {
     view.gridApi.setNodesSelected({ nodes: [view.gridApi.getDisplayedRowAtIndex(0)], newValue: true });
   }
   let selected = view.gridApi.getSelectedNodes()[0]
-  if (selected) {
+  if (selected && selected.displayed) {
     view.gridApi.ensureIndexVisible(selected.rowIndex,'middle');
   }
 }
