@@ -219,11 +219,36 @@ View.prototype.show = function () {
         // Add Home button to go to login page
         let button = $('<button>',{type: "button", class: 'inner-circle', title: 'Go to login page'}).attr("aria-label",'Go to login page').addClass("fa").addClass("fa-home");
         $('#home').prepend(button)
-        button.on('click',() => {
-          button.toggleClass('active');
-          window.location.href = self.navdata.home;
+        button.on('mousedown', (e) => {
+          let handlerin,handlerout, doc = $(document);
+          e.preventDefault();
+          button.addClass('active');
+          button.on('mouseenter', handlerin = () => {button.addClass('active');})
+                .on('mouseleave', handlerout = () => {button.removeClass('active');})
+          doc.on('mouseup', (e) => {
+            button.removeClass('active');
+            button.off('mouseenter', handlerin)
+            button.off('mouseleave', handlerout)
+          })
+        })
+        button.on('click',(e) => {
+          e.preventDefault();
+          // Clicking with control or metakey opens a new tab/window
+          if (e.ctrlKey || e.metaKey) {
+            window.open(self.navdata.home,'_blank')
+          } else {
+            window.location.href = self.navdata.home;  
+          }
           return;
         });
+        // Clicking with middle mouse button opens a new tab/window
+        button.on('auxclick',(e) => {
+          if (e.button == 1) {
+            window.open(self.navdata.home,'_blank')
+          }
+          return;
+        });
+
         // Add system image to go to login page
         // if (self.navdata.image) {
         //   $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
@@ -351,6 +376,7 @@ View.prototype.changeSystem = function (system) {
     $("#main_content").empty();
     $("#main_content").empty();
     $("#filter").empty();
+    $("#options").empty()
     $("#footer_graphs").empty();
     $("#footer_infoline_page_options").empty();
     $('#footer_infoline > #dragger').remove();
@@ -639,6 +665,69 @@ View.prototype.add_colorscale_controls = function () {
   }
 }
 
+/**
+ * Add button with options to apply to the table
+ */
+View.prototype.add_options = function (options) {
+  let self = this;
+  let text = "Click to show the options to filter the table";
+  let button = $('#options > button')
+
+  // options = {
+  //   'State': {
+  //     'RUNNING': {'State': 'RUNNING'},
+  //     'COMPLETED': {'State': 'COMPLETED'},
+  //     'FAILED': {'State': 'FAILED'},
+  //   },
+  //   'End Date': {
+  //     'Today': {'End Date (est)':new Date().toISOString().slice(0, 10)},
+  //     'Yesterday': {'End Date (est)':new Date(Date.now() - 1000*60*60*24)}
+  //   }
+  // }
+  if (!button.length) {
+    button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-cogs");
+    $('#options').append(button)
+  }
+  let desc = options
+  let optionsdiv = $('<div>',{id: "optionsdiv"}).attr("aria-label",desc).text(desc).hide();
+
+  // If show info is active (from URL), activate it
+  if (self.inital_data.options?.showoptions) {
+    button.addClass('active');
+    button.attr("data-original-title","Click to hide the options to filter the table")
+          .attr("aria-label","Click to hide the options to filter the table");
+    $('main').prepend(optionsdiv);
+    optionsdiv.slideDown();
+  }
+  
+  // On show-info button click:
+  button.off('click'); // Turning off first, to avoid adding multiple events
+  button.on('click',() => {
+    // Toggle class 'active' on button to change its colors
+    button.toggleClass('active');
+    // Turns on and off show information
+    if (self.inital_data.options?.showoptions) {
+      // If it show-info exists when clicking the button, then turn it off
+      button.attr("data-original-title","Click to show the options to filter the table")
+            .attr("aria-label","Click to show the options to filter the table");
+      delete self.inital_data.options.showoptions;
+      $('#optionsdiv').slideUp(function() {
+        $(this).remove();
+      });
+      self.setHash();
+    } else {
+      // If it presentation mode does not exist when clicking the button, then turn it on
+      button.attr("data-original-title","Click to hide the options to filter the table")
+            .attr("aria-label","Click to hide the options to filter the table");
+      self.inital_data.options = { 'showoptions': 'true' };
+      self.setHash();
+      $('#main_content').prepend(optionsdiv);
+      optionsdiv.slideDown();
+    }
+    return;
+  });
+  return;
+}
 
 /**
  * Add show-info button
@@ -652,7 +741,7 @@ View.prototype.add_infobutton = function (description) {
     $('#information').append(button)
   }
   let desc = description
-  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(description).hide();
+  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(desc).hide();
 
   // If show info is active (from URL), activate it
   if (self.inital_data.description?.showinfo) {
@@ -1257,6 +1346,10 @@ View.prototype.setHash = function (keep_history) {
   if (self.inital_data.description) {
     Object.assign(parameter, self.inital_data.description);
   }
+  // Add options box
+  if (self.inital_data.options) {
+    Object.assign(parameter, self.inital_data.options);
+  }
 
   // Build hash into URL
   for (let key in parameter) {
@@ -1525,7 +1618,8 @@ function getURLParameter() {
       "colors": {},
       "refresh": {},
       "presentation": {},
-      "description": {}
+      "description": {},
+      "options": {},
     }
   };
   for (let key in paras) {
@@ -1556,6 +1650,8 @@ function getURLParameter() {
           target = paras[key].presentation;
         } else if (entry == "showinfo") {
           target = paras[key].description;
+        } else if (entry == "showoptions") {
+          target = paras[key].options;
         } else {
           target = paras[key].filter;
           entry = entry;

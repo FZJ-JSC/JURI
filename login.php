@@ -64,9 +64,19 @@ if(isset($_GET["jobid"])) {
     header('Location: error404.html');
   } else {
     // Building correct link
-    $newURL = "data/projects/".$project."/".$user."/jobreport_".strtoupper($systemname)."_".$project."_".$user."_".$jobid.".html";
+    $newURL = "data/projects/".$project."/".$user."/jobreport_".$systemname."_".$project."_".$user."_".$jobid.".html";
     header('Location: '.$newURL);
   }
+  exit();
+}
+
+// Forward to project page
+if(isset($_GET["project"])) {
+  // Getting project and user
+  $project=$_GET["project"];
+  // Building correct link
+  $newURL = "index.html?config=/data/ll/project&project=".$project;
+  header('Location: '.$newURL);
   exit();
 }
 
@@ -91,18 +101,18 @@ if ($demo) {
 $inputfield="";
 $script="";
 if(isset($inifile["supporter"][$user])) {
-  $inputfield="<label for='loginasuser'>Login as user: <input type='text' placeholder='username' id='loginasuser' /></label><input type='button' id='loginasuserbutton' class='submit'/>";
+  $inputfield="<input type='text' placeholder='Login as username' id='loginasuser' /><input type='button' id='loginasuserbutton' class='submit'/>";
+  $inputfield.="<input type='text' placeholder='Jump to project' id='project' /><input type='button' id='projectbutton' class='submit'/>";
   $script="
 <script>
+  const loginasuser = document.getElementById('loginasuser');
   function loginAsUser() {
-    const loginasuser = document.getElementById('loginasuser');
-    if (node.value) {
+    if (loginasuser.value) {
       window.location.replace(`login.php?loginasuser=\${loginasuser.value}`);
     }
   }
   // Adding listener when pressing the enter key
-  const node = document.getElementById('loginasuser');
-  node.addEventListener('keyup', function(event) {
+  loginasuser.addEventListener('keyup', function(event) {
     if (event.key === 'Enter') {
       loginAsUser();
     }
@@ -110,6 +120,22 @@ if(isset($inifile["supporter"][$user])) {
   // Adding listener when pressing the button
   const loginasuserbutton = document.getElementById('loginasuserbutton');
   loginasuserbutton.addEventListener('click',loginAsUser);
+
+  const project = document.getElementById('project');
+  function jumpToProject() {
+    if (project.value) {
+      window.location.replace(`login.php?project=\${project.value}`);
+    }
+  }
+  // Adding listener when pressing the enter key
+  project.addEventListener('keyup', function(event) {
+    if (event.key === 'Enter') {
+      jumpToProject();
+    }
+  });
+  // Adding listener when pressing the button
+  const projectbutton = document.getElementById('projectbutton');
+  projectbutton.addEventListener('click',jumpToProject);
 </script>
 ";
   if(isset($_GET["loginasuser"]) && $_GET["loginasuser"]!=$user) {
@@ -217,7 +243,6 @@ if(isset($inifile["nonactive_pa"][$user])){
   }
 }
 
-
 $mentorlinks = "";
 $linktemplate = '<td><a href="index.html?config=/data/ll/mentor&mentor=@@user@@">Mentor view</a></td>';
 if(isset($inifile["mentor"][$user])){
@@ -278,13 +303,42 @@ $systemname = strtoupper($systemname);
 if(isset($loginasuser)) {
   $user=$loginasuser;
 }
-$parameters = array('username' => $user, 
-                    'userlinks' => $userlinks, 
-                    'mentorlinks' => $mentorlinks, 
-                    'supporterlinks' => $supporterlinks, 
-                    'pilinks' => $pilinks, 
-                    'copilinks' => $copilinks, 
-                    'palinks' => $palinks, 
+
+// Defining systems at JSC
+$systemmap = array(
+  'SYSTEM' => 'JURECA DC',
+  'JURECA-DC' => 'JURECA DC',
+  'JUWELS BOOSTER' => 'JUWELS Booster',
+  'JUWELS' => 'JUWELS Cluster',
+  'JEDI' => 'JEDI',
+  'DEEP' => 'DEEP',
+  'JUSUF' => 'JUSUF HPC',
+);
+if (array_key_exists($systemname,$systemmap)) {
+  // Defining profile page:
+  $profile_page = 'https://judoor.fz-juelich.de/account/a/JSC_LDAP/'.$user.'/';
+  $status_endpoint = 'https://status.jsc.fz-juelich.de/api/services/?format=json';
+  // Getting health of this system from status page:
+  if (isset($status_endpoint) && $status_endpoint !== '') {
+    try {
+      $json = file_get_contents($status_endpoint);
+      $services = json_decode($json,true);
+      if (gettype($services) == 'array') {
+        foreach ($services as $service) {
+          if ($systemmap[$systemname] == $service['name']) {
+            $health = $service['health'];
+            $status_page = 'https://status.jsc.fz-juelich.de/services/'.$service['id'];
+          }
+        }  
+      }
+    }
+    catch(Throwable $ignored){
+    }  
+  }
+}
+
+$parameters = array(
+                    'username' => $user, 
                     'remarks' => $remarks,
                     'table' => $table,
                     'folder' => $folder,
@@ -292,7 +346,10 @@ $parameters = array('username' => $user,
                     'demo' => $demo,
                     'system' => $systemname,
                     'inputfield' => $inputfield,
-                    'script' => $script
+                    'script' => $script,
+                    'health' => $health,
+                    'status_page' => $status_page,
+                    'profile_page' => $profile_page
                     );
 $template = file_get_contents($dir.'/config/template.html');
 

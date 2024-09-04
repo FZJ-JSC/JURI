@@ -84,7 +84,7 @@ function init_grid() {
       suppressFloatingFilterButton: true, // Hide the filter button beside the floating filter
       suppressHeaderMenuButton:false,     // Show (false) or hide (true) the filter menu from the header
       cellClass: 'text-center',           // Default class of cells
-      flex: 1,
+      flex: 1,                            // Set flex cells that will fill the space
       // minWidth: 50,
       // cellClass: (params) => {
       //   var default_classes = 'text-center';
@@ -113,8 +113,8 @@ function init_grid() {
     enableCellTextSelection: true,      // Enable selection of cell contents
     ensureDomOrder: true,               // Make selection in the correct order
     // autoSizeStrategy: {                 // Automatically resize cells...
-    //   // type: 'fitCellContents'           // ...to fit contents
-    //   type: 'fitGridWidth',             // ...to fit GridWidth
+    //   type: 'fitCellContents'           // ...to fit contents
+    //   // type: 'fitGridWidth',             // ...to fit GridWidth
     //   // defaultMinWidth: 100
     // },
     // suppressColumnVirtualisation: true, // Supress column virtualisation to take into account non-visible columns in resizing columns, for example
@@ -154,13 +154,16 @@ function init_grid() {
                              .attr('id',"filter-text-box") 
                              .attr('placeholder',"Filter")
                              .on('input',() => {onFilterTextBoxChanged(); return;})
-    $('#filter').css('width',"150px")
+    $('#filter').css('width',"160px")
                 .append(filter)
 
   }
 
   // Getting headers
   view.getHeaders();
+
+  // Add button for options
+  view.add_options(view.page_description);
 
   // Adding a 'clear filter' for the given column
   clear_column_filter_link = $('<a>').css('display','flex')
@@ -192,6 +195,8 @@ function init_grid() {
   // view.gridApi.setGridOption('onBodyScrollEnd', onChange);    // To run row Data has changed 
   // view.gridApi.setGridOption('onGridReady', onGridReady);    // When grid is ready
 }
+
+
 
 function navigateToNextCell(params) {
   var suggestedNextCell = params.nextCellPosition;
@@ -293,11 +298,14 @@ function onChange(event) {
   if (!view.gridApi) {
     return;
   }
-  // if ((event.type!='virtualColumnsChanged')&&(view.gridApi.getAllDisplayedColumns().length*90 > $('#main_content').width())) {
-  //   view.gridApi.autoSizeAllColumns(false);
-  // } else {
-  //   view.gridApi.sizeColumnsToFit();
-  // }
+  // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
+  if (event.type!='virtualColumnsChanged') {
+    if ((view.gridApi.getAllDisplayedColumns().length*100 > $('#main_content').width())) {
+      view.gridApi.autoSizeAllColumns(false);
+    } else {
+      view.gridApi.sizeColumnsToFit();
+    }  
+  }
   // If only one row is shown, select it
   if (view.gridApi.getDisplayedRowCount() == 1) {
     view.gridApi.setNodesSelected({ nodes: [view.gridApi.getDisplayedRowAtIndex(0)], newValue: true });
