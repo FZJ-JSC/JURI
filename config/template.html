@@ -40,16 +40,47 @@ body {
   transform: rotate(45deg);
   -webkit-transform: rotate(45deg);
 }
-#system_name {
-  padding-right: 10px;
-  font-weight: bold;
-  text-transform: capitalize;
-}
 #main_content {
   padding-top: 0;
 }
 footer {
   height: 74px;
+}
+#system {
+  padding-left: 10px;
+  padding-right: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  & a {
+    font-weight: bold;
+    text-transform: capitalize;
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+  & img {
+    height: 30px;
+    padding-right: 5px;
+  }
+}
+#profile {
+  padding-left: 10px;
+  padding-right: 10px;
+  display: flex;
+  align-items: center;
+  & a {
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+  }
+  & img {
+    margin-right: 5px;
+    background-color: white;
+    height: 30px;
+  }
 }
 table {
   width: 35vw;
@@ -76,6 +107,7 @@ table > tbody tr:first-child td {
 table th {
   font-size: 20px;
   top: 0px !important;
+  border-radius: 10px 10px 0 0;
 }
 td a {
   padding-right: 15px;
@@ -115,7 +147,15 @@ label, input {
   transform: rotate(45deg);
   -webkit-transform: rotate(45deg);
 } */
-
+header button {
+  background-color: var(--fzj-color-blue);
+}
+header button:active {
+  background-color: var(--fzj-color-gray);
+  & a {
+    color: #444 !important;
+  }
+}
 </style>
 <script>
   function resize() {
@@ -137,8 +177,8 @@ label, input {
     </div>
 
     <div id="title">
-      <div id="system_name">@@system@@@@demo@@</div>
-      <div>@@username@@</div>
+      <div id="system"></div>
+      <div id="profile"></div>
     </div>
     <div id="title_wrapper" class="mx-2">
     </div>
@@ -162,7 +202,6 @@ label, input {
       
       @@table@@
     </div>
-      
   </main>
   <footer class="fixed-bottom container-fluid bg-light">
     <div id="footer_infoline">
@@ -181,6 +220,8 @@ label, input {
     </div>
   </footer>
 </body>
+<script src="js/ext/jquery.min.js"></script>
+<script src="js/ext/bootstrap.bundle.min.js"></script>
 <script>
   function jumpToJobID() {
     const jobid = document.getElementById('jobid');
@@ -200,6 +241,94 @@ label, input {
   const jobidbutton = document.getElementById('jobidbutton');
   jobidbutton.addEventListener('click',jumpToJobID);
 
+  // Obtained icons and function from system-status-page:
+  function getStatusForHealth(health) {
+    switch (health) {
+      case '0':
+        toReturn = "Healthy"
+        break
+      case '10':
+        toReturn = "Annotation"
+        break
+      case '20':
+        toReturn = "Minor"
+        break
+      case '30':
+        toReturn = "Medium"
+        break
+      case '40':
+        toReturn = "Major"
+        break
+      case '50':
+        toReturn = "Critical"
+        break
+    }
+    return toReturn
+  }
+  function getVerboseHealth(health) {
+    switch (health) {
+      case '0':
+      case '10':
+        return "healthy"
+      case '20':
+        return "minorly degraded"
+      case '30':
+        return "degraded"
+      case '40':
+        return "majorly degraded"
+      case '50':
+        return "unavailable"
+      default:
+        return "unknown"
+    }
+  }
+
+  let status_page = "@@status_page@@";
+  if (status_page) {
+    let status = getStatusForHealth('@@health@@');
+    let status_verbose = getVerboseHealth('@@health@@');
+    let text = `@@system@@ is currently ${status_verbose}. Click to see more details.`;
+    let status_img = $('<img>').attr('src', `img/Maintenance-Server-JSC-v3_${status}.svg`)
+                               .attr('alt', text);    
+    let status_link = $('<a>').attr('href', status_page)
+                              // .attr('target', "_blank")
+                              .attr('aria-label', text)
+                              .attr('title', text)
+                              .attr('data-toggle', "tooltip")
+                              .attr('data-html', "true")
+                              .attr('data-placement', "bottom")
+                              .text('@@system@@@@demo@@')
+                              .prepend(status_img);
+    let status_button = $("<button>").attr('type','button')
+                                     .prepend(status_link)
+    $('#system').prepend(status_button);
+  } else {
+    $('#system').text('@@system@@@@demo@@')
+  }
+
+  let profile_page = "@@profile_page@@";
+  if (profile_page) {
+    let text = `Click to open user profile`;
+    let profile_img = $('<img>').attr('src', 'img/judoor.svg')
+                               .attr('alt', text);    
+    let profile_link = $('<a>').attr('href', profile_page)
+                               .attr('aria-label', text)
+                               .attr('title', text)
+                               .attr('data-toggle', "tooltip")
+                               .attr('data-html', "true")
+                               .attr('data-placement', "bottom")
+                               .text('@@username@@')
+                               .prepend(profile_img);
+    let profile_button = $("<button>").attr('type','button')
+                                      .prepend(profile_link);
+    $('#profile').prepend(profile_button);
+  } else {
+    $('#profile').text('@@username@@')
+  }
+
+  $(function () {
+    $('[data-toggle="tooltip"]').tooltip()
+  })
 </script>
 @@script@@
 </html>
