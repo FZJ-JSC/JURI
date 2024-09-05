@@ -297,7 +297,7 @@ header button:active {
                               .attr('data-toggle', "tooltip")
                               .attr('data-html', "true")
                               .attr('data-placement', "bottom")
-                              .text('@@system@@@@demo@@')
+                              .html('@@system@@@@demo@@')
                               .prepend(status_img);
     let status_button = $("<button>").attr('type','button')
                                      .prepend(status_link)
@@ -317,7 +317,7 @@ header button:active {
                                .attr('data-toggle', "tooltip")
                                .attr('data-html', "true")
                                .attr('data-placement', "bottom")
-                               .text('@@username@@')
+                               .html('@@username@@')
                                .prepend(profile_img);
     let profile_button = $("<button>").attr('type','button')
                                       .prepend(profile_link);

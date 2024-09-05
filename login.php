@@ -299,10 +299,6 @@ if( !empty($mentorlinks)||!empty($supporterlinks) ) {
 
 $systemname = str_replace("_", " ", $systemname);
 $systemname = strtoupper($systemname);
-#$systemname = str_replace("BOOSTER", "Booster", $systemname);
-if(isset($loginasuser)) {
-  $user=$loginasuser;
-}
 
 // Defining systems at JSC
 $systemmap = array(
@@ -335,6 +331,11 @@ if (array_key_exists($systemname,$systemmap)) {
     catch(Throwable $ignored){
     }  
   }
+}
+
+#$systemname = str_replace("BOOSTER", "Booster", $systemname);
+if(isset($loginasuser)) {
+  $user=$loginasuser;
 }
 
 $parameters = array(
