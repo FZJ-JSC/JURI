@@ -112,11 +112,11 @@ function init_grid() {
     tooltipShowDelay: 0,                // Delay to show tooltip on mousehover over header (0 = no delay)
     enableCellTextSelection: true,      // Enable selection of cell contents
     ensureDomOrder: true,               // Make selection in the correct order
-    // autoSizeStrategy: {                 // Automatically resize cells...
-    //   type: 'fitCellContents'           // ...to fit contents
-    //   // type: 'fitGridWidth',             // ...to fit GridWidth
-    //   // defaultMinWidth: 100
-    // },
+    autoSizeStrategy: {                 // Automatically resize cells...
+      type: 'fitCellContents'           // ...to fit contents
+      // type: 'fitGridWidth',             // ...to fit GridWidth
+      // defaultMinWidth: 100
+    },
     // suppressColumnVirtualisation: true, // Supress column virtualisation to take into account non-visible columns in resizing columns, for example
     // suppressRowVirtualisation: true, // Supress row virtualisation to take into account non-visible rows in resizing columns, for example
     headerHeight: 25,                   // Height of header row
@@ -133,9 +133,10 @@ function init_grid() {
     onFilterChanged: onFilterChanged,   // To run after filtering 
     onSortChanged: onSortChanged,       // To run after sorting
     onColumnGroupOpened: onChange,      // A column group was opened / closed.
-    // onFirstDataRendered: onFirstData,     // Fired the first time data is rendered into the grid. 
+    // onFirstDataRendered: onFirstData,   // Fired the first time data is rendered into the grid. 
     // onGridReady: onGridReady,           // When the grid is ready
-    // suppressCellFocus: true,         // Turn off cell focus (if turning on, can't move selection with arrows)
+    onStateUpdated: onStateUpdated,     // Grid state has been updated.
+    // suppressCellFocus: true,            // Turn off cell focus (if turning on, can't move selection with arrows)
     // onSelectionChanged: onSelectionChanged, // Function to run when selected row has changed
 
     // rowClassRules: {           // It is also possible to apply rules for entire rows
@@ -196,7 +197,20 @@ function init_grid() {
   // view.gridApi.setGridOption('onGridReady', onGridReady);    // When grid is ready
 }
 
+// function onGridReady(event) {
+//   console.log('onGridReady',event)
+// }
 
+function onStateUpdated(event) {
+  // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
+  if (event.sources[0]!='scroll') {
+    if ((view.gridApi.getAllDisplayedColumns().length*100 > $('#main_content').width())) {
+      view.gridApi.autoSizeAllColumns(false);
+    } else {
+      view.gridApi.sizeColumnsToFit({defaultMinWidth: $('#main_content').width()/view.gridApi.getAllDisplayedColumns().length});
+    }  
+  }
+}
 
 function navigateToNextCell(params) {
   var suggestedNextCell = params.nextCellPosition;
@@ -297,14 +311,6 @@ function add_filter_placeholder() {
 function onChange(event) {
   if (!view.gridApi) {
     return;
-  }
-  // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
-  if (event.type!='virtualColumnsChanged') {
-    if ((view.gridApi.getAllDisplayedColumns().length*100 > $('#main_content').width())) {
-      view.gridApi.autoSizeAllColumns(false);
-    } else {
-      view.gridApi.sizeColumnsToFit();
-    }  
   }
   // If only one row is shown, select it
   if (view.gridApi.getDisplayedRowCount() == 1) {
