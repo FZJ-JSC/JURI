@@ -516,17 +516,16 @@ function add_column_selector() {
       if (typeof(Storage) !== "undefined" && sessionStorage.getItem("group_"+group_escaped)) {
         checked = sessionStorage.getItem("group_"+group_escaped) == "true";
       } else if (view.page_data && typeof(view.page_data.default_columns) == "object") {
-        checked = view.page_data.default_columns.includes(group);
+        checked = view.page_data.default_columns.includes(group.replace(/(_)/g, ' '));
       } else if (typeof(default_columns) !== "undefined") {
-        checked = default_columns.includes(group);
+        checked = default_columns.includes(group.replace(/(_)/g, ' '));
       }
       // Forcing show used groups (groups that are used on URL)
       checked = used_groups.has(group) ? true : checked
 
-
       // Creating column list selection
       dropup_menu.append($("<label>").addClass("dropdown-item form-check-label")
-                    .text(group.replace("_"," "))
+                    .text(group.replace(/(_)/g, ' '))
                     .prepend($("<input>")
                     .addClass("form-check-input")
                     .attr("type","checkbox")
@@ -623,6 +622,9 @@ function add_column_selector() {
 
 /**
  * Get all column groups and create css stylesheet with class to hide columns
+ * IMPORTANT: The CSS must be escaped in comparison to the class, e.g.:
+ * - if the class on the html is 'hide-test_here_(ext)', then the CSS must be 'hide-test_here_\(ext\)'
+ * - if the class on the html is 'hide-test_here_\(ext\)', then the CSS must be 'hide-test_here_\\\(ext\\\)'
  */
 function add_column_css() {
   // Getting different groups of columns

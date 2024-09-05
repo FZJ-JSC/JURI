@@ -146,7 +146,7 @@ if(isset($inifile["supporter"][$user])) {
       !isset($inifile["active_pa"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_pa"][$_GET["loginasuser"]]) &&
       !isset($inifile["mentor"][$_GET["loginasuser"]]) && !isset($inifile["supporter"][$_GET["loginasuser"]])) {
       // If not, emit alert and redirect to regular login.php
-      $alert = "User \"".$_GET["loginasuser"]."\" not found!";
+      $alert = "User \"".$_GET["loginasuser"]."\" not found on ".strtoupper($systemname)."!";
       echo "<script type='text/javascript'>alert('$alert'); window.location.replace('login.php'); </script>";
       exit();
     }
