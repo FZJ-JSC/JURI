@@ -139,6 +139,17 @@ if(isset($inifile["supporter"][$user])) {
 </script>
 ";
   if(isset($_GET["loginasuser"]) && $_GET["loginasuser"]!=$user) {
+    // Checking if user exists in any of the roles
+    if(!isset($inifile["active_user"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_user"][$_GET["loginasuser"]]) && 
+      !isset($inifile["active_pi"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_pi"][$_GET["loginasuser"]]) &&
+      !isset($inifile["active_copi"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_copi"][$_GET["loginasuser"]]) &&
+      !isset($inifile["active_pa"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_pa"][$_GET["loginasuser"]]) &&
+      !isset($inifile["mentor"][$_GET["loginasuser"]]) && !isset($inifile["supporter"][$_GET["loginasuser"]])) {
+      // If not, emit alert and redirect to regular login.php
+      $alert = "User '".$_GET["loginasuser"]."' not found!";
+      echo "<script type='text/javascript'>alert('$alert'); window.location.replace('login.php'); </script>";
+      exit();
+    }
     $loginasuser=$_GET["loginasuser"];
     if(isset($loginasuser)) {
       // $remarks.= "<font color=\"red\"><b>Changed to user loginasuser: ". $_GET["loginasuser"]."</b></font><br>";
@@ -163,9 +174,9 @@ if(isset($inifile["supporter"][$user])) {
 #$remarks.= "<br>";
 #$remarks.= "<br>";
 
-if(isset($inifile["active_user"][$user])){
-  $field = $inifile["active_user"][$user];
-}
+// if(isset($inifile["active_user"][$user])){
+//   $field = $inifile["active_user"][$user];
+// }
 
 $userlinks = "";
 $linktemplate = '<tr><td><a href="index.html?config=/data/ll/user&project=@@group@@&user=@@user@@">@@account@@</a></td><td> (data available)</td></tr>';
