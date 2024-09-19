@@ -289,6 +289,7 @@ View.prototype.show = function () {
  */
 View.prototype.get_system_status = async function (statusfile,systemname) {
   // Getting system status
+  if (!statusfile) { return; }
   let lastMod = null;
   let systemmap = {
     'SYSTEM': 'JURECA DC',
@@ -301,7 +302,6 @@ View.prototype.get_system_status = async function (statusfile,systemname) {
   };
   let health = null;
   let id = null;
-  if (!statusfile) { return; }
   await fetch(statusfile).then(r => {
       lastMod = new Date(r.headers.get('Last-Modified'));
       now = new Date();
@@ -408,15 +408,15 @@ View.prototype.build_system_menu = function (navdata) {
                                         });
           current_link.prepend(status_img)
         }
-
-        // Checking current system name to select it
-        if (this_system_name == current_system_name+(navdata.demo ? " DEMO" : "")) {
-          current_link.addClass("selected");
-        }
-        // Append to the menu
-        systemname_dropdown.append(current_link)
-
       });
+      
+      // Checking current system name to select it
+      if (this_system_name == current_system_name+(navdata.demo ? " DEMO" : "")) {
+        current_link.addClass("selected");
+      }
+      // Append to the menu
+      systemname_dropdown.append(current_link)
+
       return;
     });
     systemname_dropdown.on( "mouseover", function(event) {
