@@ -324,10 +324,14 @@ $systemmap = array(
 if (array_key_exists($systemname,$systemmap)) {
   // Defining profile page:
   $profile_page = 'https://judoor.fz-juelich.de/account/a/JSC_LDAP/'.$user.'/';
-  $status_endpoint = 'https://status.jsc.fz-juelich.de/api/services/?format=json';
+  $status_endpoint = $_SERVER['DOCUMENT_ROOT'].'/status.json';
   // Getting health of this system from status page:
   if (isset($status_endpoint) && $status_endpoint !== '') {
     try {
+      // Checking if file was modified in the last 10 min
+      if ((time()-filemtime($status_endpoint))>600) {
+        throw new Exception('Status not updated in the last 10min.');
+      }
       $json = file_get_contents($status_endpoint);
       $services = json_decode($json,true);
       if (gettype($services) == 'array') {

@@ -155,16 +155,14 @@ function init_grid() {
                              .attr('id',"filter-text-box") 
                              .attr('placeholder',"Filter")
                              .on('input',() => {onFilterTextBoxChanged(); return;})
-    $('#filter').css('width',"160px")
+    $('#filter').css('width',"170px")
                 .append(filter)
-
   }
+  // Add button for options
+  view.add_filter_options($('#filter'));
 
   // Getting headers
   view.getHeaders();
-
-  // Add button for options
-  view.add_options(view.page_description);
 
   // Adding a 'clear filter' for the given column
   clear_column_filter_link = $('<a>').css('display','flex')
@@ -248,7 +246,7 @@ function get_filter_string(value) {
 }
 
 function onFilterChanged(event) {
-  view.inital_data.filter = {}
+  view.initial_data.filter = {}
   Object.entries(view.gridApi.getFilterModel()).forEach(([key,value]) => {
     let filter;
     if (value.operator) {
@@ -257,14 +255,14 @@ function onFilterChanged(event) {
       filter = get_filter_string(value);
     }
 
-    view.inital_data.filter[view.nameToHeader[view.clicked_page][key]] = filter;
+    view.initial_data.filter[view.nameToHeader[view.clicked_page][key]] = filter;
   })
   view.setHash();
   update_values();
 }
 
 function onSortChanged(event) {
-  view.inital_data.sort = event.columns.filter(function (s) {
+  view.initial_data.sort = event.columns.filter(function (s) {
                               return s.sort != null;
                             }).map(function (s) {
                               return { colId: view.nameToHeader[view.clicked_page][s.colId], sort: s.sort };

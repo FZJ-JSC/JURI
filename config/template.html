@@ -46,25 +46,6 @@ body {
 footer {
   height: 74px;
 }
-#system {
-  padding-left: 10px;
-  padding-right: 10px;
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  & a {
-    font-weight: bold;
-    text-transform: capitalize;
-    color: white;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-  }
-  & img {
-    height: 30px;
-    padding-right: 5px;
-  }
-}
 #profile {
   padding-left: 10px;
   padding-right: 10px;
@@ -147,15 +128,6 @@ label, input {
   transform: rotate(45deg);
   -webkit-transform: rotate(45deg);
 } */
-header button {
-  background-color: var(--fzj-color-blue);
-}
-header button:active {
-  background-color: var(--fzj-color-gray);
-  & a {
-    color: #444 !important;
-  }
-}
 </style>
 <script>
   function resize() {
@@ -283,8 +255,10 @@ header button:active {
     }
   }
 
+  // Get status page from PHP, if present
   let status_page = "@@status_page@@";
   if (status_page) {
+    // When status page link is given, get 'health'
     let status = getStatusForHealth('@@health@@');
     let status_verbose = getVerboseHealth('@@health@@');
     let text = `@@system@@ is currently ${status_verbose}. Click to see more details.`;

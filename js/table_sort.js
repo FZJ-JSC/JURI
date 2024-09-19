@@ -87,7 +87,7 @@ function sort_table(caller, type, dateformat) {
     newTableBody.append(rows[arrayOfRows[i].oldIndex]);
   }
   tbody.replaceWith(newTableBody);
-  view.inital_data.sort = {
+  view.initial_data.sort = {
     colId: $(caller).text(),
     sort: direction,
   };
@@ -105,18 +105,18 @@ function sort_table(caller, type, dateformat) {
  * to recreate the last sort ordering.
  */
 function set_initial_sort() {
-  if (view.inital_data.sort && Object.keys(view.inital_data.sort).length) {
+  if (view.initial_data.sort && Object.keys(view.initial_data.sort).length) {
     if($("#main_content table").length){
-      let element = $("th").filter(function () { return $(this).text().toLowerCase() == view.inital_data.sort.colId.toLowerCase(); }).first();
-      if (view.inital_data.sort.sort) {
-        element.addClass((view.inital_data.sort.sort == "asc") ? "desc" : "asc");
+      let element = $("th").filter(function () { return $(this).text().toLowerCase() == view.initial_data.sort.colId.toLowerCase(); }).first();
+      if (view.initial_data.sort.sort) {
+        element.addClass((view.initial_data.sort.sort == "asc") ? "desc" : "asc");
       }
       element.trigger("click");
     } else if (view.gridApi) {
       view.gridApi.applyColumnState({
         state: [{ 
-                  colId: view.headerToName[view.clicked_page][view.inital_data.sort.colId], 
-                  sort: view.inital_data.sort.sort 
+                  colId: view.headerToName[view.clicked_page][view.initial_data.sort.colId], 
+                  sort: view.initial_data.sort.sort 
                 }],
         defaultState: { sort: null },
       });
