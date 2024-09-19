@@ -74,8 +74,8 @@ jQuery.fn.table2CSV = function(options) {
 };
 
 function download_table() {
-  if ($("#main_content table").length) {
-    $("#main_content table").table2CSV({
+  if ($("#main_content > table").length) {
+    $("#main_content > table").table2CSV({
       separator: ';',
       filename: view.selected_page+'.csv'
     });

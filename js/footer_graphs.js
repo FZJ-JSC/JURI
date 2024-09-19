@@ -25,8 +25,8 @@ View.prototype.FooterGraph = function (config_file) {
     this.apply_config()
     this.add_event_handler();
     // Add click when footer is added after changing tabs and only one result is on the table (e.g., since filter has already been applied)
-    if($("#main_content table tbody tr:visible").length == 1) {
-      $("#main_content table tbody tr:visible")[0].click();
+    if($("#main_content > table tbody tr:visible").length == 1) {
+      $("#main_content > table tbody tr:visible")[0].click();
     }
   });
 }
@@ -41,16 +41,16 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
   let keys = view.headers[view.clicked_page];
 
   // Selecting or de-selecting a line
-  $("#main_content table tbody tr").click(function () {
+  $("#main_content > table tbody tr").click(function () {
     if($(this).hasClass("selected")) { 
       // If clicking again on already selected line, deselect and restart footer
-      $("#main_content table tbody tr").removeClass("selected");
+      $("#main_content > table tbody tr").removeClass("selected");
       self.selected_parameter = null;
       self.clear();
       self.create_graphs();
       return; 
     } else {
-      $("#main_content table tbody tr").removeClass("selected");
+      $("#main_content > table tbody tr").removeClass("selected");
       $(this).addClass("selected");
       let params = {};
       let i = 0;
@@ -67,7 +67,7 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
     if ([38, 40].indexOf(event.keyCode) == -1) {
       return
     }
-    let current_selected = $("#main_content table tbody tr.selected");
+    let current_selected = $("#main_content > table tbody tr.selected");
     if (current_selected.length == 0) {
       return;
     }
@@ -99,7 +99,7 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
   }
 
   $(document).keydown(scroll);
-  $("#main_content table tbody tr").addClass("clickable");
+  $("#main_content > table tbody tr").addClass("clickable");
 }
 
 

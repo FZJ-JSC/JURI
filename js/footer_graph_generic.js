@@ -39,15 +39,15 @@ function add_event_handler_generic(keys) {
         indices[keys[key]] = -1;
     }
     for (let key in indices) {
-        $("#main_content table thead tr:first").find("th").each(function(idx) {
+        $("#main_content > table thead tr:first").find("th").each(function(idx) {
             if($(this).text() == key) {
                 indices[key] = idx;
                 return false;
             }
         });
     }
-    $("#main_content table tbody tr").click(function() {
-        $("#main_content table tbody tr").removeClass("selected");
+    $("#main_content > table tbody tr").click(function() {
+        $("#main_content > table tbody tr").removeClass("selected");
         $(this).addClass("selected");
         let params = {};
         for (let key in keys) {
@@ -60,7 +60,7 @@ function add_event_handler_generic(keys) {
         if([38, 40].indexOf(event.keyCode) == -1) {
             return
         }
-        let current_selected = $("#main_content table tbody tr.selected");
+        let current_selected = $("#main_content > table tbody tr.selected");
         if (current_selected.length == 0) {
             return;
         }
@@ -91,7 +91,7 @@ function add_event_handler_generic(keys) {
     }
 
     $(document).keydown(scroll);
-    $("#main_content table tbody tr").addClass("clickable");
+    $("#main_content > table tbody tr").addClass("clickable");
     if (! $("#graph_size").length) {
         let control = $("<span>").text("Graph size:").attr("id","graph_size");
         control.append($("<a>").append($("<span>").attr("title","large").addClass("fa fa-angle-up")).click(function(){resize_graph("large"); return false;}));

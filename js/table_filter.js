@@ -117,9 +117,9 @@ function update_values(search,table) {
       } else if (visible == 1) {
         // When only one result is shown, select
         // (when not selected, footer is already present and filter is applied)
-        let row = $("#main_content table tbody tr:visible");
+        let row = $("#main_content > table tbody tr:visible");
         if (!row.hasClass("selected")) {
-          $("#main_content table tbody tr:visible")[0].click();
+          $("#main_content > table tbody tr:visible")[0].click();
         }
       }  
     } else {
@@ -277,7 +277,7 @@ function unescapeSpecialCaseChar(string) {
  *                        Column name (not Header!) (for grid)
  */
 function clear_filter(column) {
-  if($("#main_content table").length){
+  if($("#main_content > table").length){
     // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
     $(`tr.filter th${column ? '.group_'+escapeSpecialCaseChar(column) : ""} input`).val("");
     $("tr.filter").closest("table").each(function() {
@@ -452,7 +452,7 @@ function set_initial_columns() {
 
   unchecked.forEach(function(group) {
     // For regular tables, add 'hide-(group)' class
-    $("#main_content table").addClass(`hide-${group}`); 
+    $("#main_content > table").addClass(`hide-${group}`); 
     // For datatables/grid, hide them via API
     if (view.gridApi) {
       // groupid = view.headerToName[view.clicked_page][group]
@@ -497,7 +497,7 @@ function add_column_selector() {
 
     // Getting the groups of the used columns (either from the table or grid)
     let used_groups = new Set();
-    if($("#main_content table").length){
+    if($("#main_content > table").length){
       // Getting all header elements that contain 'group_' classes
       // And check if the text is included in 'used_cols'
       $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
@@ -554,13 +554,13 @@ function add_column_selector() {
                     .attr("name","group_"+group)
                     .on("change",function() { 
                         // For regular tables
-                        if($("#main_content table").length){
+                        if($("#main_content > table").length){
                           // If hide-class is not present (i.e., the column is shown) clear filter, 
-                          if(!$("#main_content table").hasClass(`hide-group_${group}`)) {
+                          if(!$("#main_content > table").hasClass(`hide-group_${group}`)) {
                             clear_filter(group)
                           }
                           // Toggle hide class on table (to show or hide respective column group)
-                          $("#main_content table").toggleClass(`hide-group_${group}`);
+                          $("#main_content > table").toggleClass(`hide-group_${group}`);
                         // For datatables / grids
                         } else if (view.gridApi) {
                           view.headerToName[view.clicked_page][group]
@@ -673,7 +673,7 @@ function add_column_css() {
 function get_column_groups() {
   let groups = [];
   // Search for available groups
-  if($("#main_content table").length){
+  if($("#main_content > table").length){
     groups = new Array();
     $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
       let classes = $(this).attr("class").split(" ");

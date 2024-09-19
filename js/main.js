@@ -1127,10 +1127,10 @@ View.prototype.add_autorefresh = function () {
 View.prototype.reloadPage = function () {
   var self = this;
   if (self.selected_page != 'live') {
-    if($("#main_content table").length){
+    if($("#main_content > table").length){
       // Storing jobid that is selected before
       index = self.headers[self.clicked_page].indexOf('JobID');
-      selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
+      selected_jobid = $("#main_content > table tbody tr.selected td").eq(index).text()??""
     } else if (self.gridApi) {
       self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
       selected_jobid = self.gridApi.getSelectedNodes(); // Get selected job
@@ -1139,9 +1139,9 @@ View.prototype.reloadPage = function () {
     self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
       // When there is a selected job...
       if (selected_jobid.length) {
-        if($("#main_content table").length){
+        if($("#main_content > table").length){
           // ...reselecting row with the same jobid (when present)
-          jobid_row = $(`#main_content table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
+          jobid_row = $(`#main_content > table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
           if (jobid_row) {
             jobid_row.click()
           }
@@ -1279,7 +1279,7 @@ View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
   if($("#main_content > table").length){
-    self.headers[self.clicked_page] = $("#main_content table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
+    self.headers[self.clicked_page] = $("#main_content > table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
   } else if (self.gridApi) {
     let header;
     self.headers[self.clicked_page] = []

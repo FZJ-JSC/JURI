@@ -106,7 +106,7 @@ function sort_table(caller, type, dateformat) {
  */
 function set_initial_sort() {
   if (view.initial_data.sort && Object.keys(view.initial_data.sort).length) {
-    if($("#main_content table").length){
+    if($("#main_content > table").length){
       let element = $("th").filter(function () { return $(this).text().toLowerCase() == view.initial_data.sort.colId.toLowerCase(); }).first();
       if (view.initial_data.sort.sort) {
         element.addClass((view.initial_data.sort.sort == "asc") ? "desc" : "asc");

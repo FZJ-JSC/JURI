@@ -558,7 +558,7 @@ th input:not(:placeholder-shown) {
   background-color: var(--fzj-color-green);
 }
 
-#main_content table thead th {
+#main_content > table thead th {
   top: -10px;
 }
 /* Table on Live view */
@@ -566,11 +566,11 @@ th input:not(:placeholder-shown) {
   top: 0px;
 }
 
-#main_content table thead tr.filter th {
+#main_content > table thead tr.filter th {
   top: 0.7rem;
 }
 
-#main_content table thead tr.aggregate th {
+#main_content > table thead tr.aggregate th {
   top: 2rem;
 }
 
