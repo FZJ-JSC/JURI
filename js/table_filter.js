@@ -295,6 +295,7 @@ function clear_filter(column) {
                                   "quickFilterText",
                                   document.getElementById("filter-text-box").value,
                                 );
+      $('#optionstable input').prop('checked', false);
       return;
     }
     let group = view.gridApi.getColumnGroup(column);
@@ -391,6 +392,7 @@ function apply_filter(filters) {
           initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
         }
       })
+      view.check_filteroptions(filters);
       filter_grid(initial_filters);
     }
   }

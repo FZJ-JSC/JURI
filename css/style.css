@@ -320,27 +320,31 @@ a {
   font-weight: bold;
   font-size: 1.1em;
   background: var(--fzj-color-gray);
-  transform: translateY(-16px);
-  margin-bottom: 10px;  
+  transform: translateY(-20px);
+  margin-top: 4px;  
   align-items: center;
   display: flex;
   flex-direction: column;
 }
 
 #optionstable {
-  width: fit-content;
   border: 1px solid black;
   border-radius: 10px;
   th {
     background-color: #666;
     color: white;
-    padding: 10px;
-    border-radius: 8px 8px 0 0;
+    padding: 5px 10px 5px 10px;
+    border-radius: 9px 0 0 9px;
+    width: 100px;
+    text-wrap: wrap;
   }
   td {
     text-align: left;
-    padding: 10px;
+    padding: 0 5px;
   }
+  .optionname {
+    text-align: right;
+  }  
   input {
     vertical-align: middle;
     margin-right: 5px;

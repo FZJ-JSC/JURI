@@ -78,6 +78,9 @@ function View(parameters) {
   this.gridState = {};
   // Store column definitions for grid
   this.columnDefs = null;
+  // Store filter options used to define the preset table
+  // (Used also to compare applied filters and select checkboxes)
+  this.filteroptions = {};
 }
 
 /**
@@ -823,14 +826,73 @@ View.prototype.add_colorscale_controls = function () {
   }
 }
 
-
-View.prototype.add_filter = function (new_filter) {
+/**
+ * Add filter to grid
+ * @param {*} new_filter Filter(s) to be added
+ * @param {*} delimiter string to separate more than one string when filter already exist
+ */
+View.prototype.add_filter = function (new_filter,delimiter="||") {
   let self = this;
-  
-  let full_filter = {...self.initial_data.filter, ...new_filter};
-  // console.log('full_filter',full_filter)
+  let full_filter = { ...self.initial_data.filter }; // Start with a shallow copy of self.initial_data.filter
+  for (let key in new_filter) {
+    if (full_filter.hasOwnProperty(key)) {
+      if (!full_filter[key].includes(new_filter[key])) {
+        // If both objects have the same key, and the old key does not include the filter already, concatenate values
+        full_filter[key] = `${full_filter[key]}${delimiter}${new_filter[key]}`;
+      }
+    } else {
+      // If the key is only in new_filter, add it to the merged object
+      full_filter[key] = new_filter[key];
+    }
+  }
   apply_filter(full_filter);
 }
+
+/**
+ * Compare the checkboxes on filter options table with the 'filters' and select the ones that 
+ * are already included
+ * @param {*} filters filters to be checked
+ */
+View.prototype.check_filteroptions = function (filters) {
+  let self=this;
+  // Checking if checkboxes on options need to be checked, and checking them
+  for (let [name, input] of Object.entries(self.filteroptions)) {
+    for (let [optname, filter] of Object.entries(input)) {
+      let id = `${name.replace(/(\s)/g, '_')}_${optname.replace(/(\s)/g, '_')}`;
+      let checked = true;
+      for (let [key, value] of Object.entries(filter)) {
+        if (!filters.hasOwnProperty(key)||!filters[key].includes(value)) {
+          checked = false
+        }
+      }
+      $(`#${id}`).prop('checked', checked);
+    }
+  }  
+}
+
+/**
+ * Remove filter from grid
+ * @param {*} new_filter Filter(s) to be added
+ */
+View.prototype.remove_filter = function (new_filter,delimiter="||") {
+  let self = this;
+  let full_filter = { ...self.initial_data.filter }; // Start with a shallow copy of self.initial_data.filter
+  for (let key in new_filter) {
+    if (full_filter.hasOwnProperty(key)) {
+      if (full_filter[key].includes(new_filter[key])) {
+        // If both objects have the same key (it should have), remove value
+        full_filter[key] = full_filter[key].replace(`${delimiter}${new_filter[key]}`,"");
+        full_filter[key] = full_filter[key].replace(`${new_filter[key]}${delimiter}`,"");
+        full_filter[key] = full_filter[key].replace(new_filter[key],"");
+        // if (!full_filter[key].length) {
+        //   delete full_filter[key];
+        // }
+      }
+    }
+  }
+  apply_filter(full_filter);
+}
+
 
 
 /**
@@ -857,7 +919,12 @@ View.prototype.add_filter_options = function (filter) {
   }
   // Define preselected options
   let options = {
-    'End Date': {
+    'Start Date': {
+      'Today': {'Start Date': new Date().toISOString().slice(0, 10)},
+      'Yesterday': {'Start Date': new Date(Date.now() - 1000*60*60*24).toISOString().slice(0, 10)}
+    },
+    'Estimated End Date': {
+      'Tomorrow': {'End Date (est)': new Date(Date.now() + 1000*60*60*24).toISOString().slice(0, 10)},
       'Today': {'End Date (est)': new Date().toISOString().slice(0, 10)},
       'Yesterday': {'End Date (est)': new Date(Date.now() - 1000*60*60*24).toISOString().slice(0, 10)}
     },
@@ -867,6 +934,8 @@ View.prototype.add_filter_options = function (filter) {
       'FAILED': {'State': 'FAILED'},
     },
   }
+  self.filteroptions = options;
+
   let text = `Click to ${self.initial_data.options?.showoptions ? "hide" : "show"} pre-selected filter options`;
   let filteroptions = $('#filteroptions')
   if (!filteroptions.length) {
@@ -883,25 +952,31 @@ View.prototype.add_filter_options = function (filter) {
   $('#optionsdiv').remove() // Removing previous before adding new one
   let desc = 'Options to filter table:'
   let optionsdiv = $('<div>',{id: "optionsdiv"}).hide()
-  let optionstable = $('<table>',{id: "optionstable"}).append($('<tr>').append($('<th>',{colspan:2*Object.keys(options).length,"aria-label":desc})
-                                                                       .text(desc)));
-  let optionsrow = $('<tr>')
+  let optionstable = $('<table>',{id: "optionstable",width: 100+200*Object.keys(options).length});
+  let optionsrow = $('<tr>').append($('<th>',{"aria-label":desc})
+                            .text(desc))
   // Looping over the different options
   for (let [key, values] of Object.entries(options)) {
     let id = key.replace(/(\s)/g, '_');
     // Adding current option 'title' in a cell
-    optionsrow.append($('<td>',{id: id,text: `${key}: `}))
-    let this_option = $('<td>')
+    optionsrow.append($('<td>',{id: id}).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'))
+    let this_option = $('<td>').addClass('optionvalues')
     // Looping over the different options for this given field, and creating the radio filteroptions
     for (let [optname, filter] of Object.entries(values)) {
-      let option_input = $('<input>',{type: 'radio',id: optname, name: id, value: optname})
-      let option_label = $('<label>',{for: optname}).text(optname)
+      let inputid = `${id}_${optname.replace(/(\s)/g, '_')}`;
+      let option_input = $('<input>',{type: 'checkbox',id: inputid, name: id, value: optname})
+      let option_label = $('<label>',{for: inputid}).append($('<span>').text(optname).css("vertical-align", "middle"))
                                                     .prepend(option_input)
       this_option.append(option_label)
                  .append(`<br>`);
       // Adding filter when input radio is clicked
-      option_input.on('click', () => {
-        self.add_filter(filter);
+      option_input.on('change', (e) => {
+        let delimiter="||";
+        if (e.target.checked) {
+          self.add_filter(filter,delimiter=delimiter);
+        } else {
+          self.remove_filter(filter,delimiter=delimiter);
+        }
       })
           
     }

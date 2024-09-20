@@ -85,6 +85,9 @@ function init_grid() {
       suppressHeaderMenuButton:false,     // Show (false) or hide (true) the filter menu from the header
       cellClass: 'text-center',           // Default class of cells
       flex: 1,                            // Set flex cells that will fill the space
+      filterParams: {
+        maxNumConditions: 3,
+      }
       // minWidth: 50,
       // cellClass: (params) => {
       //   var default_classes = 'text-center';
