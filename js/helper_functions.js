@@ -32,6 +32,25 @@ function round_number_or_null_int(number) {
   return round_number_generic(number.value, true, 0);
 };
 
+function hhmm_short(number) {
+  let hoursfrac = Math.floor(number.value+1)/3600
+  let days=Math.floor(hoursfrac/24); 
+  let rest=hoursfrac-(days*24);
+  let hours=Math.floor(rest); 
+  let ret;
+  rest=rest-hours;
+  min=Math.floor(rest*60);  
+  if(days>0) {
+    ret=`${days}d${hours.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}h${min.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}m`;
+  } else if(hours>0) {
+    ret=`${hours}h${min.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}m`;
+  } else {
+    ret=`${min}m`;
+  }
+  // console.log(number.value,(number.value+1)/3600,hoursfrac,days,rest,hours,min,ret)
+  return ret;
+};
+
 
 function cell_color(params,column) {
   return { 'color': params.data[column], 'font-weight': 'bold' };
@@ -46,7 +65,7 @@ function cell_background_color(params,colorcol,defscale) {
     // Getting colorscale name
     if (!(typeof defscale === "string")) {
       // from initial_data or default
-      colorscale_name = view.inital_data.colors.colorscale ?? view.default_colorscale;
+      colorscale_name = view.initial_data.colors.colorscale ?? view.default_colorscale;
     } else {
       if (value <= 0.00005 ) {
         // return white background if value is too small (only for colorscales passed in argument)

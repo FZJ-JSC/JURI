@@ -26,7 +26,7 @@
 }
 
 body {
-  overflow: hidden;
+  overflow: auto;
   font-family: Weissenhof Grotesk,Helvetica Neue,Arial,Helvetica,sans-serif;
 }
 
@@ -42,7 +42,8 @@ a {
   color: #ffffff; 
   border-bottom: 1px solid #fff;
   padding: 0;   
-  min-height: 37px; 
+  min-height: 37px;
+  flex-wrap: nowrap;
 }
 
 #institution_logo {
@@ -61,37 +62,91 @@ a {
 }
 
 #title {
+  height: 100%;
   padding-left: 10px;
   padding-right: 10px;
   align-self: center;
   font-size: 20px;
   display: flex;
   flex-direction: row;
+  & div {
+    display: flex;
+    align-items: center;
+    font-size: min(1.6cqw, 1em);
+    white-space: nowrap;
+    overflow: hidden;
+  }
 }
 
 #title > .dropdown-toggle {
   cursor: pointer;
 }
 
-#title > a {
-  color: white;
+#title .dropdown-menu a {
   text-decoration: none; 
+  img {
+    vertical-align: middle;
+    background-color: white;
+    border-radius: 50%;
+    height: 27px;
+    padding: 3px;
+  }
+  span {
+    margin-left: 5px;
+    vertical-align: middle;
+  }
 }
 
-#title > .dropdown-toggle::after {
+#filteroptions {
+  display: inline-block;
+  content: '';
+  height: 100%;
+  padding-left: 3px;
+}
+#filteroptions::after {
+  vertical-align: -0.8em;
+  content: '';
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  display: inline-block;
+  padding: 3px;
+  transform: rotate(45deg);
+}
+#filteroptions.active::after {
+  transform: rotate(-135deg);
+}
+
+#title .dropdown-toggle::after {
   vertical-align: 0.1em;
   border: solid white;
   border-width: 0 2px 2px 0;
   display: inline-block;
   padding: 3px;
   transform: rotate(45deg);
-  -webkit-transform: rotate(45deg);
 }
 
-#system_name {
+#system {
+  padding-left: 10px;
   padding-right: 10px;
   font-weight: bold;
-  text-transform: capitalize;
+  display: flex;
+  align-items: center;
+  & > a, button a {
+    font-weight: bold;
+    text-transform: capitalize;
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    font-size: min(1.6cqw, 1em);
+    white-space: nowrap;
+    overflow: hidden;
+    height: 100%;
+  }
+  & img {
+    height: 30px;
+    padding-right: 5px;
+  }
 }
 
 #system_picture {
@@ -148,9 +203,9 @@ a {
   position: absolute;
 }
 .button > button.active {
-  border-style: inset;
-  background-color: var(--fzj-color-gray);
-  color: #444;
+  border-style: inset !important;
+  background-color: var(--fzj-color-gray) !important;
+  color: #444 !important;
 }
 .button > button:focus {
   outline: none;
@@ -275,8 +330,47 @@ a {
   font-weight: bold;
   font-size: 1.1em;
   background: var(--fzj-color-gray);
-  transform: translateY(-16px);
-  margin-bottom: 10px;  
+  transform: translateY(-20px);
+  margin-top: 4px;  
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+}
+
+#optionstable {
+  border: 1px solid black;
+  border-radius: 10px;
+  th {
+    background-color: #666;
+    color: white;
+    padding: 5px 10px 5px 10px;
+    border-radius: 9px 0 0 9px;
+    width: 100px;
+    text-wrap: wrap;
+  }
+  td {
+    text-align: left;
+    padding: 0 5px;
+  }
+  .optionname {
+    text-align: right;
+  }  
+  input {
+    vertical-align: middle;
+    margin-right: 5px;
+    accent-color: #666;
+
+    &:focus {
+      outline: none;
+    }
+    /* &:checked {
+      color: #666
+    } */
+  }
+  label {
+    vertical-align: middle;
+    margin: 2px 0 2px 0;
+  }  
 }
 
 @media (max-width: 575.98px) {
@@ -299,6 +393,22 @@ a {
   height: 1.7em;
 }
 
+#header object {
+  width: 250px;
+  align-self: start;
+}
+
+#header button {
+  background-color: var(--fzj-color-blue);
+}
+
+#header button:active {
+  background-color: var(--fzj-color-gray);
+  & a {
+    color: #444 !important;
+  }
+}
+
 .navbar {
   padding-top: 0px;
   padding-bottom: 0px;
@@ -318,6 +428,9 @@ nav li:hover {
 
 .nav-link {
   color: #ffffff ! important;
+  font-size: min(1.6cqw, 1em);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 nav li:hover > .nav-link {
@@ -351,11 +464,6 @@ li > .dropdown-menu {
 
 .nav-item.active > .dropdown-menu {
   left: -1px;
-}
-
-#header object {
-  width: 250px;
-  align-self: start;
 }
 
 /* Main content layout */
@@ -467,7 +575,7 @@ th input:not(:placeholder-shown) {
   background-color: var(--fzj-color-green);
 }
 
-#main_content table thead th {
+#main_content > table thead th {
   top: -10px;
 }
 /* Table on Live view */
@@ -475,11 +583,11 @@ th input:not(:placeholder-shown) {
   top: 0px;
 }
 
-#main_content table thead tr.filter th {
+#main_content > table thead tr.filter th {
   top: 0.7rem;
 }
 
-#main_content table thead tr.aggregate th {
+#main_content > table thead tr.aggregate th {
   top: 2rem;
 }
 

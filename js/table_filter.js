@@ -24,7 +24,7 @@ function filter(table) {
   search.headers = Array.isArray(view.navdata.search_field) ? view.navdata.search_field : [view.navdata.search_field]
   search.fields = []
   search.indices = [];
-  view.inital_data.filter = {};
+  view.initial_data.filter = {};
   // Cleaning message
   $(".filtermessage").remove();
   let index = 0;
@@ -36,7 +36,7 @@ function filter(table) {
       let key = tr_first.eq(index).text();
       let filter = $(this).find("input").val().trim()
       filter_values.push(filter);
-      view.inital_data.filter[key] = filter;
+      view.initial_data.filter[key] = filter;
       if (search.headers.includes(key)) {
         search.fields.push($(this));
         search.indices.push(index);
@@ -117,9 +117,9 @@ function update_values(search,table) {
       } else if (visible == 1) {
         // When only one result is shown, select
         // (when not selected, footer is already present and filter is applied)
-        let row = $("#main_content table tbody tr:visible");
+        let row = $("#main_content > table tbody tr:visible");
         if (!row.hasClass("selected")) {
-          $("#main_content table tbody tr:visible")[0].click();
+          $("#main_content > table tbody tr:visible")[0].click();
         }
       }  
     } else {
@@ -176,7 +176,7 @@ function apply_search(header,filter,follow) {
       value = parseInt(value)
       // If 'follow=true' change the page to the corresponding value
       if (follow) {
-        view.inital_data.filter[header] = filter.toString();
+        view.initial_data.filter[header] = filter.toString();
         view.setHash(true);
         changePage(value)
         return;
@@ -277,7 +277,7 @@ function unescapeSpecialCaseChar(string) {
  *                        Column name (not Header!) (for grid)
  */
 function clear_filter(column) {
-  if($("#main_content table").length){
+  if($("#main_content > table").length){
     // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
     $(`tr.filter th${column ? '.group_'+escapeSpecialCaseChar(column) : ""} input`).val("");
     $("tr.filter").closest("table").each(function() {
@@ -295,6 +295,7 @@ function clear_filter(column) {
                                   "quickFilterText",
                                   document.getElementById("filter-text-box").value,
                                 );
+      $('#optionstable input').prop('checked', false);
       return;
     }
     let group = view.gridApi.getColumnGroup(column);
@@ -306,37 +307,58 @@ function clear_filter(column) {
   }
 }
 
-function get_filter_object(value) {
+/**
+ * Builds condition object to apply on grid
+ * @param {str} value 
+ * @returns Array with boolean if filter has number type, and condition object to apply to grid
+ */
+function get_filter_object(filtertype,value) {
   let condition = {};
-  let numberType = false;
-  condition.filter = value;
-  condition.type = 'contains';
-  range = condition.filter.match(/(^\d*\.?\d*)-(\d*\.?\d*)$/);
-  if (condition.filter.startsWith('>')) {
-    numberType = true
-    condition.type = 'greaterThan'
-    condition.filter = condition.filter.slice(1)
-  } else if (condition.filter.startsWith('<')) {
-    numberType = true
-    condition.type = 'lessThan'
-    condition.filter = condition.filter.slice(1)
-  } else if (range) {
-    numberType = true
-    condition.type = 'inRange'
-    condition.filter = range[1];
-    condition.filterTo = range[2];
+  if (filtertype == 'number') {
+    condition.filter = value;
+    condition.type = 'contains';
+    range = condition.filter.match(/(^\d*\.?\d*)-(\d*\.?\d*)$/);
+    if (condition.filter.startsWith('>')) {
+      condition.type = 'greaterThan'
+      condition.filter = condition.filter.slice(1)
+    } else if (condition.filter.startsWith('<')) {
+      condition.type = 'lessThan'
+      condition.filter = condition.filter.slice(1)
+    } else if (range && range[1].length && range[2].length) {
+      condition.type = 'inRange'
+      condition.filter = range[1];
+      condition.filterTo = range[2];
+    }  
+  } else if (filtertype == 'date') {
+    condition.dateFrom = value;
+    condition.type = 'equals';
+    range = condition.dateFrom.match(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})-(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})/)
+    if (condition.dateFrom.startsWith('>')) {
+      condition.type = 'greaterThan'
+      condition.dateFrom = condition.dateFrom.slice(1)
+    } else if (condition.dateFrom.startsWith('<')) {
+      condition.type = 'lessThan'
+      condition.dateFrom = condition.dateFrom.slice(1)
+    } else if (range && range[1].length && range[2].length) {
+      condition.type = 'inRange'
+      condition.dateFrom = range[1];
+      condition.dateTo = range[2];
+    }  
+  } else {
+    condition.filter = value;
+    condition.type = 'contains';
   }
-  return [numberType, condition];
+  return condition;
 }
 
-function set_initial_filter() {
+function apply_filter(filters) {
   let index = 0;
   let table = $("tr.filter").closest("table")
   if (table.length) {
     table.find("tr:first th").each(function() {
       let key = $(this).text();
-      if (view.inital_data.filter && view.inital_data.filter[key]) {
-        $(this).closest("table").find("tr.filter th input").eq(index).val(view.inital_data.filter[key]);
+      if (filters && filters[key]) {
+        $(this).closest("table").find("tr.filter th input").eq(index).val(filters[key]);
       }
       index+=1;
       return;
@@ -346,12 +368,23 @@ function set_initial_filter() {
       return;
     });  
   } else if (view.gridApi) {
-    // Setting filter from URL
-    if (Object.keys(view.inital_data.filter).length) {
+    // Setting filter from argument
+    if (Object.keys(filters).length) {
       let initial_filters = {};
-      Object.entries(view.inital_data.filter).forEach(([key,value]) => {
+      Object.entries(filters).forEach(([key,value]) => {
         if (!value.length) {return;}
         let multi = false;
+        if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key])) {
+          if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='open') {
+            // Open column group if a filter is applied in a column that is shown only when group is opened
+            let groupcol = view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent()
+            groupcol.setExpanded(true);
+            view.gridApi.autoSizeColumns(groupcol.getLeafColumns());
+          } else if(view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='closed') {
+            // Close column group if a filter is applied in a column that is shown only when groups is closed
+           view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent().setExpanded(false)
+          }
+        }
         initial_filters[view.headerToName[view.clicked_page][key]] = {}
         // Checking if there are multiple conditions
         if (value.includes('&&')) {
@@ -361,28 +394,38 @@ function set_initial_filter() {
           initial_filters[view.headerToName[view.clicked_page][key]].operator = 'OR';
           multi = '||';
         }
-        let numberType = false;
+        let colType = view.gridApi.getColumn(view.headerToName[view.clicked_page][key])?.colDef.cellDataType
+        // if(!colType) {return;}
+        let filtertype = (colType=='date'||colType=='number')?colType:'text';
         // If there are multiple conditions, add them to the conditions array
         if (multi) {
           initial_filters[view.headerToName[view.clicked_page][key]].conditions = []
           value.split(multi).forEach((cond) => {
-            let [ type , condition ] = get_filter_object(cond)
-            numberType |= type
+            let condition = get_filter_object(filtertype,cond)
             initial_filters[view.headerToName[view.clicked_page][key]].conditions.push(condition)
           })
-          initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
+          initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
         } else {
-          let [ type , condition ] = get_filter_object(value)
-          numberType |= type
+          let condition = get_filter_object(filtertype,value)
           initial_filters[view.headerToName[view.clicked_page][key]] = condition
-          initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
+          initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
         }
       })
-      view.gridApi.setFilterModel(initial_filters);
+      view.check_filteroptions(filters);
+      filter_grid(initial_filters);
     }
   }
   return;
 }
+
+/**
+ * Apply a filter to the grid
+ * @param {obj} filter Object containing all filters to be applied on the grid
+ */
+function filter_grid(filter) {
+  view.gridApi.setFilterModel(filter);
+}
+
 
 function update_num_count(table) {
   let visible;
@@ -430,7 +473,7 @@ function set_initial_columns() {
 
   unchecked.forEach(function(group) {
     // For regular tables, add 'hide-(group)' class
-    $("#main_content table").addClass(`hide-${group}`); 
+    $("#main_content > table").addClass(`hide-${group}`); 
     // For datatables/grid, hide them via API
     if (view.gridApi) {
       // groupid = view.headerToName[view.clicked_page][group]
@@ -466,16 +509,16 @@ function add_column_selector() {
   if (groups.length > 1) {
     // Getting columns that are used in filters or sort to activate column group
     // Get filters that are not empty
-    let used_cols = Object.keys(view.inital_data.filter).filter(key => view.inital_data.filter[key] != "")
+    let used_cols = Object.keys(view.initial_data.filter).filter(key => view.initial_data.filter[key] != "")
 
     // Adding sort column when present
-    if (view.inital_data.sort && view.inital_data.sort.colId) {
-      used_cols.push(view.inital_data.sort.colId)
+    if (view.initial_data.sort && view.initial_data.sort.colId) {
+      used_cols.push(view.initial_data.sort.colId)
     }
 
     // Getting the groups of the used columns (either from the table or grid)
     let used_groups = new Set();
-    if($("#main_content table").length){
+    if($("#main_content > table").length){
       // Getting all header elements that contain 'group_' classes
       // And check if the text is included in 'used_cols'
       $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
@@ -532,13 +575,13 @@ function add_column_selector() {
                     .attr("name","group_"+group)
                     .on("change",function() { 
                         // For regular tables
-                        if($("#main_content table").length){
+                        if($("#main_content > table").length){
                           // If hide-class is not present (i.e., the column is shown) clear filter, 
-                          if(!$("#main_content table").hasClass(`hide-group_${group}`)) {
+                          if(!$("#main_content > table").hasClass(`hide-group_${group}`)) {
                             clear_filter(group)
                           }
                           // Toggle hide class on table (to show or hide respective column group)
-                          $("#main_content table").toggleClass(`hide-group_${group}`);
+                          $("#main_content > table").toggleClass(`hide-group_${group}`);
                         // For datatables / grids
                         } else if (view.gridApi) {
                           view.headerToName[view.clicked_page][group]
@@ -651,7 +694,7 @@ function add_column_css() {
 function get_column_groups() {
   let groups = [];
   // Search for available groups
-  if($("#main_content table").length){
+  if($("#main_content > table").length){
     groups = new Array();
     $("#main_content th[class^='group_'],#main_content th[class*=' group_']").each(function() {
       let classes = $(this).attr("class").split(" ");
@@ -699,7 +742,8 @@ function set_filter() {
   }
   // Run inital display process
   set_initial_columns();
-  set_initial_filter();
+  // Applying filter with URL values
+  apply_filter(view.initial_data.filter);
   return;
 }
 

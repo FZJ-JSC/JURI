@@ -318,7 +318,7 @@ Handlebars.registerHelper('cell_color', function(value,defscale) {
     // Getting colorscale name
     if (!(typeof defscale === "string")) {
       // from initial_data or default
-      colorscale_name = view.inital_data.colors.colorscale ?? view.default_colorscale;
+      colorscale_name = view.initial_data.colors.colorscale ?? view.default_colorscale;
     } else {
       if (value <= 0.00005 ) {
         // return white background if value is too small (only for colorscales passed in argument)

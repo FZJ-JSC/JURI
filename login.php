@@ -64,7 +64,8 @@ if(isset($_GET["jobid"])) {
     header('Location: error404.html');
   } else {
     // Building correct link
-    $newURL = "data/projects/".$project."/".$user."/jobreport_".$systemname."_".$project."_".$user."_".$jobid.".html";
+    $systemname_link = $systemname; // In case this is different in the configuration (e.g. capitalization), it can be changed here
+    $newURL = "data/projects/".$project."/".$user."/jobreport_".$systemname_link."_".$project."_".$user."_".$jobid.".html";
     header('Location: '.$newURL);
   }
   exit();
@@ -138,23 +139,26 @@ if(isset($inifile["supporter"][$user])) {
   projectbutton.addEventListener('click',jumpToProject);
 </script>
 ";
-  if(isset($_GET["loginasuser"]) && $_GET["loginasuser"]!=$user) {
-    // Checking if user exists in any of the roles
-    if(!isset($inifile["active_user"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_user"][$_GET["loginasuser"]]) && 
-      !isset($inifile["active_pi"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_pi"][$_GET["loginasuser"]]) &&
-      !isset($inifile["active_copi"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_copi"][$_GET["loginasuser"]]) &&
-      !isset($inifile["active_pa"][$_GET["loginasuser"]]) && !isset($inifile["nonactive_pa"][$_GET["loginasuser"]]) &&
-      !isset($inifile["mentor"][$_GET["loginasuser"]]) && !isset($inifile["supporter"][$_GET["loginasuser"]])) {
-      // If not, emit alert and redirect to regular login.php
-      $alert = "User \"".$_GET["loginasuser"]."\" not found on ".strtoupper($systemname)."!";
-      echo "<script type='text/javascript'>alert('$alert'); window.location.replace('login.php'); </script>";
-      exit();
-    }
-    $loginasuser=$_GET["loginasuser"];
-    if(isset($loginasuser)) {
-      // $remarks.= "<font color=\"red\"><b>Changed to user loginasuser: ". $_GET["loginasuser"]."</b></font><br>";
-      $user=$loginasuser;
-      $loginasuser="<font color=\"red\">$user</font>";
+  if(isset($_GET["loginasuser"])) {
+    $loginuser = strtolower($_GET["loginasuser"]);
+    if($loginuser!=$user) {
+      // Checking if user exists in any of the roles
+      if(!isset($inifile["active_user"][$loginuser]) && !isset($inifile["nonactive_user"][$loginuser]) &&
+        !isset($inifile["active_pi"][$loginuser]) && !isset($inifile["nonactive_pi"][$loginuser]) &&
+        !isset($inifile["active_copi"][$loginuser]) && !isset($inifile["nonactive_copi"][$loginuser]) &&
+        !isset($inifile["active_pa"][$loginuser]) && !isset($inifile["nonactive_pa"][$loginuser]) &&
+        !isset($inifile["mentor"][$loginuser]) && !isset($inifile["supporter"][$loginuser])) {
+        // If not, emit alert and redirect to regular login.php
+        $alert = "User \"".$loginuser."\" not found on ".strtoupper($systemname)."!";
+        echo "<script type='text/javascript'>alert('$alert'); window.location.replace('login.php'); </script>";
+        exit();
+      }
+      $loginasuser=$loginuser;
+      if(isset($loginasuser)) {
+        // $remarks.= "<font color=\"red\"><b>Changed to user loginasuser: ". $loginuser."</b></font><br>";
+        $user=$loginasuser;
+        $loginasuser="<font color=\"red\">$user</font>";
+      }
     }
   }
 }
@@ -324,10 +328,14 @@ $systemmap = array(
 if (array_key_exists($systemname,$systemmap)) {
   // Defining profile page:
   $profile_page = 'https://judoor.fz-juelich.de/account/a/JSC_LDAP/'.$user.'/';
-  $status_endpoint = 'https://status.jsc.fz-juelich.de/api/services/?format=json';
+  $status_endpoint = $_SERVER['DOCUMENT_ROOT'].'/status.json';
   // Getting health of this system from status page:
   if (isset($status_endpoint) && $status_endpoint !== '') {
     try {
+      // Checking if file was modified in the last 10 min
+      if ((time()-filemtime($status_endpoint))>600) {
+        throw new Exception('Status not updated in the last 10min.');
+      }
       $json = file_get_contents($status_endpoint);
       $services = json_decode($json,true);
       if (gettype($services) == 'array') {

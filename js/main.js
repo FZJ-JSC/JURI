@@ -25,7 +25,7 @@ function View(parameters) {
   // Getting full config for eventual Handlebars
   this.url_data = parameters.config;
   // Setting initial parameters (page, filters, colors, sort)
-  this.inital_data = parameters.inital;
+  this.initial_data = parameters.inital;
   // Store all the scripts and styles required for the pages
   this.addons = { 
                   scripts: new Set(),
@@ -78,6 +78,9 @@ function View(parameters) {
   this.gridState = {};
   // Store column definitions for grid
   this.columnDefs = null;
+  // Store filter options used to define the preset table
+  // (Used also to compare applied filters and select checkboxes)
+  this.filteroptions = {};
 }
 
 /**
@@ -179,41 +182,15 @@ View.prototype.show = function () {
           // ***********************************
         }
 
-
         // Title from configuration (including eventual logo)
-        const current_system_name = self.navdata.data.system.replace('_', ' ').toUpperCase()
-        var systemname_menu = $("<div>")
-        if (self.navdata.systems && Object.keys(self.navdata.systems).length > 0) {
-          systemname_menu.addClass("dropdown-menu")
-                     .attr("aria-labelledby","systemname_dropdown_button")
-          var systemname_link = $('<a>').attr("id","system_name")
-                                        .text(current_system_name+(self.navdata.demo ? " DEMO" : ""))
-                                        .addClass('dropdown-toggle')
-                                        .attr("data-toggle","dropdown")
-                                        .attr("aria-haspopup","true")
-                                        .attr("aria-expanded","false")
-          Object.entries(self.navdata.systems).sort().forEach(([system, folder]) => {
-            let this_system_name = system.toUpperCase()
-            // Creating submenu for this system
-            current_link = $("<a>").addClass("dropdown-item")
-                                    .text(this_system_name)
-                                    .attr("onclick",`view.changeSystem('${folder}')`)
 
-            // Checking current system name to select it
-            if (this_system_name == current_system_name+(self.navdata.demo ? " DEMO" : "")) {
-              current_link.addClass("selected");
-            }
-            // Append to the menu
-            systemname_menu.append(current_link)
-            return;
-          });
-        } else {
-          var systemname_link = $('<div>').attr("id","system_name")
-                                          .text(current_system_name)
-        }
-        $("#title").append(systemname_link)
-                   .append(systemname_menu)
-                   .append($('<div>').text(`${self.navdata.data.permission.capitalize()} view`));
+        // System name or list
+        let systemname_menu = self.build_system_menu(self.navdata)
+        $("#title").append(systemname_menu)
+
+        // Adding view
+        $("#title").append($('<div>').text(`${self.navdata.data.permission.capitalize()} view`));
+        // Adding document title
         $(document).attr("title", `${self.navdata.data.system.replace('_', ' ')}: ${self.navdata.data.permission.capitalize()} view`);
 
         // Add Home button to go to login page
@@ -292,12 +269,12 @@ View.prototype.show = function () {
             [inital_page,inital_subpage] = inital_page.split('-');
           }
         }
-        if (self.inital_data.page) {
-          // If inital_data is set, set initial_date (overwrite previous condition above)
-          [inital_page,inital_subpage] = self.inital_data.page.split('-');
+        if (self.initial_data.page) {
+          // If initial_data is set, set initial_date (overwrite previous condition above)
+          [inital_page,inital_subpage] = self.initial_data.page.split('-');
         }
         if (inital_page && self.all_page_sections.indexOf(inital_page) != -1) {
-          // If inital_data is set and that page is present on the sections of the page, select it
+          // If initial_data is set and that page is present on the sections of the page, select it
           self.selectPage([inital_page,inital_subpage], false);
         } else if (self.default_section) {
           // Otherwise, select default_section
@@ -309,6 +286,189 @@ View.prototype.show = function () {
     return;
   });
 }
+
+/**
+ * 
+ */
+View.prototype.get_system_status = async function (statusfile,systemname) {
+  // Getting system status
+  if (!statusfile) { return; }
+  let lastMod = null;
+  let systemmap = {
+    'SYSTEM': 'JURECA DC',
+    'JURECA-DC': 'JURECA DC',
+    'JUWELS BOOSTER': 'JUWELS Booster',
+    'JUWELS': 'JUWELS Cluster',
+    'JEDI': 'JEDI',
+    'DEEP': 'DEEP',
+    'JUSUF': 'JUSUF HPC',
+  };
+  let health = null;
+  let id = null;
+  await fetch(statusfile).then(r => {
+      lastMod = new Date(r.headers.get('Last-Modified'));
+      now = new Date();
+      return (now-lastMod)/1000 > 600 ? "" : r.json();
+  }).then((data) => {
+    if (!data.length) { return; }
+    if (typeof data === 'object') {
+      data.forEach((service) => {
+        if (systemmap[systemname] == service['name']) {
+          health = service['health'].toString();
+          id = service['id'];
+        }
+      })
+    }
+  })
+  return [health,id]
+}
+
+/**
+ * Creates system menu (when navdata.systems is present)
+ * 
+ * @param {Obj} navdata 
+ * @returns DOM element with system menu or ust system name
+ */
+View.prototype.build_system_menu = function (navdata) {
+  // Obtained icons and function from system-status-page:
+  function getStatusForHealth(health) {
+    switch (health) {
+      case '0':
+        toReturn = "Healthy"
+        break
+      case '10':
+        toReturn = "Annotation"
+        break
+      case '20':
+        toReturn = "Minor"
+        break
+      case '30':
+        toReturn = "Medium"
+        break
+      case '40':
+        toReturn = "Major"
+        break
+      case '50':
+        toReturn = "Critical"
+        break
+    }
+    return toReturn
+  }
+  function getVerboseHealth(health) {
+    switch (health) {
+      case '0':
+      case '10':
+        return "healthy"
+      case '20':
+        return "minorly degraded"
+      case '30':
+        return "degraded"
+      case '40':
+        return "majorly degraded"
+      case '50':
+        return "unavailable"
+      default:
+        return "unknown"
+    }
+  }
+
+  let self = this;
+  const current_system_name = navdata.data.system.replace('_', ' ').toUpperCase()
+  var systemname_menu = $('<div>').attr("id","system")
+  // When there navdata.systems is given, create a dropdown-menu with the systems
+  if (navdata.systems && Object.keys(navdata.systems).length > 0) {
+    // Preparing the link at the title bar
+    var systemname_dropdown = $("<div>")
+    systemname_dropdown.addClass("dropdown-menu")
+                       .attr("aria-labelledby","systemname_dropdown_button")
+    var systemname_link = $('<a>').text(current_system_name+(navdata.demo ? " DEMO" : ""))
+                                  .addClass('dropdown-toggle')
+                                  .attr("data-toggle","dropdown")
+                                  .attr("aria-haspopup","true")
+                                  .attr("aria-expanded","false")
+    // For each system on the list navdata.systems
+    Object.entries(navdata.systems).sort().forEach(([system, folder]) => {
+      let this_system_name = system.toUpperCase()
+      // Creating link for the current system
+      let current_link = $("<a>").addClass("dropdown-item")
+                                 .attr("onclick",`view.changeSystem('${folder}')`)
+                                 .append($('<span>').text(this_system_name))
+      // Get current system status (if present) and then add to dropdown menu
+      self.get_system_status(navdata.status?navdata.status.file:null,this_system_name.replace(" DEMO","")).then((health_id) => {
+        // If health was obtained, add image to menu
+        if (health_id.length) {
+          let health = health_id[0];
+          let status = getStatusForHealth(health);
+          let status_verbose = getVerboseHealth(health);
+          let text = `${this_system_name.replace(" DEMO","")} is currently ${status_verbose}`;
+          let status_img = $('<img>').attr('src', `img/Maintenance-Server-JSC-v3_${status}.svg`)
+                                     .attr('alt', text)
+                                     .attr("title",text)
+                                     .attr('data-toggle', "tooltip")
+                                     .on( "mouseover", function(event) {
+                                          systemname_menu.tooltip('hide')
+                                          event.stopPropagation() // Prevent tooltip on parent from showing
+                                        });
+          current_link.prepend(status_img)
+        }
+      });
+      
+      // Checking current system name to select it
+      if (this_system_name == current_system_name+(navdata.demo ? " DEMO" : "")) {
+        current_link.addClass("selected");
+      }
+      // Append to the menu
+      systemname_dropdown.append(current_link)
+
+      return;
+    });
+    systemname_dropdown.on( "mouseover", function(event) {
+                              systemname_menu.tooltip('hide')
+                              event.stopPropagation() // Prevent tooltip on parent from showing
+                            });
+    systemname_menu.append(systemname_link)
+                   .append(systemname_dropdown)
+    systemname_menu.attr("title","Click to open system list")
+                   .attr('data-toggle', "tooltip")
+                   .attr('data-html', "true")
+                   .attr('data-placement', "bottom")
+  } else {
+    // When the menu is not added, add system status directly on title
+
+    // Get system status (if present)
+    self.get_system_status(navdata.status?navdata.status.file:null,current_system_name).then((health_id) => {
+      // If health was obtained, add image to menu
+      if (health_id) {
+        let health = health_id[0];
+        let id = health_id[1];
+        let status = getStatusForHealth(health);
+        let status_verbose = getVerboseHealth(health);
+        let text = `${current_system_name} is currently ${status_verbose}${navdata.status.link?'. Click to see more details.':''}`;
+        let status_img = $('<img>').attr('src', `img/Maintenance-Server-JSC-v3_${status}.svg`)
+                                   .attr('alt', text)
+        let status_page = navdata.status.link?navdata.status.link.replace('@@id@@',id):"javascript:void(0);";
+        let status_link = $('<a>').attr('href', status_page)
+                                  // .attr('target', "_blank")
+                                  .attr('aria-label', text)
+                                  .attr('title', text)
+                                  .attr('data-toggle', "tooltip")
+                                  .attr('data-html', "true")
+                                  .attr('data-placement', "bottom")
+                                  .html(current_system_name+(navdata.demo ? " DEMO" : ""))
+                                  .prepend(status_img);
+        let status_button = $("<button>").attr('type','button')
+                                         .prepend(status_link)
+        systemname_menu.prepend(navdata.status.link?status_button:status_link);
+      } else {
+        // If health was not obtained, add only the name
+        systemname_menu.text(current_system_name)
+      }
+
+    });
+  }
+  return systemname_menu;
+}
+
 
 /**
  * Function to change between the systems when clicking on the system selector
@@ -441,6 +601,9 @@ View.prototype.changeSystem = function (system) {
         });
       }
 
+      // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
+      document.getElementById('main_content').scrollTo({top: 0});
+
       if ((typeof subpage === 'number')&&(!isNaN(subpage))) {
         // Calling subpage with given number
         self.initDates(subpage);
@@ -461,7 +624,15 @@ View.prototype.changeSystem = function (system) {
       } else if (page != 'live') {
         self.loading(false);
       }
-      // Set title overlay handling
+
+      // Add button that shows more information about current page (when a description is given)
+      if (self.page_description) {
+        self.add_infobutton(self.page_description);
+      } else {
+        $("#information").empty()
+      }
+
+      // Set title overlay/tooltip handling
       self.apply_tooltip($('[title]'));
       // Show menus on mouse hover
       self.add_dropmenu_hover();
@@ -474,13 +645,6 @@ View.prototype.changeSystem = function (system) {
 
       // Getting table headers (when present)
       self.getHeaders();
-
-      // Add button that shows more information about current page (when a description is given)
-      if (self.page_description) {
-        self.add_infobutton(self.page_description);
-      } else {
-        $("#information").empty()
-      }
 
       // Change selected page and subpage to the new input page
       self.selected_page = page;
@@ -498,9 +662,9 @@ View.prototype.changeSystem = function (system) {
   }
 
   if (reset_initial_params) {
-    self.inital_data = {};
+    self.initial_data = {};
   }
-  self.inital_data.page = subpage ? `${page}-${subpage}` : page;
+  self.initial_data.page = subpage ? `${page}-${subpage}` : page;
   
   // Setting Hash on URL
   self.setHash(true);
@@ -587,8 +751,8 @@ View.prototype.add_colorscale_controls = function () {
     let selected_svg = null;
     let current_div = null;
     // Get current selected from initial_data or default (TODO: add storage?)
-    if (self.inital_data.colors.colorscale) {
-      selected = self.inital_data.colors.colorscale
+    if (self.initial_data.colors.colorscale) {
+      selected = self.initial_data.colors.colorscale
     } else {
       selected = self.default_colorscale;
     }
@@ -632,7 +796,7 @@ View.prototype.add_colorscale_controls = function () {
             .attr("data-placement", "left") // Position tooltip to the left, otherwise it is incompatible with mouse hover
             .append(svg)
             .on("click",function(){
-              self.inital_data.colors = { 'colorscale': colorscale };
+              self.initial_data.colors = { 'colorscale': colorscale };
               self.setHash();
               self.reloadPage();
               $(".colorscale").removeClass("selected");
@@ -666,90 +830,295 @@ View.prototype.add_colorscale_controls = function () {
 }
 
 /**
- * Add button with options to apply to the table
+ * Add filter to grid
+ * @param {*} new_filter Filter(s) to be added
+ * @param {*} delimiter string to separate more than one string when filter already exist
  */
-View.prototype.add_options = function (options) {
+View.prototype.add_filter = function (new_filter,delimiter="||") {
   let self = this;
-  let text = "Click to show the options to filter the table";
-  let button = $('#options > button')
-
-  // options = {
-  //   'State': {
-  //     'RUNNING': {'State': 'RUNNING'},
-  //     'COMPLETED': {'State': 'COMPLETED'},
-  //     'FAILED': {'State': 'FAILED'},
-  //   },
-  //   'End Date': {
-  //     'Today': {'End Date (est)':new Date().toISOString().slice(0, 10)},
-  //     'Yesterday': {'End Date (est)':new Date(Date.now() - 1000*60*60*24)}
-  //   }
-  // }
-  if (!button.length) {
-    button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-cogs");
-    $('#options').append(button)
+  let full_filter = { ...self.initial_data.filter }; // Start with a shallow copy of self.initial_data.filter
+  for (let key in new_filter) {
+    if (full_filter.hasOwnProperty(key)) {
+      if (!full_filter[key].includes(new_filter[key])) {
+        // If both objects have the same key, and the old key does not include the filter already, concatenate values
+        full_filter[key] = `${full_filter[key]}${delimiter}${new_filter[key]}`;
+      }
+    } else {
+      // If the key is only in new_filter, add it to the merged object
+      full_filter[key] = new_filter[key];
+    }
   }
-  let desc = options
-  let optionsdiv = $('<div>',{id: "optionsdiv"}).attr("aria-label",desc).text(desc).hide();
+  apply_filter(full_filter);
+}
 
-  // If show info is active (from URL), activate it
-  if (self.inital_data.options?.showoptions) {
-    button.addClass('active');
-    button.attr("data-original-title","Click to hide the options to filter the table")
-          .attr("aria-label","Click to hide the options to filter the table");
-    $('main').prepend(optionsdiv);
-    optionsdiv.slideDown();
+/**
+ * Compare the checkboxes on filter options table with the 'filters' and select the ones that 
+ * are already included
+ * @param {*} filters filters to be checked
+ */
+View.prototype.check_filteroptions = function (filters) {
+  let self=this;
+  if (!Object.keys(self.page_data.options).length) {return;}
+  // Checking if checkboxes on options need to be checked, and checking them
+  for (let [name, input] of Object.entries(self.page_data.options)) {
+    for (let [optname, filter] of Object.entries(input)) {
+      let id = `${name.replace(/(\s)/g, '_')}_${optname.replace(/(\s)/g, '_')}`;
+      let checked = true;
+      for (let [key, value] of Object.entries(filter)) {
+        if (!filters.hasOwnProperty(key)||!filters[key].includes(value)) {
+          checked = false
+        }
+      }
+      $(`#${id}`).prop('checked', checked);
+    }
+  }  
+}
+
+/**
+ * Remove filter from grid
+ * @param {*} new_filter Filter(s) to be added
+ */
+View.prototype.remove_filter = function (new_filter,delimiter="||") {
+  let self = this;
+  let full_filter = { ...self.initial_data.filter }; // Start with a shallow copy of self.initial_data.filter
+  for (let key in new_filter) {
+    if (full_filter.hasOwnProperty(key)) {
+      if (full_filter[key].includes(new_filter[key])) {
+        // If both objects have the same key (it should have), remove value
+        full_filter[key] = full_filter[key].replace(`${delimiter}${new_filter[key]}`,"");
+        full_filter[key] = full_filter[key].replace(`${new_filter[key]}${delimiter}`,"");
+        full_filter[key] = full_filter[key].replace(new_filter[key],"");
+        // if (!full_filter[key].length) {
+        //   delete full_filter[key];
+        // }
+      }
+    }
+  }
+  apply_filter(full_filter);
+}
+
+
+/**
+ * Function to safely evaluate code stored in string
+ * @param {*} expression Expression to be evaluated
+ * @param {*} context contexts that are safe to be evaluated
+ * @returns 
+ */
+function safeEval(expression, context = {}) {
+  // Create a new function that evaluates the expression in the provided context
+  return new Function(...Object.keys(context), `return ${expression};`)(...Object.values(context));
+}
+
+// Example context that includes today's date, and other available global functions or variables
+const context = {
+  Date: Date,
+  Math: Math
+  // Can be extended with other values/functions if needed
+};
+// Recursive function to parse JSON and evaluate dynamic fields
+function parseOptions(object) {
+  // Handle objects recursively
+  if (typeof object === 'object' && object !== null) {
+    const parsedOptions = Array.isArray(object) ? [] : {};
+    
+    for (const key in object) {
+      const value = object[key];
+      parsedOptions[key] = parseOptions(value); // Recursive call for nested objects/arrays
+    }
+
+    return parsedOptions;
   }
   
-  // On show-info button click:
-  button.off('click'); // Turning off first, to avoid adding multiple events
-  button.on('click',() => {
-    // Toggle class 'active' on button to change its colors
-    button.toggleClass('active');
-    // Turns on and off show information
-    if (self.inital_data.options?.showoptions) {
-      // If it show-info exists when clicking the button, then turn it off
-      button.attr("data-original-title","Click to show the options to filter the table")
-            .attr("aria-label","Click to show the options to filter the table");
-      delete self.inital_data.options.showoptions;
+  // Handle strings that represent expressions (e.g., "new Date()", "Math.random()")
+  if (typeof object === 'string' && object.match(/[\(\)\{\}\?\.\+\-\*\/]/)) {
+    try {
+      return safeEval(object, context);  // Safely evaluate expressions
+    } catch (error) {
+      console.warn(`Could not evaluate the expression "${object}":`, error);
+      return object;  // Return raw string if evaluation fails
+    }
+  }
+
+  // Return primitive values (numbers, booleans, etc.) as they are
+  return object;
+}
+
+
+// Sorting function that sorts key-value pairs based on a key order array
+const sortByKeyOrder = (keyA, keyB, keyOrderArray) => {
+  const indexA = keyOrderArray.indexOf(keyA); // Get position of keyA in keyOrderArray
+  const indexB = keyOrderArray.indexOf(keyB); // Get position of keyB in keyOrderArray
+  
+  // If neither key is in the array, sort alphabetically by key
+  if (indexA === -1 && indexB === -1) {
+    return keyA.localeCompare(keyB); // Default alphabetical sort
+  }
+  
+  // If keyA is not in the array, place it after keyB
+  if (indexA === -1) return 1;
+  
+  // If keyB is not in the array, place it after keyA
+  if (indexB === -1) return -1;
+
+  // If both keys are in the array, sort based on their position in keyOrderArray
+  return indexA - indexB;
+};
+
+
+/**
+ * Add button with options to apply to the table
+ * @param {obj} opt Object containing the filters to be applied, in the form:
+ *                  { 
+ *                    'Field Name1' : { 
+ *                                      'Option1': {'Header1': 'Value1','Header2': 'Value2',...},
+ *                                      'Option2': {'Header1': 'Value1','Header3': 'Value3',...},
+ *                                      ...
+ *                                    },
+ *                    'Field Name2' : { 
+ *                                       ...
+ *                                    },
+ *                  }
+ * @param {*} filter Filter element, where the button for more options will be added. If not present, nothing is done
+ * @returns 
+ */
+View.prototype.add_filter_options = function (filter,options) {
+  if (typeof (options) == "undefined"||!Object.keys(options).length) {return;}
+  let self = this;
+
+  if(!filter.length){
+    return;
+  }
+  self.filteroptions = options;
+
+  let text = `Click to ${self.initial_data.options?.showoptions ? "hide" : "show"} pre-selected filter options`;
+  let filteroptions = $('#filteroptions')
+  if (!filteroptions.length) {
+    filteroptions = $('<div>').attr('id','filteroptions')
+                              .attr("title",text)
+                              .attr("aria-label",text)
+                              .attr('data-toggle', "tooltip")
+                              .attr('data-html', "true")
+                              .attr('data-placement', "bottom")
+    filter.append(filteroptions)
+  }
+
+  // Creating table with filter options
+  $('#optionsdiv').remove() // Removing previous before adding new one
+  let desc = 'Options to filter table:'
+  let optionsdiv = $('<div>',{id: "optionsdiv"}).hide()
+  let optionstable = $('<table>',{id: "optionstable",width: 100+200*Object.keys(options).length});
+  let optionsrow = $('<tr>').append($('<th>',{"aria-label":desc})
+                            .text(desc))
+
+  // Looping over the different options according to their order on the columns
+  for (let [key, values] of Object.entries(options).sort(([a], [b]) => sortByKeyOrder(a, b, self.gridApi.getColumns().map((col)=>col.colDef.headerName)))) {
+    let id = key.replace(/(\s)/g, '_');
+    // Adding current option 'title' in a cell
+    optionsrow.append($('<td>',{id: id}).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'))
+    let this_option = $('<td>').addClass('optionvalues')
+    // Looping over the different options for this given field, and creating the radio filteroptions
+    for (let [optname, filter] of Object.entries(values)) {
+      let inputid = `${id}_${optname.replace(/(\s)/g, '_')}`;
+      let option_input = $('<input>',{type: 'checkbox',id: inputid, name: id, value: optname})
+      let option_label = $('<label>',{for: inputid}).append($('<span>').text(optname).css("vertical-align", "middle"))
+                                                    .prepend(option_input)
+      this_option.append(option_label)
+                 .append(`<br>`);
+      // Adding filter when input radio is clicked
+      option_input.on('change', (e) => {
+        let delimiter="||";
+        if (e.target.checked) {
+          self.add_filter(filter,delimiter=delimiter);
+        } else {
+          self.remove_filter(filter,delimiter=delimiter);
+        }
+      })
+          
+    }
+    optionsrow.append(this_option)
+  }
+  optionstable.append(optionsrow)
+  optionsdiv.append(optionstable)
+  
+  // If show info is active (from URL), activate it
+  if (self.initial_data.options?.showoptions) {
+    filteroptions.addClass('active');
+    filteroptions.attr("data-original-title","Click to hide the options to filter the table")
+                 .attr("aria-label","Click to hide the options to filter the table")
+    $('main').prepend(optionsdiv);
+    // Checking which options should be already selected
+    self.check_filteroptions(self.initial_data.filter);
+    optionsdiv.slideDown(function() {
+      resize();
+    });
+    resize();
+  }
+  
+  // On show-info filteroptions click:
+  filteroptions.off('click'); // Turning off first, to avoid adding multiple events
+  filteroptions.on('click',() => {
+    filteroptions.toggleClass('active');
+    // Turns on and off filter options
+    if (self.initial_data.options?.showoptions) {
+      // If "aria-label"is already showing up when clicking the filteroptions, then turn it off
+      filteroptions.attr("data-original-title","Click to show the options to filter the table")
+                   .attr("aria-label","Click to show the options to filter the table")
+      delete self.initial_data.options.showoptions;
       $('#optionsdiv').slideUp(function() {
         $(this).remove();
+        resize()
       });
       self.setHash();
     } else {
-      // If it presentation mode does not exist when clicking the button, then turn it on
-      button.attr("data-original-title","Click to hide the options to filter the table")
-            .attr("aria-label","Click to hide the options to filter the table");
-      self.inital_data.options = { 'showoptions': 'true' };
+      // If "aria-label" does not exist when clicking the filteroptions, then turn it on
+      filteroptions.attr("data-original-title","Click to hide the options to filter the table")
+                   .attr("aria-label","Click to hide the options to filter the table")
+      self.initial_data.options = { 'showoptions': 'true' };
       self.setHash();
       $('#main_content').prepend(optionsdiv);
-      optionsdiv.slideDown();
+      // Checking which options should be already selected
+      self.check_filteroptions(self.initial_data.filter);
+      optionsdiv.slideDown(function() {
+        resize();
+      });
     }
     return;
   });
   return;
 }
 
+
 /**
  * Add show-info button
  */
 View.prototype.add_infobutton = function (description) {
   let self = this;
-  let text = 'Click to show description of page';
+  let text = `Click to ${self.initial_data.description?.showinfo ? "hide" : "show"} description of page`;
   let button = $('#information > button')
   if (!button.length) {
-    button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-info");
+    button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text)
+                                                                               .attr('data-toggle', "tooltip")
+                                                                               .attr('data-html', "true")
+                                                                               .attr('data-placement', "bottom")
+                                                                               .addClass("fa")
+                                                                               .addClass("fa-info");
     $('#information').append(button)
   }
-  let desc = description
-  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",desc).text(desc).hide();
+  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",description)
+                                            .text(description)
+                                            .hide();
 
   // If show info is active (from URL), activate it
-  if (self.inital_data.description?.showinfo) {
+  if (self.initial_data.description?.showinfo) {
     button.addClass('active');
     button.attr("data-original-title","Click to hide description of page")
           .attr("aria-label","Click to hide description of page")
+    // Removing previous text before adding new one
+    $('#infotext').remove();
     $('main').prepend(infotext);
-    infotext.slideDown();
+    infotext.slideDown(function() {
+      resize()
+    });
   }
   
   // On show-info button click:
@@ -758,23 +1127,26 @@ View.prototype.add_infobutton = function (description) {
     // Toggle class 'active' on button to change its colors
     button.toggleClass('active');
     // Turns on and off show information
-    if (self.inital_data.description?.showinfo) {
+    if (self.initial_data.description?.showinfo) {
       // If it show-info exists when clicking the button, then turn it off
       button.attr("data-original-title","Click to show description of page")
             .attr("aria-label","Click to show description of page");
-      delete self.inital_data.description.showinfo;
+      delete self.initial_data.description.showinfo;
       $('#infotext').slideUp(function() {
         $(this).remove();
+        resize()
       });
       self.setHash();
     } else {
       // If it presentation mode does not exist when clicking the button, then turn it on
       button.attr("data-original-title","Click to hide description of page")
             .attr("aria-label","Click to hide description of page");
-      self.inital_data.description = { 'showinfo': 'true' };
+      self.initial_data.description = { 'showinfo': 'true' };
       self.setHash();
       $('#main_content').prepend(infotext);
-      infotext.slideDown();
+      infotext.slideDown(function() {
+        resize()
+      });
     }
     return;
   });
@@ -786,10 +1158,10 @@ View.prototype.add_infobutton = function (description) {
  */
 View.prototype.add_autorefresh = function () {
   let self = this;
-  let text = `Auto-refresh is ${self.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`;
+  let text = `Auto-refresh is ${self.initial_data.refresh.disablerefresh ? "OFF" : "ON"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-refresh");
   // If disable refresh is not active (from URL), activate it
-  if (! self.inital_data.refresh.disablerefresh) {
+  if (! self.initial_data.refresh.disablerefresh) {
     button.addClass('active');
     button.attr("data-original-title","Auto-refresh is ON")
           .attr("aria-label","Auto-refresh is ON")
@@ -811,19 +1183,19 @@ View.prototype.add_autorefresh = function () {
     // Toggle class 'active' on button to change its colors
     button.toggleClass('active');
     // Turns off and on auto-refresh
-    if (! self.inital_data.refresh.disablerefresh) {
+    if (! self.initial_data.refresh.disablerefresh) {
       // If it exists when clicking the button, then turn it off
       button.text('');
       button.attr("data-original-title","Auto-refresh is OFF")
             .attr("aria-label","Auto-refresh is OFF")
             .addClass("fa")
             .addClass("fa-refresh");
-      self.inital_data.refresh = { 'disablerefresh': 'true' };
+      self.initial_data.refresh = { 'disablerefresh': 'true' };
       self.setHash();
       // Remove Intervals
       clearInterval(self.refreshinterval);
     } else {
-      delete self.inital_data.refresh.disablerefresh;
+      delete self.initial_data.refresh.disablerefresh;
       button.attr("data-original-title","Auto-refresh is ON")
             .attr("aria-label","Auto-refresh is ON")
             .removeClass("fa")
@@ -852,9 +1224,9 @@ View.prototype.add_autorefresh = function () {
 //                           .append( $("<div>").addClass('hold left').append($("<div>").addClass('fill')) )
 //                           .append( $("<div>").addClass('hold right').append($("<div>").addClass('fill')) );
 //   let refresh_span = $("<div>").addClass("fa").addClass("fa-refresh");
-//   let button = $('<button>',{type: "button", class: 'inner-circle', title: `Auto-refresh is ${self.inital_data.refresh.disablerefresh ? "OFF" : "ON"}`}).prepend(refresh_span);
+//   let button = $('<button>',{type: "button", class: 'inner-circle', title: `Auto-refresh is ${self.initial_data.refresh.disablerefresh ? "OFF" : "ON"}`}).prepend(refresh_span);
 //   // If disable refresh is not active (from URL), activate it
-//   if (! self.inital_data.refresh.disablerefresh) {
+//   if (! self.initial_data.refresh.disablerefresh) {
 //     button.addClass('active');
 //     refresh_span.addClass('slow-spin');
 //     $('#refresh').prepend(counter);
@@ -871,17 +1243,17 @@ View.prototype.add_autorefresh = function () {
 //     button.toggleClass('active');
 //     refresh_span.toggleClass('slow-spin');
 //     // Turns off and on auto-refresh
-//     if (! self.inital_data.refresh.disablerefresh) {
+//     if (! self.initial_data.refresh.disablerefresh) {
 //       // If it exists when clicking the button, then turn it off
 //       button.attr("data-original-title","Auto-refresh is OFF");
-//       self.inital_data.refresh = { 'disablerefresh': 'true' };
+//       self.initial_data.refresh = { 'disablerefresh': 'true' };
 //       self.setHash();
 //       counter.remove();
 //       // Remove Intervals
 //       clearInterval(self.refreshinterval);
 //     } else {
 //       $('#refresh').prepend(counter);
-//       delete self.inital_data.refresh.disablerefresh;
+//       delete self.initial_data.refresh.disablerefresh;
 //       button.attr("data-original-title","Auto-refresh is ON");
 //       self.setHash();
 //       // Adding interval to reload page every 60s
@@ -900,10 +1272,10 @@ View.prototype.add_autorefresh = function () {
 View.prototype.reloadPage = function () {
   var self = this;
   if (self.selected_page != 'live') {
-    if($("#main_content table").length){
+    if($("#main_content > table").length){
       // Storing jobid that is selected before
       index = self.headers[self.clicked_page].indexOf('JobID');
-      selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
+      selected_jobid = $("#main_content > table tbody tr.selected td").eq(index).text()??""
     } else if (self.gridApi) {
       self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
       selected_jobid = self.gridApi.getSelectedNodes(); // Get selected job
@@ -912,9 +1284,9 @@ View.prototype.reloadPage = function () {
     self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
       // When there is a selected job...
       if (selected_jobid.length) {
-        if($("#main_content table").length){
+        if($("#main_content > table").length){
           // ...reselecting row with the same jobid (when present)
-          jobid_row = $(`#main_content table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
+          jobid_row = $(`#main_content > table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
           if (jobid_row) {
             jobid_row.click()
           }
@@ -944,11 +1316,16 @@ View.prototype.reloadPage = function () {
  */
 View.prototype.add_presentation = function () {
   let self = this;
-  let text = `Presentation Mode is ${self.inital_data.presentation?.present ? "ON" : "OFF"}`;
+  // Button should have been deleted before being added
+  $('#presentation').empty();
+  
+  // Creating presentation mode button
+  let text = `Presentation Mode is ${self.initial_data.presentation?.present ? "ON" : "OFF"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-play");
   var timebetweenjobs = 30000; // Time to alternate between jobs (in microseconds)
+
   // If presentation mode is active (from URL), activate it
-  if (self.inital_data.presentation?.present) {
+  if (self.initial_data.presentation?.present) {
     button.addClass('active');
     button.attr("data-original-title","Presentation Mode is ON")
           .attr("aria-label","Presentation Mode is ON")
@@ -957,17 +1334,18 @@ View.prototype.add_presentation = function () {
     self.loopFooterTabs(self,timebetweenjobs)
     self.presentationjobinterval = setInterval(self.loopFooterTabs, timebetweenjobs, self, timebetweenjobs);
   }
+
   $('#presentation').append(button)
   // On presentation-mode button click:
   button.on('click',() => {
     // Toggle class 'active' on button to change its colors, and icons play/pause
     button.toggleClass('active').toggleClass("fa-play").toggleClass("fa-pause");
     // Turns on and off presentation mode
-    if (self.inital_data.presentation?.present) {
+    if (self.initial_data.presentation?.present) {
       // If it presentation mode exists when clicking the button, then turn it off
       button.attr("data-original-title","Presentation Mode is OFF")
             .attr("aria-label","Presentation Mode is OFF");
-      delete self.inital_data.presentation.present;
+      delete self.initial_data.presentation.present;
       self.setHash();
       // Remove Intervals
       if (self.presentationtabinterval) clearInterval(self.presentationtabinterval);
@@ -976,7 +1354,7 @@ View.prototype.add_presentation = function () {
       // If it presentation mode does not exist when clicking the button, then turn it on
       button.attr("data-original-title","Presentation Mode is ON")
             .attr("aria-label","Presentation Mode is ON");
-      self.inital_data.presentation = { 'present': 'true' };
+      self.initial_data.presentation = { 'present': 'true' };
       self.setHash();
       self.loopFooterTabs(self,timebetweenjobs)
       self.presentationjobinterval = setInterval(self.loopFooterTabs, timebetweenjobs, self, timebetweenjobs);
@@ -1045,8 +1423,8 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
 View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
-  if($("#main_content table").length){
-    self.headers[self.clicked_page] = $("#main_content table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
+  if($("#main_content > table").length){
+    self.headers[self.clicked_page] = $("#main_content > table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
   } else if (self.gridApi) {
     let header;
     self.headers[self.clicked_page] = []
@@ -1307,7 +1685,7 @@ View.prototype.addStyle = function (style, deferred) {
 
 
 /**
- * Update URL with parameters in inital_data.page 
+ * Update URL with parameters in initial_data.page 
  * initial_data.filter and initial_data.sort
  * @param {boolean} keep_history Flag to keep page in history
  */
@@ -1316,39 +1694,39 @@ View.prototype.setHash = function (keep_history) {
   let hash = "";
   parameter = {};
   // Add active page
-  if (self.inital_data.page) {
-    parameter["page"] = self.inital_data.page;
+  if (self.initial_data.page) {
+    parameter["page"] = self.initial_data.page;
   }
   // Add active filter
-  if (self.inital_data.filter) {
-    // parameter = Object.assign({}, parameter, self.inital_data.filter);
-    Object.assign(parameter, self.inital_data.filter);
+  if (self.initial_data.filter) {
+    // parameter = Object.assign({}, parameter, self.initial_data.filter);
+    Object.assign(parameter, self.initial_data.filter);
   }
   // Add active sort
-  if (self.inital_data.sort) {
-    // parameter = Object.assign({}, parameter, self.inital_data.sort);
-    Object.assign(parameter, self.inital_data.sort);
+  if (self.initial_data.sort) {
+    // parameter = Object.assign({}, parameter, self.initial_data.sort);
+    Object.assign(parameter, self.initial_data.sort);
   }
   // Add colorscale
-  if (self.inital_data.colors) {
-    // parameter = Object.assign({}, parameter, self.inital_data.colors);
-    Object.assign(parameter, self.inital_data.colors);
+  if (self.initial_data.colors) {
+    // parameter = Object.assign({}, parameter, self.initial_data.colors);
+    Object.assign(parameter, self.initial_data.colors);
   }
   // Add auto-refresh
-  if (self.inital_data.refresh) {
-    Object.assign(parameter, self.inital_data.refresh);
+  if (self.initial_data.refresh) {
+    Object.assign(parameter, self.initial_data.refresh);
   }
   // Add Presentation Mode
-  if (self.inital_data.presentation) {
-    Object.assign(parameter, self.inital_data.presentation);
+  if (self.initial_data.presentation) {
+    Object.assign(parameter, self.initial_data.presentation);
   }
   // Add description box
-  if (self.inital_data.description) {
-    Object.assign(parameter, self.inital_data.description);
+  if (self.initial_data.description) {
+    Object.assign(parameter, self.initial_data.description);
   }
   // Add options box
-  if (self.inital_data.options) {
-    Object.assign(parameter, self.inital_data.options);
+  if (self.initial_data.options) {
+    Object.assign(parameter, self.initial_data.options);
   }
 
   // Build hash into URL
@@ -1573,14 +1951,14 @@ function resize() {
   $("#footer_graphs").css("margin-bottom",$("#footer_footer").height())
   // Set height of the footer (that can be dragged with the mouse)
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
-  // Height of main content is window size - the height of the header - height of the footer - 10 for padding(?)
+  // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
   $("#main_content").height($(window).height() - $("#header").height() - $("footer").height() - 10);
   $("#main_content th").css("top", $("#day_selection_scroll").height() - 10);
   $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height() + $("#day_selection_scroll").height()- 10);
   $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
                         $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
   if ($("#myGrid")) {
-    $("#myGrid").height($("#main_content").height());
+    $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
   }
   for (let i = 0; i < view.resize_function.length; ++i) {
     view.resize_function[i]();
