@@ -858,7 +858,7 @@ View.prototype.add_filter = function (new_filter,delimiter="||") {
  */
 View.prototype.check_filteroptions = function (filters) {
   let self=this;
-  if (!Object.keys(self.page_data.options).length) {return;}
+  if ((typeof self.page_data.options != 'object')||((typeof self.page_data.options === 'object')&&(!Object.keys(self.page_data.options).length))) {return;}
   // Checking if checkboxes on options need to be checked, and checking them
   for (let [name, input] of Object.entries(self.page_data.options)) {
     for (let [optname, filter] of Object.entries(input)) {
