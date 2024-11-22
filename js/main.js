@@ -601,6 +601,9 @@ View.prototype.changeSystem = function (system) {
         });
       }
 
+      // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
+      document.getElementById('main_content').scrollTo({top: 0});
+
       if ((typeof subpage === 'number')&&(!isNaN(subpage))) {
         // Calling subpage with given number
         self.initDates(subpage);
@@ -855,8 +858,9 @@ View.prototype.add_filter = function (new_filter,delimiter="||") {
  */
 View.prototype.check_filteroptions = function (filters) {
   let self=this;
+  if (!Object.keys(self.page_data.options).length) {return;}
   // Checking if checkboxes on options need to be checked, and checking them
-  for (let [name, input] of Object.entries(self.filteroptions)) {
+  for (let [name, input] of Object.entries(self.page_data.options)) {
     for (let [optname, filter] of Object.entries(input)) {
       let id = `${name.replace(/(\s)/g, '_')}_${optname.replace(/(\s)/g, '_')}`;
       let checked = true;
@@ -894,6 +898,72 @@ View.prototype.remove_filter = function (new_filter,delimiter="||") {
 }
 
 
+/**
+ * Function to safely evaluate code stored in string
+ * @param {*} expression Expression to be evaluated
+ * @param {*} context contexts that are safe to be evaluated
+ * @returns 
+ */
+function safeEval(expression, context = {}) {
+  // Create a new function that evaluates the expression in the provided context
+  return new Function(...Object.keys(context), `return ${expression};`)(...Object.values(context));
+}
+
+// Example context that includes today's date, and other available global functions or variables
+const context = {
+  Date: Date,
+  Math: Math
+  // Can be extended with other values/functions if needed
+};
+// Recursive function to parse JSON and evaluate dynamic fields
+function parseOptions(object) {
+  // Handle objects recursively
+  if (typeof object === 'object' && object !== null) {
+    const parsedOptions = Array.isArray(object) ? [] : {};
+    
+    for (const key in object) {
+      const value = object[key];
+      parsedOptions[key] = parseOptions(value); // Recursive call for nested objects/arrays
+    }
+
+    return parsedOptions;
+  }
+  
+  // Handle strings that represent expressions (e.g., "new Date()", "Math.random()")
+  if (typeof object === 'string' && object.match(/[\(\)\{\}\?\.\+\-\*\/]/)) {
+    try {
+      return safeEval(object, context);  // Safely evaluate expressions
+    } catch (error) {
+      console.warn(`Could not evaluate the expression "${object}":`, error);
+      return object;  // Return raw string if evaluation fails
+    }
+  }
+
+  // Return primitive values (numbers, booleans, etc.) as they are
+  return object;
+}
+
+
+// Sorting function that sorts key-value pairs based on a key order array
+const sortByKeyOrder = (keyA, keyB, keyOrderArray) => {
+  const indexA = keyOrderArray.indexOf(keyA); // Get position of keyA in keyOrderArray
+  const indexB = keyOrderArray.indexOf(keyB); // Get position of keyB in keyOrderArray
+  
+  // If neither key is in the array, sort alphabetically by key
+  if (indexA === -1 && indexB === -1) {
+    return keyA.localeCompare(keyB); // Default alphabetical sort
+  }
+  
+  // If keyA is not in the array, place it after keyB
+  if (indexA === -1) return 1;
+  
+  // If keyB is not in the array, place it after keyA
+  if (indexB === -1) return -1;
+
+  // If both keys are in the array, sort based on their position in keyOrderArray
+  return indexA - indexB;
+};
+
 
 /**
  * Add button with options to apply to the table
@@ -911,28 +981,12 @@ View.prototype.remove_filter = function (new_filter,delimiter="||") {
  * @param {*} filter Filter element, where the button for more options will be added. If not present, nothing is done
  * @returns 
  */
-View.prototype.add_filter_options = function (filter) {
+View.prototype.add_filter_options = function (filter,options) {
+  if (typeof (options) == "undefined"||!Object.keys(options).length) {return;}
   let self = this;
 
   if(!filter.length){
     return;
-  }
-  // Define preselected options
-  let options = {
-    'Start Date': {
-      'Today': {'Start Date': new Date().toISOString().slice(0, 10)},
-      'Yesterday': {'Start Date': new Date(Date.now() - 1000*60*60*24).toISOString().slice(0, 10)}
-    },
-    'Estimated End Date': {
-      'Tomorrow': {'End Date (est)': new Date(Date.now() + 1000*60*60*24).toISOString().slice(0, 10)},
-      'Today': {'End Date (est)': new Date().toISOString().slice(0, 10)},
-      'Yesterday': {'End Date (est)': new Date(Date.now() - 1000*60*60*24).toISOString().slice(0, 10)}
-    },
-    'State': {
-      'RUNNING': {'State': 'RUNNING'},
-      'COMPLETED': {'State': 'COMPLETED'},
-      'FAILED': {'State': 'FAILED'},
-    },
   }
   self.filteroptions = options;
 
@@ -955,8 +1009,9 @@ View.prototype.add_filter_options = function (filter) {
   let optionstable = $('<table>',{id: "optionstable",width: 100+200*Object.keys(options).length});
   let optionsrow = $('<tr>').append($('<th>',{"aria-label":desc})
                             .text(desc))
-  // Looping over the different options
-  for (let [key, values] of Object.entries(options)) {
+
+  // Looping over the different options according to their order on the columns
+  for (let [key, values] of Object.entries(options).sort(([a], [b]) => sortByKeyOrder(a, b, self.gridApi.getColumns().map((col)=>col.colDef.headerName)))) {
     let id = key.replace(/(\s)/g, '_');
     // Adding current option 'title' in a cell
     optionsrow.append($('<td>',{id: id}).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'))
@@ -991,7 +1046,12 @@ View.prototype.add_filter_options = function (filter) {
     filteroptions.attr("data-original-title","Click to hide the options to filter the table")
                  .attr("aria-label","Click to hide the options to filter the table")
     $('main').prepend(optionsdiv);
-    optionsdiv.slideDown();
+    // Checking which options should be already selected
+    self.check_filteroptions(self.initial_data.filter);
+    optionsdiv.slideDown(function() {
+      resize();
+    });
+    resize();
   }
   
   // On show-info filteroptions click:
@@ -1006,6 +1066,7 @@ View.prototype.add_filter_options = function (filter) {
       delete self.initial_data.options.showoptions;
       $('#optionsdiv').slideUp(function() {
         $(this).remove();
+        resize()
       });
       self.setHash();
     } else {
@@ -1015,7 +1076,11 @@ View.prototype.add_filter_options = function (filter) {
       self.initial_data.options = { 'showoptions': 'true' };
       self.setHash();
       $('#main_content').prepend(optionsdiv);
-      optionsdiv.slideDown();
+      // Checking which options should be already selected
+      self.check_filteroptions(self.initial_data.filter);
+      optionsdiv.slideDown(function() {
+        resize();
+      });
     }
     return;
   });
@@ -1051,7 +1116,9 @@ View.prototype.add_infobutton = function (description) {
     // Removing previous text before adding new one
     $('#infotext').remove();
     $('main').prepend(infotext);
-    infotext.slideDown();
+    infotext.slideDown(function() {
+      resize()
+    });
   }
   
   // On show-info button click:
@@ -1067,6 +1134,7 @@ View.prototype.add_infobutton = function (description) {
       delete self.initial_data.description.showinfo;
       $('#infotext').slideUp(function() {
         $(this).remove();
+        resize()
       });
       self.setHash();
     } else {
@@ -1076,7 +1144,9 @@ View.prototype.add_infobutton = function (description) {
       self.initial_data.description = { 'showinfo': 'true' };
       self.setHash();
       $('#main_content').prepend(infotext);
-      infotext.slideDown();
+      infotext.slideDown(function() {
+        resize()
+      });
     }
     return;
   });
@@ -1881,14 +1951,14 @@ function resize() {
   $("#footer_graphs").css("margin-bottom",$("#footer_footer").height())
   // Set height of the footer (that can be dragged with the mouse)
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
-  // Height of main content is window size - the height of the header - height of the footer - 10 for padding(?)
+  // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
   $("#main_content").height($(window).height() - $("#header").height() - $("footer").height() - 10);
   $("#main_content th").css("top", $("#day_selection_scroll").height() - 10);
   $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height() + $("#day_selection_scroll").height()- 10);
   $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
                         $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
   if ($("#myGrid")) {
-    $("#myGrid").height($("#main_content").height());
+    $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
   }
   for (let i = 0; i < view.resize_function.length; ++i) {
     view.resize_function[i]();

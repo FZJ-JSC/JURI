@@ -20,6 +20,39 @@ function init_grid() {
       return quickFilterParts.every(part => rowQuickFilterAggregateText.match(part));
     },
     dataTypeDefinitions: {  // To redefine or define new types
+      date: {         // Redefining the dateString type to recognize our type of dates
+        baseDataType: "date",
+        extendsDataType: "date",
+      //   valueParser: (params) =>{
+      //     console.log('valueParser')
+      //     return params.newValue != null && params.newValue.match("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}")
+      //       ? params.newValue
+      //       : null;
+      //     },
+        // valueFormatter: (params) => {
+        //   console.log('valueFormatter',params.value)
+        //   return params.value == null ? "" : params.value;
+        // },
+      //   dataTypeMatcher: (value) => {
+      //     console.log('dataTypeMatcher')
+      //     return typeof value === "string" && !!value.match("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}");
+      //   },
+      //   dateParser: (value) => {
+      //     console.log('dateParser')
+      //     const date = new Date(value)
+      //     if (value == null || value === "") {
+      //       return undefined;
+      //     }
+      //     return date;
+      //   },
+      //   dateFormatter: (value) => {
+      //     console.log('dateFormatter')
+      //     if (value == null) {
+      //       return undefined;
+      //     }
+      //     return value.toISOString().slice(0,-8).replace("T"," ");
+      //   },
+      },
       dateString: {         // Redefining the dateString type to recognize our type of dates
         baseDataType: "dateString",
         extendsDataType: "dateString",
@@ -48,7 +81,7 @@ function init_grid() {
           return value.toISOString().slice(0,-8).replace("T"," ");
         },
       },
-      timeInterval: {         // Redefining the dateString type to recognize our type of dates
+      timeInterval: {         // Adding new timeInterval type based on number
         baseDataType: "number",
         extendsDataType: "number",
         valueGetter: (params) => {
@@ -161,12 +194,15 @@ function init_grid() {
     $('#filter').css('width',"170px")
                 .append(filter)
   }
-  // Add button for options
-  view.add_filter_options($('#filter'));
 
   // Getting headers
   view.getHeaders();
 
+  // Parse filter options to add possible dates
+  view.page_data.options = parseOptions(view.page_data.options)
+  // Add button for options
+  view.add_filter_options($('#filter'),view.page_data.options);
+  
   // Adding a 'clear filter' for the given column
   clear_column_filter_link = $('<a>').css('display','flex')
                                      .attr('aria-label','Clear column filter')
@@ -204,7 +240,7 @@ function init_grid() {
 
 function onStateUpdated(event) {
   // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
-  if (event.sources[0]!='scroll') {
+  if (!['scroll','filter','columnSizing'].includes(event?.sources[0])) {
     if ((view.gridApi.getAllDisplayedColumns().length*100 > $('#main_content').width())) {
       view.gridApi.autoSizeAllColumns(false);
     } else {
@@ -236,14 +272,18 @@ function navigateToNextCell(params) {
 
 function get_filter_string(value) {
   let filter;
-  if (value.type == 'greaterThan') {
-    filter = `>${value.filter.toString()}`
-  } else if (value.type == 'lessThan') {
-    filter = `<${value.filter.toString()}`
-  } else if (value.type == 'inRange') {
-    filter = `${value.filter.toString()}-${value.filterTo.toString()}`
+  if (value.filterType == 'date') {
+    filter = `${value.dateFrom??""}${(value.dateFrom&&value.dateTo)?'-':''}${value.dateTo??""}`
   } else {
-    filter = `${value.filter.toString()}`
+    if (value.type == 'greaterThan') {
+      filter = `>${value.filter.toString()}`
+    } else if (value.type == 'lessThan') {
+      filter = `<${value.filter.toString()}`
+    } else if (value.type == 'inRange') {
+      filter = `${value.filter.toString()}-${value.filterTo.toString()}`
+    } else {
+      filter = `${value.filter.toString()}`
+    }
   }
   return filter;
 }
@@ -337,6 +377,30 @@ let numberFilterParams = {
   // },
 };
 
+
+let dateFilterParams = {
+  // To include selected dates when "between" is used (otherwise, between dates 10 and 12 only shows jobs on 11)
+  inRangeInclusive: true,
+  // Comparator that returns 0 if date is on the same day (irrespective of time on that day)
+  // -1 for hours/date before that given date ("yesterday" and before), and +1 to hours/date after that given day ("tomorrow" and after)
+  comparator: (filterLocalDateAtMidnight, cellValue) => {
+      const dateAsString = cellValue;
+
+      if (dateAsString == null) {
+          return 0;
+      }
+      const cellDate = new Date(dateAsString);
+      // Return values that are between midnight of "today" and midnight of "tomorrow"
+      if (cellDate < filterLocalDateAtMidnight) {
+          return -1;
+      } else if (cellDate > new Date(filterLocalDateAtMidnight.setTime( filterLocalDateAtMidnight.getTime() + 86400000 ))) {
+          return 1;
+      }
+      return 0;
+  }
+}
+
+
 // autoSizeAll() {
 //   const allColumnIds = view.gridApi.getAllColumns().map((column) => column.getColId());
 //   this.gridColumnApi.autoSizeColumns(allColumnIds);
@@ -349,7 +413,6 @@ let numberFilterParams = {
  * It can use '>(number)', '<(number)' or '(number)-(number)' (for InRange)
  * 
  */
-
 class NumberFloatingFilterComponent {
   init(params) {
     // Creating the eGUI as in a regular Number filter
@@ -390,7 +453,7 @@ class NumberFloatingFilterComponent {
         });
         return;
       }
-      // Deal with the separate cases (>, < or equal) separately
+      // Deal with the separate cases (>, <, - or equal) separately
       if (this.eFilterInput.value.startsWith('>')) {
         // Storing original value to recover at the end (as onFloatingFilterChanged changes the value to the number)
         let original = this.eFilterInput.value

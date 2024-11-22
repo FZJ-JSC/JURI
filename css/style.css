@@ -42,7 +42,8 @@ a {
   color: #ffffff; 
   border-bottom: 1px solid #fff;
   padding: 0;   
-  min-height: 37px; 
+  min-height: 37px;
+  flex-wrap: nowrap;
 }
 
 #institution_logo {
@@ -61,6 +62,7 @@ a {
 }
 
 #title {
+  height: 100%;
   padding-left: 10px;
   padding-right: 10px;
   align-self: center;
@@ -68,7 +70,11 @@ a {
   display: flex;
   flex-direction: row;
   & div {
-    align-content: center;
+    display: flex;
+    align-items: center;
+    font-size: min(1.6cqw, 1em);
+    white-space: nowrap;
+    overflow: hidden;
   }
 }
 
@@ -132,6 +138,10 @@ a {
     text-decoration: none;
     display: flex;
     align-items: center;
+    font-size: min(1.6cqw, 1em);
+    white-space: nowrap;
+    overflow: hidden;
+    height: 100%;
   }
   & img {
     height: 30px;
@@ -418,6 +428,9 @@ nav li:hover {
 
 .nav-link {
   color: #ffffff ! important;
+  font-size: min(1.6cqw, 1em);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 nav li:hover > .nav-link {

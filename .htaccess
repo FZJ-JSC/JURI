@@ -42,11 +42,15 @@ Satisfy all
 # 404 page that should be edited to a fixed location
 #ErrorDocument 404 /system/error404.html
 
-Header set Cache-Control "max-age=60, private"
 #<IfModule mod_deflate.c>
 #  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/csv text/javascript application/json application/pdf application/javascript
 #</IfModule>
 <IfModule mod_headers.c>
+  # Header set Cache-Control "max-age=60, private"
+  Header set Cache-Control "no-cache, no-store"
+  Header set Pragma "no-cache"
+  Header set Expires 0
+
   RewriteEngine on
   # Serve gzip compressed HTML files if they exist
   RewriteCond "%{REQUEST_FILENAME}\.gz" -s

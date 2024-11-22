@@ -312,27 +312,43 @@ function clear_filter(column) {
  * @param {str} value 
  * @returns Array with boolean if filter has number type, and condition object to apply to grid
  */
-function get_filter_object(value) {
+function get_filter_object(filtertype,value) {
   let condition = {};
-  let numberType = false;
-  condition.filter = value;
-  condition.type = 'contains';
-  range = condition.filter.match(/(^\d*\.?\d*)-(\d*\.?\d*)$/);
-  if (condition.filter.startsWith('>')) {
-    numberType = true
-    condition.type = 'greaterThan'
-    condition.filter = condition.filter.slice(1)
-  } else if (condition.filter.startsWith('<')) {
-    numberType = true
-    condition.type = 'lessThan'
-    condition.filter = condition.filter.slice(1)
-  } else if (range && range[1].length && range[2].length) {
-    numberType = true
-    condition.type = 'inRange'
-    condition.filter = range[1];
-    condition.filterTo = range[2];
+  if (filtertype == 'number') {
+    condition.filter = value;
+    condition.type = 'contains';
+    range = condition.filter.match(/(^\d*\.?\d*)-(\d*\.?\d*)$/);
+    if (condition.filter.startsWith('>')) {
+      condition.type = 'greaterThan'
+      condition.filter = condition.filter.slice(1)
+    } else if (condition.filter.startsWith('<')) {
+      condition.type = 'lessThan'
+      condition.filter = condition.filter.slice(1)
+    } else if (range && range[1].length && range[2].length) {
+      condition.type = 'inRange'
+      condition.filter = range[1];
+      condition.filterTo = range[2];
+    }  
+  } else if (filtertype == 'date') {
+    condition.dateFrom = value;
+    condition.type = 'equals';
+    range = condition.dateFrom.match(/(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})-(\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2})/)
+    if (condition.dateFrom.startsWith('>')) {
+      condition.type = 'greaterThan'
+      condition.dateFrom = condition.dateFrom.slice(1)
+    } else if (condition.dateFrom.startsWith('<')) {
+      condition.type = 'lessThan'
+      condition.dateFrom = condition.dateFrom.slice(1)
+    } else if (range && range[1].length && range[2].length) {
+      condition.type = 'inRange'
+      condition.dateFrom = range[1];
+      condition.dateTo = range[2];
+    }  
+  } else {
+    condition.filter = value;
+    condition.type = 'contains';
   }
-  return [numberType, condition];
+  return condition;
 }
 
 function apply_filter(filters) {
@@ -358,13 +374,16 @@ function apply_filter(filters) {
       Object.entries(filters).forEach(([key,value]) => {
         if (!value.length) {return;}
         let multi = false;
-        // Open column group if a filter is applied in a column that is shown only when group is opened
-        if(view.gridApi.getColumn(view.headerToName[view.clicked_page][key]) && view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='open') {
-          view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent().setExpanded(true)
-        }
-        // Close column group if a filter is applied in a column that is shown only when groups is closed
-        if(view.gridApi.getColumn(view.headerToName[view.clicked_page][key]) && view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='closed') {
-          view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent().setExpanded(false)
+        if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key])) {
+          if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='open') {
+            // Open column group if a filter is applied in a column that is shown only when group is opened
+            let groupcol = view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent()
+            groupcol.setExpanded(true);
+            view.gridApi.autoSizeColumns(groupcol.getLeafColumns());
+          } else if(view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='closed') {
+            // Close column group if a filter is applied in a column that is shown only when groups is closed
+           view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent().setExpanded(false)
+          }
         }
         initial_filters[view.headerToName[view.clicked_page][key]] = {}
         // Checking if there are multiple conditions
@@ -375,21 +394,21 @@ function apply_filter(filters) {
           initial_filters[view.headerToName[view.clicked_page][key]].operator = 'OR';
           multi = '||';
         }
-        let numberType = false;
+        let colType = view.gridApi.getColumn(view.headerToName[view.clicked_page][key])?.colDef.cellDataType
+        // if(!colType) {return;}
+        let filtertype = (colType=='date'||colType=='number')?colType:'text';
         // If there are multiple conditions, add them to the conditions array
         if (multi) {
           initial_filters[view.headerToName[view.clicked_page][key]].conditions = []
           value.split(multi).forEach((cond) => {
-            let [ type , condition ] = get_filter_object(cond)
-            numberType |= type
+            let condition = get_filter_object(filtertype,cond)
             initial_filters[view.headerToName[view.clicked_page][key]].conditions.push(condition)
           })
-          initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
+          initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
         } else {
-          let [ type , condition ] = get_filter_object(value)
-          numberType |= type
+          let condition = get_filter_object(filtertype,value)
           initial_filters[view.headerToName[view.clicked_page][key]] = condition
-          initial_filters[view.headerToName[view.clicked_page][key]].filterType = numberType?'number':'text'
+          initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
         }
       })
       view.check_filteroptions(filters);
