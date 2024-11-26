@@ -33,12 +33,7 @@ View.prototype.initDates = function(active_date) {
 }
 
 View.prototype.get_history_context = function(nr) {
-  if (nr == 0) {
-    context = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/today.json");
-  } else {
-    context = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/jobbyday_" + String(nr).padStart(3, '0') + ".json");
-  }
-  return context;
+  return (nr == 0)?replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/today.json"):replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/jobbyday_" + String(nr).padStart(3, '0') + ".json")
 }
 
 // View.prototype.select_date = function (nr) {

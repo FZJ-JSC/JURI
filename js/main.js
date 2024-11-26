@@ -901,16 +901,16 @@ View.prototype.remove_filter = function (new_filter,delimiter="||") {
 /**
  * Function to safely evaluate code stored in string
  * @param {*} expression Expression to be evaluated
- * @param {*} context contexts that are safe to be evaluated
+ * @param {*} contexts contexts that are safe to be evaluated
  * @returns 
  */
-function safeEval(expression, context = {}) {
+function safeEval(expression, contexts = {}) {
   // Create a new function that evaluates the expression in the provided context
-  return new Function(...Object.keys(context), `return ${expression};`)(...Object.values(context));
+  return new Function(...Object.keys(contexts), `return ${expression};`)(...Object.values(contexts));
 }
 
-// Example context that includes today's date, and other available global functions or variables
-const context = {
+// Example contexts that includes today's date, and other available global functions or variables
+const safecontexts = {
   Date: Date,
   Math: Math
   // Can be extended with other values/functions if needed
@@ -932,7 +932,7 @@ function parseOptions(object) {
   // Handle strings that represent expressions (e.g., "new Date()", "Math.random()")
   if (typeof object === 'string' && object.match(/[\(\)\{\}\?\.\+\-\*\/]/)) {
     try {
-      return safeEval(object, context);  // Safely evaluate expressions
+      return safeEval(object, safecontexts);  // Safely evaluate expressions
     } catch (error) {
       console.warn(`Could not evaluate the expression "${object}":`, error);
       return object;  // Return raw string if evaluation fails

@@ -64,7 +64,12 @@ if(isset($_GET["jobid"])) {
     header('Location: error404.html');
   } else {
     // Building correct link
-    $systemname_link = $systemname; // In case this is different in the configuration (e.g. capitalization), it can be changed here
+    $systemname_link = strtoupper($systemname); // In case this is different in the configuration (e.g. capitalization), it can be changed here
+    if ( strpos($systemname_link,"BOOSTER") !== false ) {
+      $systemname_link = "JUWELS_Booster";
+    } elseif ( strpos($systemname_link,"JURECA") !== false) {
+      $systemname_link = "JURECA-DC";
+    }
     $newURL = "data/projects/".$project."/".$user."/jobreport_".$systemname_link."_".$project."_".$user."_".$jobid.".html";
     header('Location: '.$newURL);
   }
