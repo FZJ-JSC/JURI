@@ -1283,7 +1283,7 @@ View.prototype.reloadPage = function () {
     // Re-select current page and subpage
     self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
       // When there is a selected job...
-      if (selected_jobid.length) {
+      if (selected_jobid?.length) {
         if($("#main_content > table").length){
           // ...reselecting row with the same jobid (when present)
           jobid_row = $(`#main_content > table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];

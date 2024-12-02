@@ -172,7 +172,7 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
 }
 
 
-// Function to apply x-range relayout to all the elements to sync graphes
+/* Function to apply x-range relayout to all the elements to sync graphs */
 View.prototype.FooterGraph.prototype.relayout = function (ed) {
   let self = this;
   sync_relayout(ed, self.graphs) ;
