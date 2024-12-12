@@ -15,7 +15,7 @@ Handlebars.registerHelper('gen_project_user_link', function(config,project,user)
 //    console.log("gen_project_user_link: "+config+" "+project+" "+user);
   let result = "";
   let url = 'index.html?config='+config+((view.navdata.data.demo || view.url_data.demo)?"&demo":"")+'&project='+project+'&user='+user;
-  if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
+  if (view.navdata.data.permission && ["observer","support","project"].indexOf(view.navdata.data.permission) != -1) {
     result = '<a href="'+url+'">'+user+'</a>';
   } else {
     result = user;

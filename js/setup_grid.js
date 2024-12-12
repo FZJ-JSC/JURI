@@ -50,7 +50,7 @@ function init_grid() {
       //     if (value == null) {
       //       return undefined;
       //     }
-      //     return value.toISOString().slice(0,-8).replace("T"," ");
+      //     return value.toLocaleString('sv-SE');
       //   },
       },
       dateString: {         // Redefining the dateString type to recognize our type of dates
@@ -78,7 +78,7 @@ function init_grid() {
           if (value == null) {
             return undefined;
           }
-          return value.toISOString().slice(0,-8).replace("T"," ");
+          return value.toLocaleString('sv-SE');
         },
       },
       timeInterval: {         // Adding new timeInterval type based on number
