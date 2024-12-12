@@ -213,6 +213,7 @@ PlotlyGraph.prototype.plot = function (params) {
     $(`#${self.id}`).height(self.graph_data.height)
   }
   // Merging default layout with config one
+  let layout;
   if (self.graph_data.layout) {
     layout = mergeDeep(self.layout, self.graph_data.layout)
   } else {
@@ -221,6 +222,8 @@ PlotlyGraph.prototype.plot = function (params) {
 
   let traces = [];
   let steps = [];
+  let traces_slider = []; // Store traces for the slider
+  let shapes = []; // Store the shapes (vertical lines) for the slider
   let numsteps;
   let xmin;
   let xmax;
@@ -420,12 +423,8 @@ PlotlyGraph.prototype.plot = function (params) {
           }, {});
           // Getting number of steps in the slider
           numsteps = Object.keys(grouped_data).length
-          // Getting total number of traces that will be created (i.e., total number of combinations of {step,jobid})
-          const numtraces = Object.keys(grouped_data)
-            .reduce((sum, key) => sum + Object.keys(grouped_data[key]).length, 0);
 
           // Looping over the different values defined for the "slider"
-          let visible_counter = 0;
           Object.keys(grouped_data)
           .sort((a, b) => parseInt(a) - parseInt(b))
           .forEach((key,index,grouped_data_keys) => {
@@ -455,14 +454,20 @@ PlotlyGraph.prototype.plot = function (params) {
             // Note that in this case, each value is an array. Not only that, but the number of elements in the arrays
             // of the args values cannot be smaller than the number of traces originally, otherwise it is not shown.
             //
+            // The above functionality does not work well in plotly, as described here: https://github.com/plotly/plotly.js/issues/7293
+            //
             // Another possbility is to add all the traces at first, and the steps will then just change their visibility
-            // We are following this option for the moment. If it becomes too slow, the first method can be tested.
+            // We are following this option for the moment. It is however, quite slow.
+            //
+            // One last possibility is to add only the traces for the current time, and use the 'plotly_sliderchange'
+            // event to update the graphs ourselves. This way, we can add only the traces that are needed for that particular 
+            // key/step, and hopefully the update is not too slow.
+
+            // Adding an array that will hold the traces for this step
+            traces_slider.push([])
 
             // Starting a new step (that will include many traces - one for each jobid)
             step = {};
-
-            // Initializing an array to indicate which traces will be visible for the current step
-            let visible_traces = Array.from({ length: numtraces }, () => false);
 
             // Building up traces, one for each jobid, containing current point and previous points (if configured)
             Object.keys(grouped_data[key])
@@ -482,6 +487,7 @@ PlotlyGraph.prototype.plot = function (params) {
               trace.x = []
               trace.y = []
               trace.color = []
+              trace.size = []
               trace.customdata = []
               for (let i = self.graph_data.include_previous_steps; i >= 0; i--) {
                 if (((index - i)>=0)&&(grouped_data[grouped_data_keys[index - i]][jobid])){
@@ -495,6 +501,7 @@ PlotlyGraph.prototype.plot = function (params) {
                   }
                   trace.y.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][trace_data.ycol]));
                   trace.color.push(i===0?grouped_data[grouped_data_keys[index - i]][jobid]['color']:'gray');
+                  trace.size.push(i===0?10:5);
 
                   // Creating hovertemplate if given on config
                   if (trace_data.onhover) {
@@ -518,34 +525,14 @@ PlotlyGraph.prototype.plot = function (params) {
                     }));
                   }
                 }
-
-                  
-
-                  // trace.customdata = grouped_data[key][jobid].map(function (d)  {
-                  //   return trace_data.onhover.map(entry => {
-                  //     // Extract the key and value (since each entry is a single key-value pair object)
-                  //     // This is used instead of a regular object to be able to keep the order entered in the configuration
-                  //     const [key, value] = Object.entries(entry)[0];
-                    
-                  //     // If a factor is given, parse as a float and multiply by that factor. Otherwise, return the value itself
-                  //     return value['factor'] ? parseFloat(d[key]) * value['factor'] : d[key];
-                  //   });
-                  // })
-
               }
               trace.name = jobid
               trace.marker = {
                 color: trace.color,
-                size: 10,
+                size: trace.size,
               }
               trace.line = { width: 3, color: 'gray', simplify: false};
               
-              // Make traces of the last step visible
-              trace.visible = (index === numsteps - 1)?true: false;
-              // Marking traces of this step to be visible
-              visible_traces[visible_counter] = true;
-              visible_counter++;
-
               // Preparing the hover template
               if (trace_data.onhover) {
                 i = 0
@@ -558,96 +545,20 @@ PlotlyGraph.prototype.plot = function (params) {
                 }
               }
 
-              // // Creating hovertemplate if given on config
-              // if (trace_data.onhover) {
-              //   // Geting data from grouped_data[key][jobid] in the correct format in customdata
-              //   // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-              //   trace.customdata = trace_data.onhover.map(entry => {
-              //     // Extract the key and value (since each entry is a single key-value pair object)
-              //     const [hoverkey, value] = Object.entries(entry)[0];
-              //     console.log(hoverkey, value,grouped_data[key][jobid])
-                
-              //     // If a factor is given, parse as a float and multiply by that factor. Otherwise, return the value itself
-              //     return value['factor'] ? parseFloat(grouped_data[key][jobid][hoverkey]) * value['factor'] : grouped_data[key][jobid][hoverkey];
-              //   });
-                
 
-              //   // trace.customdata = grouped_data[key][jobid].map(function (d)  {
-              //   //   return trace_data.onhover.map(entry => {
-              //   //     // Extract the key and value (since each entry is a single key-value pair object)
-              //   //     // This is used instead of a regular object to be able to keep the order entered in the configuration
-              //   //     const [key, value] = Object.entries(entry)[0];
-                  
-              //   //     // If a factor is given, parse as a float and multiply by that factor. Otherwise, return the value itself
-              //   //     return value['factor'] ? parseFloat(d[key]) * value['factor'] : d[key];
-              //   //   });
-              //   // })
-
-              //   // Preparing the hover template
-              //   i = 0
-              //   for (const entry of trace_data.onhover) {
-              //     const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
-              //     // Add information on new line, when there's already some info there
-              //     trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
-              //     trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
-              //     i++
-              //   }
-              // }
-
-
-
-              traces.push(trace)
+              // Adding this trace to the current key/step
+              traces_slider[traces_slider.length - 1].push(trace)
+              // Getting the last step to plot first
+              traces = traces_slider[traces_slider.length - 1]
             });
-
-            // // Getting x values
-            // if ((layout.xaxis.type !== 'date')&&( self.graph_data.xcol && self.graph_data.xcol != 'date' )) {
-            //   trace.x = grouped_data[key].map(function (x)  { return parseFloat(x[self.graph_data.xcol]) });
-            // } else {
-            //   trace.x = grouped_data[key].map(function (x)  { return self.parseToDate(x[self.graph_data.xcol]) });
-            // }
-            // trace.y = grouped_data[key].map(function (x)  { return parseFloat(x[trace_data.ycol]) });
-
-            // trace.color = grouped_data[key].map(function (x)  { return x['color'] });
-
-            // trace.marker = {
-            //   color: trace.color,
-            //   size: 10,
-            // }
-
-            // // Creating hovertemplate if given on config
-            // if (trace_data.onhover) {
-            //   // Geting data from grouped_data[key] in the correct format in customdata
-            //   // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-            //   trace.customdata = grouped_data[key].map(function (d)  {
-            //     return trace_data.onhover.map(entry => {
-            //       // Extract the key and value (since each entry is a single key-value pair object)
-            //       // This is used instead of a regular object to be able to keep the order entered in the configuration
-            //       const [key, value] = Object.entries(entry)[0];
-                
-            //       // If a factor is given, parse as a float and multiply by that factor. Otherwise, return the value itself
-            //       return value['factor'] ? parseFloat(d[key]) * value['factor'] : d[key];
-            //     });
-            //   })
-
-            //   // Preparing the hover template
-            //   i = 0
-            //   for (const entry of trace_data.onhover) {
-            //     const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
-            //     // Add information on new line, when there's already some info there
-            //     trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
-            //     trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
-            //     i++
-            //   }
-            // }
 
             // If no lines (shapes) are to added, only traces are modified (method: restyle)
             let method =  'restyle';
-            let args = [
-              {visible: visible_traces} // Traces (make last one visible)
-            ];
+            let args = [{},{}]; // Empty arguments, as we are now using `execute: false` and we update the plot ourselves
+            shapes.push(layout.shapes??[])
             if (self.graph_data.vertical_line) {
               // If vertical lines (shapes) are to be added, both traces and layout need to be modified (method: update)
-              shapes_with_lines = [...(layout.shapes??[]),{
+              shapes[shapes.length-1].push(...shapes[shapes.length-1],{
                 type: 'line',
                 x0: self.parseToDate(key),
                 y0: 0,
@@ -659,22 +570,25 @@ PlotlyGraph.prototype.plot = function (params) {
                   width: 1.5,
                   dash: 'dot',
                 }
-              }]
-              method = 'update' // change method to 'update' and add layout change below
-              args.push(
-                {shapes: shapes_with_lines} // adding lines as shapes to layout
-              )
+              })
+
+              // method = 'update' // change method to 'update' and add layout change below
+              // args.push(
+              //   {shapes: shapes_with_lines} // adding lines as shapes to layout
+              // )
             }
 
             step = {
               label: self.parseToDate(key).toLocaleString('sv-SE'),
+              value: key,
               method: method,
               args: args,
+              execute: false,
             }
 
             // Adding vertical line for the first step that is shown
             if ((index === numsteps - 1)&&(self.graph_data.vertical_line)) {
-              layout.shapes = shapes_with_lines
+              layout.shapes = shapes[shapes.length-1]
             }
 
             steps.push(step)
@@ -901,7 +815,16 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 
   // Adding a slider if that's defined
-  if (self.graph_data.slider) {
+  if ((self.graph_data.slider)&&traces.length > 0) {
+
+    // Adding our own update of the graph when the slider is changed, due to slowness of using
+    // all traces at once, and bugs updating the traces when passing them in the steps (see long comment above)
+    $(`#${self.id}`).on('plotly_sliderchange', function (e,steps) {
+      // Updating shapes in layout
+      layout.shapes = shapes[steps.step._index]
+      // Updating the graph, as the slider update has problems
+      Plotly.react(self.id, traces_slider[steps.step._index], layout, self.config);
+      })
     layout.sliders = [{
       active: numsteps-1,
       pad: {
