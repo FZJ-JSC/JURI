@@ -654,10 +654,18 @@ PlotlyGraph.prototype.plot = function (params) {
               return trace_data.onhover.map(entry => {
                 // Extract the key and value (since each entry is a single key-value pair object)
                 // This is used instead of a regular object to be able to keep the order entered in the configuration
-                const [key, value] = Object.entries(entry)[0];
-              
-                // If a factor is given, parse as a float and multiply by that factor. Otherwise, return the value itself
-                return value['factor'] ? parseFloat(d[key]) * value['factor'] : d[key];
+                const [hoverkey, value] = Object.entries(entry)[0];
+                
+                if (value['factor']) {
+                  // If a factor is given, parse as a float and multiply by that factor
+                  return parseFloat(d[hoverkey]) * value['factor']
+                } else if ((value['type'])&&(value['type']==='date')){
+                  // If the value is type 'date', parse it
+                  return self.parseToDate(d[hoverkey]).toLocaleString('sv-SE')
+                } else {
+                  // Otherwise, return the value itself
+                  return d[hoverkey]
+                }
               });
             })
 
