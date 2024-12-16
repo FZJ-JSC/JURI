@@ -324,6 +324,7 @@ $systemname = strtoupper($systemname);
 $systemmap = array(
   'SYSTEM' => 'JURECA DC',
   'JURECA-DC' => 'JURECA DC',
+  'JURECA' => 'JURECA DC',
   'JUWELS BOOSTER' => 'JUWELS Booster',
   'JUWELS' => 'JUWELS Cluster',
   'JEDI' => 'JEDI',

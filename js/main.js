@@ -297,6 +297,7 @@ View.prototype.get_system_status = async function (statusfile,systemname) {
   let systemmap = {
     'SYSTEM': 'JURECA DC',
     'JURECA-DC': 'JURECA DC',
+    'JURECA': 'JURECA DC',
     'JUWELS BOOSTER': 'JUWELS Booster',
     'JUWELS': 'JUWELS Cluster',
     'JEDI': 'JEDI',
@@ -332,6 +333,7 @@ View.prototype.get_system_status = async function (statusfile,systemname) {
 View.prototype.build_system_menu = function (navdata) {
   // Obtained icons and function from system-status-page:
   function getStatusForHealth(health) {
+    let toReturn;
     switch (health) {
       case '0':
         toReturn = "Healthy"
@@ -395,17 +397,18 @@ View.prototype.build_system_menu = function (navdata) {
                                  .append($('<span>').text(this_system_name))
       // Get current system status (if present) and then add to dropdown menu
       self.get_system_status(navdata.status?navdata.status.file:null,this_system_name.replace(" DEMO","")).then((health_id) => {
+        if (!health_id) { return; }
         // If health was obtained, add image to menu
-        if (health_id.length) {
-          let health = health_id[0];
+        let health = health_id[0];
+        if (health) {
           let status = getStatusForHealth(health);
           let status_verbose = getVerboseHealth(health);
           let text = `${this_system_name.replace(" DEMO","")} is currently ${status_verbose}`;
           let status_img = $('<img>').attr('src', `img/Maintenance-Server-JSC-v3_${status}.svg`)
-                                     .attr('alt', text)
-                                     .attr("title",text)
-                                     .attr('data-toggle', "tooltip")
-                                     .on( "mouseover", function(event) {
+                                    .attr('alt', text)
+                                    .attr("title",text)
+                                    .attr('data-toggle', "tooltip")
+                                    .on( "mouseover", function(event) {
                                           systemname_menu.tooltip('hide')
                                           event.stopPropagation() // Prevent tooltip on parent from showing
                                         });
@@ -437,10 +440,11 @@ View.prototype.build_system_menu = function (navdata) {
 
     // Get system status (if present)
     self.get_system_status(navdata.status?navdata.status.file:null,current_system_name).then((health_id) => {
+      if (!health_id) { return; }
       // If health was obtained, add image to menu
-      if (health_id) {
-        let health = health_id[0];
-        let id = health_id[1];
+      let health = health_id[0];
+      let id = health_id[1];
+      if (health) {
         let status = getStatusForHealth(health);
         let status_verbose = getVerboseHealth(health);
         let text = `${current_system_name} is currently ${status_verbose}${navdata.status.link?'. Click to see more details.':''}`;
