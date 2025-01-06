@@ -64,11 +64,19 @@ if(isset($_GET["jobid"])) {
     header('Location: error404.html');
   } else {
     // Building correct link
-    $systemname_link = strtoupper($systemname); // In case this is different in the configuration (e.g. capitalization), it can be changed here
-    if ( strpos($systemname_link,"BOOSTER") !== false ) {
+    $systemname_link = $systemname; 
+    // In case this is different in the configuration (e.g. capitalization), it can be changed here
+    // The following lines are corrections for the LLview version being used in some production systems
+    if (( strpos($systemname_link,"BOOSTER") !== false ) || ( strpos($systemname_link,"booster") !== false )) {
       $systemname_link = "JUWELS_Booster";
-    } elseif ( strpos($systemname_link,"JURECA") !== false) {
+    } elseif (( strpos($systemname_link,"JURECA") !== false) || ( strpos($systemname_link,"jureca") !== false)) {
       $systemname_link = "JURECA-DC";
+    } elseif ( strpos($systemname_link,"juwels") !== false) {
+      $systemname_link = "JUWELS";
+    } elseif ( strpos($systemname_link,"jusuf") !== false) {
+      $systemname_link = "JUSUF";
+    } elseif ( strpos($systemname_link,"deep") !== false) {
+      $systemname_link = "DEEP";
     }
     $newURL = "data/projects/".$project."/".$user."/jobreport_".$systemname_link."_".$project."_".$user."_".$jobid.".html";
     header('Location: '.$newURL);

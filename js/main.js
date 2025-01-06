@@ -288,7 +288,7 @@ View.prototype.show = function () {
 }
 
 /**
- * 
+ * Reads the status of the system when a status file is given
  */
 View.prototype.get_system_status = async function (statusfile,systemname) {
   // Getting system status
@@ -308,7 +308,7 @@ View.prototype.get_system_status = async function (statusfile,systemname) {
   let id = null;
   await fetch(statusfile).then(r => {
       lastMod = new Date(r.headers.get('Last-Modified'));
-      now = new Date();
+      let now = new Date();
       return (now-lastMod)/1000 > 600 ? "" : r.json();
   }).then((data) => {
     if (!data.length) { return; }
@@ -706,7 +706,7 @@ View.prototype.update_status_info = function () {
     for (let text of Object.values(info)) {
       let info_str = "";
       // Transforming to Array when it is not, to make sure it is interable
-      texts = Array.isArray(text) ? text : [text];
+      let texts = Array.isArray(text) ? text : [text];
       for (let i = 0; i < texts.length; ++i) {
         for (let key in texts[i]) {
           info_str += key.capitalize().replace(/[_]/g," ") + ": " + texts[i][key];
@@ -717,11 +717,11 @@ View.prototype.update_status_info = function () {
         (($("#view_status_info").text().length > 0) ? "; " : "") +
         info_str);
       // Checking if update was long ago (>10min), and if so, mark as red
-      result = info_str.match(/\d{2}\/\d{2}\/\d{2}-\d{2}:\d{2}:\d{2}/);
+      let result = info_str.match(/\d{2}\/\d{2}\/\d{2}-\d{2}:\d{2}:\d{2}/);
       if (result) {
         // Fixing date format
         result = new Date(`20${result[0]}`.replace(/-/g,"T").replace(/\//g,"-"));
-        now = new Date();
+        let now = new Date();
         if ((now-result)/60000 > 10.0) {
           $("#view_status_info").css("color",'red')
         } else {
@@ -1028,8 +1028,8 @@ View.prototype.add_filter_options = function (filter,options) {
                                                     .prepend(option_input)
       this_option.append(option_label)
                  .append(`<br>`);
-      // Adding filter when input radio is clicked
-      option_input.on('change', (e) => {
+      // Adding filter when input checkbox is clicked
+      $('main').on('change', `#optionsdiv #${inputid}`, (e) => {
         let delimiter="||";
         if (e.target.checked) {
           self.add_filter(filter,delimiter=delimiter);
