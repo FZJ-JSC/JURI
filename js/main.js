@@ -539,7 +539,7 @@ View.prototype.changeSystem = function (system) {
     // Clean old content, footer, infoline and filter elements
     $("#main_content").empty();
     $("#main_content").empty();
-    $("#filter").empty();
+    $("#filter_container").empty();
     $("#options").empty()
     $("#footer_graphs").empty();
     $("#footer_infoline_page_options").empty();
@@ -874,6 +874,9 @@ View.prototype.check_filteroptions = function (filters) {
         }
       }
       $(`#${id}`).prop('checked', checked);
+      if(name=='State') {
+        $(`#filter_${optname.toLowerCase()}`).toggleClass("active", checked)
+      }
     }
   }  
 }
@@ -994,18 +997,6 @@ View.prototype.add_filter_options = function (filter,options) {
   }
   self.filteroptions = options;
 
-  let text = `Click to ${self.initial_data.options?.showoptions ? "hide" : "show"} pre-selected filter options`;
-  let filteroptions = $('#filteroptions')
-  if (!filteroptions.length) {
-    filteroptions = $('<div>').attr('id','filteroptions')
-                              .attr("title",text)
-                              .attr("aria-label",text)
-                              .attr('data-toggle', "tooltip")
-                              .attr('data-html', "true")
-                              .attr('data-placement', "bottom")
-    filter.append(filteroptions)
-  }
-
   // Creating table with filter options
   $('#optionsdiv').remove() // Removing previous before adding new one
   let desc = 'Options to filter table:'
@@ -1020,8 +1011,8 @@ View.prototype.add_filter_options = function (filter,options) {
     // Adding current option 'title' in a cell
     optionsrow.append($('<td>',{id: id}).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'))
     let this_option = $('<td>').addClass('optionvalues')
-    // Looping over the different options for this given field, and creating the radio filteroptions
-    for (let [optname, filter] of Object.entries(values)) {
+    // Looping over the different options for this given field, and creating the checkbox filteroptions
+    for (let [optname, filter_entry] of Object.entries(values)) {
       let inputid = `${id}_${optname.replace(/(\s)/g, '_')}`;
       let option_input = $('<input>',{type: 'checkbox',id: inputid, name: id, value: optname})
       let option_label = $('<label>',{for: inputid}).append($('<span>').text(optname).css("vertical-align", "middle"))
@@ -1032,19 +1023,134 @@ View.prototype.add_filter_options = function (filter,options) {
       $('main').on('change', `#optionsdiv #${inputid}`, (e) => {
         let delimiter="||";
         if (e.target.checked) {
-          self.add_filter(filter,delimiter=delimiter);
+          self.add_filter(filter_entry,delimiter=delimiter);
         } else {
-          self.remove_filter(filter,delimiter=delimiter);
+          self.remove_filter(filter_entry,delimiter=delimiter);
         }
       })
           
     }
     optionsrow.append(this_option)
   }
+  // Creating div with table with filter options to be added to DOM
   optionstable.append(optionsrow)
   optionsdiv.append(optionstable)
-  
+
+  // Create the container for the toggle buttons
+  let filterToggle = $('<div>')
+      .addClass('filter-toggle')
+      .attr('id', 'status-filter-toggle')
+
+  // Define the buttons with their respective colors
+  const buttons = [
+    { 
+      label: 'C', 
+      color: 'green', 
+      tooltip: 'Toggle filter for COMPLETED jobs',
+      id: 'filter_completed',
+      function: () => {
+        let delimiter="||";
+        if ($('#filter_completed').hasClass('active')) {
+          self.add_filter({State: 'COMPLETED'},delimiter=delimiter);
+        } else {
+          self.remove_filter({State: 'COMPLETED'},delimiter=delimiter);
+        }
+      } 
+    },
+    { 
+      label: 'F', 
+      color: 'red', 
+      tooltip: 'Toggle filter for FAILED jobs',
+      id: 'filter_failed',
+      function: () => {
+        let delimiter="||";
+        if ($('#filter_failed').hasClass('active')) {
+          self.add_filter({State: 'FAILED'},delimiter=delimiter);
+        } else {
+          self.remove_filter({State: 'FAILED'},delimiter=delimiter);
+        }
+      } 
+    },
+    { 
+      label: 'R', 
+      color: 'blue',
+      tooltip: 'Toggle filter for RUNNING jobs',
+      id: 'filter_running',
+      function: () => {
+        let delimiter="||";
+        if ($('#filter_running').hasClass('active')) {
+          self.add_filter({State: 'RUNNING'},delimiter=delimiter);
+        } else {
+          self.remove_filter({State: 'RUNNING'},delimiter=delimiter);
+        }
+      } 
+    },
+    { 
+      label: '+', 
+      color: 'black', 
+      tooltip: `${self.initial_data.options?.showoptions ? "Hide" : "Show"} pre-selected filter options`,
+      id: 'filteroptions',
+      function: () => {
+        let filteroptions = $('#filteroptions')
+        // Turns on and off filter options
+        if (self.initial_data.options?.showoptions) {
+          // If "aria-label"is already showing up when clicking the filteroptions, then turn it off
+          filteroptions.attr("data-original-title","Click to show the options to filter the table")
+                        .attr("aria-label","Click to show the options to filter the table")
+          delete self.initial_data.options.showoptions;
+          $('#optionsdiv').slideUp(function() {
+            $(this).remove();
+            resize()
+          });
+          self.setHash();
+        } else {
+          // If "aria-label" does not exist when clicking the filteroptions, then turn it on
+          filteroptions.attr("data-original-title","Click to hide the options to filter the table")
+                        .attr("aria-label","Click to hide the options to filter the table")
+          self.initial_data.options = { 'showoptions': 'true' };
+          self.setHash();
+          $('#main_content').prepend(optionsdiv);
+          // Checking which options should be already selected
+          self.check_filteroptions(self.initial_data.filter);
+          optionsdiv.slideDown(function() {
+            resize();
+          });
+        }
+        return;
+      } 
+    }
+  ];
+
+  // Loop through the buttons to create and add them
+  buttons.forEach(button => {
+    const btn = $('<button>')
+      .addClass('filter-toggle-btn')
+      .attr('id',button.id)
+      .text(button.label)
+      .attr('data-value', button.label)
+      .attr("title",button.tooltip)
+      .attr("aria-label",button.tooltip)
+      .attr('data-toggle', "tooltip")
+      .attr('data-html', "true")
+      .attr('data-placement', "bottom")
+      .css({
+            color: button.color,
+          })
+      .off('click') // Turning off first, to avoid adding multiple events
+      .on('click', function () {
+          $(this).toggleClass('active');
+          button.function();
+      });
+
+    // Add the button to the container
+    filterToggle.append(btn);
+  });
+
+  // Add the toggle buttons to the #filter element
+  filter.append(filterToggle);
+
   // If show info is active (from URL), activate it
+  let filteroptions = $('#filteroptions')
   if (self.initial_data.options?.showoptions) {
     filteroptions.addClass('active');
     filteroptions.attr("data-original-title","Click to hide the options to filter the table")
@@ -1057,37 +1163,6 @@ View.prototype.add_filter_options = function (filter,options) {
     });
     resize();
   }
-  
-  // On show-info filteroptions click:
-  filteroptions.off('click'); // Turning off first, to avoid adding multiple events
-  filteroptions.on('click',() => {
-    filteroptions.toggleClass('active');
-    // Turns on and off filter options
-    if (self.initial_data.options?.showoptions) {
-      // If "aria-label"is already showing up when clicking the filteroptions, then turn it off
-      filteroptions.attr("data-original-title","Click to show the options to filter the table")
-                   .attr("aria-label","Click to show the options to filter the table")
-      delete self.initial_data.options.showoptions;
-      $('#optionsdiv').slideUp(function() {
-        $(this).remove();
-        resize()
-      });
-      self.setHash();
-    } else {
-      // If "aria-label" does not exist when clicking the filteroptions, then turn it on
-      filteroptions.attr("data-original-title","Click to hide the options to filter the table")
-                   .attr("aria-label","Click to hide the options to filter the table")
-      self.initial_data.options = { 'showoptions': 'true' };
-      self.setHash();
-      $('#main_content').prepend(optionsdiv);
-      // Checking which options should be already selected
-      self.check_filteroptions(self.initial_data.filter);
-      optionsdiv.slideDown(function() {
-        resize();
-      });
-    }
-    return;
-  });
   return;
 }
 

@@ -185,23 +185,29 @@ function init_grid() {
   const gridDiv = $("#myGrid");
   // Creating the grid
   view.gridApi = agGrid.createGrid(gridDiv[0], gridOptions);
-  // Adding filter field, when it is not there
-  if (!$('#filter > input').length) {
-    let filter = $('<input>').attr('type',"text")
-                             .attr('id',"filter-text-box") 
-                             .attr('placeholder',"Filter")
-                             .on('input',() => {onFilterTextBoxChanged(); return;})
-    $('#filter').css('width',"170px")
-                .append(filter)
-  }
 
   // Getting headers
   view.getHeaders();
 
-  // Parse filter options to add possible dates
-  view.page_data.options = parseOptions(view.page_data.options)
-  // Add button for options
-  view.add_filter_options($('#filter'),view.page_data.options);
+  // Adding filter field, when it is not there
+  if (!$('#filter > input').length) {
+    let filter = $('<div>')
+        .attr('id',"filter")
+        .addClass('filter')
+        .width(230)                    
+    let filter_input = $('<input>').attr('type',"text")
+                             .attr('id',"filter-text-box") 
+                             .attr('placeholder',"Filter")
+                             .on('input',() => {onFilterTextBoxChanged(); return;})
+    filter.append(filter_input)                  
+    $('#filter_container').append(filter)
+
+    // Parse filter options to add possible dates
+    view.page_data.options = parseOptions(view.page_data.options)
+    // Add button for options
+    view.add_filter_options($('#filter'),view.page_data.options);
+
+  }
   
   // Adding a 'clear filter' for the given column
   clear_column_filter_link = $('<a>').css('display','flex')
