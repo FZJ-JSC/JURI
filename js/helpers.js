@@ -363,7 +363,7 @@ Handlebars.registerHelper('cell_color', function(value,defscale) {
         view.add_colorscale_controls()
       }
       let dark = d3.lab(color_wheel[ind]).l < 50;
-      return `background-color: ${color_wheel[ind]}; color: ${dark ? '#fff' : '#000'};`;
+      return `background-color: ${color_wheel[ind]} !important; color: ${dark ? '#fff' : '#000'}  !important;`;
     } else {
       return "";
     }
