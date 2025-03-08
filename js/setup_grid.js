@@ -199,8 +199,12 @@ function init_grid() {
                              .attr('id',"filter-text-box") 
                              .attr('placeholder',"Filter")
                              .on('input',() => {onFilterTextBoxChanged(); return;})
-    filter.append(filter_input)                  
+    filter.append(filter_input)
     $('#filter_container').append(filter)
+    // Adding initial value obtained from URL, when present
+    if (view.initial_data.quickfilter) {
+      $("#filter-text-box").val(view.initial_data.quickfilter)
+    }
 
     // Parse filter options to add possible dates
     view.page_data.options = parseOptions(view.page_data.options)
@@ -336,10 +340,13 @@ function onRowSelected(event) {
 
 /* Function for quickfilter */
 function onFilterTextBoxChanged() {
+  let text = $("#filter-text-box").val()
   view.gridApi.setGridOption(
                               "quickFilterText",
-                              document.getElementById("filter-text-box").value,
+                              text,
                             );
+  view.initial_data.quickfilter = text;
+  view.setHash();
 }
 
 function add_filter_placeholder() {

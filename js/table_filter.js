@@ -375,15 +375,10 @@ function apply_filter(filters) {
         if (!value.length) {return;}
         let multi = false;
         if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key])) {
-          if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='open') {
-            // Open column group if a filter is applied in a column that is shown only when group is opened
-            let groupcol = view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent()
-            groupcol.setExpanded(true);
-            view.gridApi.autoSizeColumns(groupcol.getLeafColumns());
-          } else if(view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getColumnGroupShow()=='closed') {
-            // Close column group if a filter is applied in a column that is shown only when groups is closed
-           view.gridApi.getColumn(view.headerToName[view.clicked_page][key]).getParent().setExpanded(false)
-          }
+          check_column_expanded_status(view.headerToName[view.clicked_page][key])
+        }
+        if(!view.headerToName[view.clicked_page][key]) {
+          return;
         }
         initial_filters[view.headerToName[view.clicked_page][key]] = {}
         // Checking if there are multiple conditions
@@ -411,7 +406,9 @@ function apply_filter(filters) {
           initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
         }
       })
+      // Selecting filter option if the corresponding filter is applied
       view.check_filteroptions(filters);
+      // Apply filter to the grid
       filter_grid(initial_filters);
     }
   }
@@ -419,11 +416,31 @@ function apply_filter(filters) {
 }
 
 /**
+ * Check if a column is open or closed
+ * and set the desired expanded status 
+ * @param {string} colid ID of the column to be opened or closed
+ */
+function check_column_expanded_status(colid) {
+  if (view.gridApi.getColumn(colid)?.getColumnGroupShow()=='open') {
+    // Open column group if a filter is applied in a column that is shown only when group is opened
+    let groupcol = view.gridApi.getColumn(colid).getParent()
+    groupcol.setExpanded(true);
+    view.gridApi.autoSizeColumns(groupcol.getLeafColumns());
+  } else if(view.gridApi.getColumn(colid)?.getColumnGroupShow()=='closed') {
+    // Close column group if a filter is applied in a column that is shown only when groups is closed
+   view.gridApi.getColumn(colid).getParent().setExpanded(false)
+  }
+}
+
+
+/**
  * Apply a filter to the grid
  * @param {obj} filter Object containing all filters to be applied on the grid
  */
 function filter_grid(filter) {
   view.gridApi.setFilterModel(filter);
+  // Also filter using the textbox (it is lost when the option above is used)
+  onFilterTextBoxChanged();
 }
 
 

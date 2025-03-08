@@ -755,9 +755,49 @@ footer.container-fluid {
   margin: 0;
 }
 
+.info {
+  display: flex;
+  flex-direction: column;
+  flex: 0.25;
+  .hoverinfo {
+    margin-top: 30px;
+    position: relative;
+    table {
+      padding: 5px 15px;
+      border: 1px solid #444444;
+      border-radius: 3px;  
+      td:nth-child(1) {
+        width: 1%;
+        white-space: nowrap;
+        padding-right: 10px;
+      }
+      td {
+        font-size: 0.75cqw;
+      }
+    }
+    .close-btn {
+      position: absolute;
+      top: -5px;
+      right: 3px;
+      cursor: pointer;
+      font-size: 1.3rem;
+      color: #000;
+    }
+  }
+  .calendar {
+    margin-top: 30px;
+    align-self: center;
+    width: 90% !important;
+    .ui-datepicker {
+      width: 100% !important;
+    }
+  }  
+}
+
 .system_graph {
   padding: 0;
   height: 15rem; 
+  flex: 1;
 }
 
 .graph_row {

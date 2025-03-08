@@ -333,7 +333,12 @@ PlotlyGraph.prototype.plot = function (params) {
             }
           })
           trace.y = values.map(function (y) { return y.y });
-          self.minmax = (typeof values[0].min === 'number') ? true : false; // if first value of min is a number, all the others (and also max values) should be
+          
+          if (typeof trace_data.width != 'undefined' ) {
+            trace.width = data.map(function (d)  { return parseFloat(d[trace_data.width]) });
+          }
+
+          self.minmax = (typeof values[0]?.min === 'number') ? true : false; // if first value of min is a number, all the others (and also max values) should be
           if (self.minmax) {
             trace.min = values.map(function (y) { return y.min });
             trace.max = values.map(function (y) { return y.max });  
@@ -349,7 +354,9 @@ PlotlyGraph.prototype.plot = function (params) {
               thickness: 1,
             }
           }
-          trace.base = data.map(function (d)  { return parseFloat(d[trace_data.basecol]) });
+          if (trace_data.basecol) {
+            trace.base = data.map(function (d)  { return parseFloat(d[trace_data.basecol]) });
+          }
           trace.orientation = trace_data.orientation ?? 'v';
           trace.marker = trace_data.marker ?? {};
           // Defining colors for different groups
@@ -358,36 +365,25 @@ PlotlyGraph.prototype.plot = function (params) {
             trace.marker.color = trace.x.map(function (v,i) {
               return trace_data.color[groups[i]%trace_data.color.length]
             });  
+          } else if (trace_data.colorcol) {
+            trace.marker.color = data.map(function (d)  { return d[trace_data.colorcol] });
           }
 
           // Creating hovertemplate if given on config
           if (trace_data.onhover) {
-            // Geting data from data in the correct format in customdata
-            // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-            trace.customdata = data.map(function (d)  {
-              return trace_data.onhover.map(entry => {
-                // Extract the key and value (since each entry is a single key-value pair object)
-                // This is used instead of a regular object to be able to keep the order entered in the configuration
-                const [key, value] = Object.entries(entry)[0];
-              
-                // If a factor is given, parse as a float and multiply by that factor. Otherwise, return the value itself
-                return value['factor'] ? parseFloat(d[key]) * value['factor'] : d[key];
-              });
-            })
-
-            // Preparing the hover template
-            i = 0
-            for (const entry of trace_data.onhover) {
-              const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
-              // Add information on new line, when there's already some info there
-              trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
-              trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
-              i++
-            }
+            self.prepare_hoverinfo(trace,trace_data,data);
           }
-
-          // Updating layout for bar plots hover mode and hiding spikes
+          
+          // Updating layout for bar plots hover mode
           layout.hovermode = 'closest'
+          if ((self.graph_data?.layout?.hovermode == 'left')||(self.graph_data?.layout?.hovermode == 'right')) {
+            // In this case, the hover info is not shown, and 
+            // a listener is to be added for the 'plotly_hover' event 
+            // and there, the data is added to a div on the left or right.
+            // This is done before plotting the graph below.
+            trace.hoverinfo = 'none'
+          }
+          // Hiding spikes
           delete layout.xaxis.rangemode;
           delete layout.xaxis.spikesnap;
           layout.xaxis.showspikes =  false;
@@ -421,6 +417,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
             return acc;
           }, {});
+
           // Getting number of steps in the slider
           numsteps = Object.keys(grouped_data).length
 
@@ -545,7 +542,6 @@ PlotlyGraph.prototype.plot = function (params) {
                 }
               }
 
-
               // Adding this trace to the current key/step
               traces_slider[traces_slider.length - 1].push(trace)
               // Getting the last step to plot first
@@ -586,7 +582,8 @@ PlotlyGraph.prototype.plot = function (params) {
               execute: false,
             }
 
-            // Adding vertical line for the first step that is shown
+            // Adding vertical dashed line for the current step that is shown, 
+            // indicating the timestamp of that queue snapshot
             if ((index === numsteps - 1)&&(self.graph_data.vertical_line)) {
               layout.shapes = shapes[shapes.length-1]
             }
@@ -648,36 +645,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Creating hovertemplate if given on config
           if (trace_data.onhover) {
-            // Geting data in the correct format in customcustom data
-            // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-            trace.customdata = data.map(function (d)  {
-              return trace_data.onhover.map(entry => {
-                // Extract the key and value (since each entry is a single key-value pair object)
-                // This is used instead of a regular object to be able to keep the order entered in the configuration
-                const [hoverkey, value] = Object.entries(entry)[0];
-                
-                if (value['factor']) {
-                  // If a factor is given, parse as a float and multiply by that factor
-                  return parseFloat(d[hoverkey]) * value['factor']
-                } else if ((value['type'])&&(value['type']==='date')){
-                  // If the value is type 'date', parse it
-                  return self.parseToDate(d[hoverkey]).toLocaleString('sv-SE')
-                } else {
-                  // Otherwise, return the value itself
-                  return d[hoverkey]
-                }
-              });
-            })
-
-            // Preparing the hover template
-            i = 0
-            for (const entry of trace_data.onhover) {
-              const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
-              // Add information on new line, when there's already some info there
-              trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
-              trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
-              i++
-            }
+            prepare_hoverinfo(trace,trace_data,data)
           }
 
           // If a map is given for the values:
@@ -852,15 +820,218 @@ PlotlyGraph.prototype.plot = function (params) {
     layout.margin.r = 60
   }
 
-  // Creating the plot
+  // Getting div where plot is going to be added
+  let graphDiv = $(`#${self.id}`);
+
+  // Checking if info div is to be added to the left (for hoverinfo or calendar)
+  if ((self.graph_data.layout.calendar == 'left')||(self.graph_data.layout.hovermode == 'left')) {
+    // Check if graph already has a .info sibling on the left, and if not, create it
+    if(!graphDiv.prevAll('.info').length > 0) {
+      let hoverdiv = $('<div>').addClass('info')
+                                .addClass(self.id);
+      hoverdiv.insertBefore(graphDiv)
+    }
+  }
+  // Checking if info div is to be added to the right (for hoverinfo or calendar)
+  if ((self.graph_data.layout.calendar == 'right')||(self.graph_data.layout.hovermode == 'right')) {
+    // Check if graph already has a .info sibling on the right, and if not, create it
+    if(!graphDiv.nextAll('.info').length > 0) {
+      let hoverdiv = $('<div>').addClass('info')
+                                .addClass(self.id);
+      hoverdiv.insertAfter(graphDiv)
+    }
+  }
+
+  // Adding listener to add data to the info div
+  if ((self.graph_data.layout.hovermode == 'left')||(self.graph_data.layout.hovermode == 'right')) {
+
+    // Adding listener to hover to add data to 'info' div
+    if (($(`.info.${self.id}`).length>0)&&(graphDiv.children().length>0)) {
+      graphDiv[0].removeAllListeners('plotly_hover');
+      graphDiv[0].removeAllListeners('plotly_unhover');
+      let saved_info = '';
+      // Creatign 'close' button, to clean up the info when clicked
+      let closeBtn = $('<span class="close-btn"><i class="fa fa-times"></i></span>');
+
+      // Selecting the corresponding div to display info
+      let infoDiv;
+      if (self.graph_data.layout.hovermode == 'left') {
+        // Selecting the div on the left of graphDiv
+        infoDiv = graphDiv.prev('.info');
+      } else  {
+        // Selecting the div on the right of graphDiv
+        infoDiv = graphDiv.next('.info');
+      }
+
+      let hoverinfo = infoDiv.children('.hoverinfo');
+      if (hoverinfo.length === 0) {
+        // Create a new div to hold hoverinfo
+        hoverinfo = $('<div>').addClass('hoverinfo');
+  
+        // Prepend the calendar to the container without removing its current elements
+        infoDiv.append(hoverinfo);
+      }
+  
+      graphDiv[0].on('plotly_hover', (ed) => { 
+        if ((ed.points[0].data.hovertemplatecustom)&&(ed.points[0].data.hovertemplatecustom.length>0)) {
+          hoverinfo.html(ed.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => ed.points[0].customdata[index]));
+        }
+      });
+      graphDiv[0].on('plotly_click', (ed) => { 
+        if ((ed.points[0].data.hovertemplatecustom)&&(ed.points[0].data.hovertemplatecustom.length>0)) {
+          // Storing the information of the clicked box
+          saved_info = ed.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => ed.points[0].customdata[index])
+          // Adding text and close button
+          // The click event is not needed because the unhover will be triggered anyway
+          hoverinfo.html(saved_info).prepend(closeBtn);
+        }
+      });
+      graphDiv[0].on('plotly_unhover', () => { 
+        if (saved_info.length>0) {
+          hoverinfo.html(saved_info).prepend(closeBtn);
+          closeBtn.on('click', function() {
+            // Clearning up saved_info and info div
+            saved_info = '';
+            $(this).parent().empty();
+          });
+        } else {
+          hoverinfo.html('')
+        }
+      });
+    }
+  }
+
+  // Adding calendar if layout.calendar = 'left' or 'right'
+  if ((self.graph_data.layout.calendar == 'left')||(self.graph_data.layout.calendar == 'right')) {
+    // Checking if calendar is going to be put on the same div as info
+    let infoDiv;
+    if (self.graph_data.layout.calendar == 'left') {
+      // Selecting the div on the left of graphDiv
+      infoDiv = graphDiv.prev('.info');
+    } else  {
+      // Selecting the div on the right of graphDiv
+      infoDiv = graphDiv.next('.info');
+    }
+    let calendar = infoDiv.children('.calendar');
+    if (calendar.length === 0) {
+      // Create a new div and initialize it as a jQuery UI datepicker (inline calendar)
+      let calendar = $('<div>').addClass('calendar').datepicker({
+        numberOfMonths: 1,
+        onSelect: (dateText, inst) => self.selecDate(dateText, inst),
+      });
+
+      // Prepend the calendar to the container without removing its current elements
+      infoDiv.prepend(calendar);
+    }
+  }
+
+  /*********************
+   * CREATING THE PLOT
+   *********************/
   if (params) layout.datarevision = params.JobID
   Plotly.react(self.id, traces, layout, self.config);
+
+  // Restricting dates on the calendar
+  if (($(".calendar").length)&&(layout.xaxis?.range.length>0)) {
+    $(".calendar").datepicker("option", "minDate", self.parseToDate(layout.xaxis.range[0]));
+    $(".calendar").datepicker("option", "maxDate", self.parseToDate(layout.xaxis.range[1]));
+  }
+
+
+  // Fixing zoom when double clicking or 
+  if (($(`#${self.id}`).length>0)&&(typeof layout?.xaxis?.range != 'undefined')) {
+    graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
+    graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
+  }
 
   // Moving the rangeslider when that is the case
   if (layout.xaxis.rangeslider?.translate) {
     self.move_slider(self.id, layout.xaxis.rangeslider.translate)
   }
 }
+
+PlotlyGraph.prototype.selecDate = function (dateText, inst) {
+  console.log('select date',dateText, inst,$(this))
+  return
+}
+
+/* Conversion functions */
+PlotlyGraph.prototype.msToHHMMSS = function (mseconds) {
+  return this.sToHHMMSS(mseconds/1000)
+}
+PlotlyGraph.prototype.sToHHMMSS = function (seconds) {
+  return this.FracToHHMMSS(seconds/3600)
+}
+PlotlyGraph.prototype.FracToHHMMSS = function (frac) {
+  // Calculate hours, minutes, seconds using Math.floor
+  let hours = Math.floor(frac);
+  let rest = frac - hours;
+  let min = Math.floor(rest * 60);
+  rest = rest * 60 - min;
+  let sec = Math.floor(rest * 60);
+  return `${hours>0?hours.toString()+'h':''}${hours>0?min.toString().padStart(2, '0'):min.toString()}m${sec.toString().padStart(2, '0')}s`;
+}
+
+/* Creating hovertemplate */
+PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
+  let self = this;
+  // Geting data in the correct format in customcustom data
+  // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
+  trace.customdata = data.map(function (d)  {
+    return trace_data.onhover.map(entry => {
+      // Extract the key and value (since each entry is a single key-value pair object)
+      // This is used instead of a regular object to be able to keep the order entered in the configuration
+      const [hoverkey, value] = Object.entries(entry)[0];
+      let ret;
+
+      if (value['factor']) {
+        // If a factor is given, parse as a float and multiply by that factor
+        ret = parseFloat(d[hoverkey]) * value['factor']
+      } else if ((value['type'])&&(value['type']==='date')){
+        // If the value is type 'date', parse it
+        ret = self.parseToDate(d[hoverkey]).toLocaleString('sv-SE')
+      } else {
+        // Otherwise, return the value itself
+        ret = d[hoverkey]
+      }
+      // Applying function
+      if (value['function']) {
+        if (typeof self[value['function']] === 'function') {
+          ret = self[value['function']](ret)
+        } else {
+          console.error(`Function '${value['function']}' not found! Ignoring...`);
+        }
+      }
+      return ret
+    });
+  })
+
+  // Preparing the hover template
+  i = 0
+  for (const entry of trace_data.onhover) {
+    const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
+    // Add information on new line, when there's already some info there
+    if ((self.graph_data?.layout?.hovermode == 'left')||(self.graph_data?.layout?.hovermode == 'right')) {
+      if (i==0) {
+        trace.hovertemplatecustom = '<table><tbody>'
+      }
+      trace.hovertemplatecustom += `<tr><td><strong>${value['name']}:</strong></td><td>%{customdata[${i}]${value['format']??''}}${value['units']??''}</td></tr>` ;  
+      if (i==trace_data.onhover.length-1) {
+        trace.hovertemplatecustom += '</tbody></table>'
+      }
+    } else {
+      if (i==0) {
+        trace.hovertemplate = ''
+      }
+      trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;  
+      if (i<trace_data.onhover.length) {
+        trace.hovertemplate += '<br>'
+      }
+    }
+    i++
+  }
+}
+
 
 /* Move slider according to given translation */
 PlotlyGraph.prototype.move_slider = function (id,translation) {
