@@ -63,8 +63,6 @@ function PlotlyGraph(graph_data) {
       tickmode: "auto",
     },
     yaxis2: {
-      overlaying: 'y',
-      side: 'right',
       zeroline: true,
       showline: true,
       mirror: 'ticks',
@@ -209,8 +207,10 @@ function checkPattern(object,params) {
 /* (Re-)draw the graph */
 PlotlyGraph.prototype.plot = function (params) {
   let self = this;
+  // Getting div where plot is going to be added
+  let graphDiv = $(`#${self.id}`);
   if(self.graph_data.height) {
-    $(`#${self.id}`).height(self.graph_data.height)
+    graphDiv.height(self.graph_data.height)
   }
   // Merging default layout with config one
   let layout;
@@ -222,7 +222,9 @@ PlotlyGraph.prototype.plot = function (params) {
 
   let traces = [];
   let steps = [];
-  let traces_slider = []; // Store traces for the slider
+  let traces_slider_obj = {}; // Temporarily store traces for the slider with keys (will be transformed to array afterwards)
+  let traces_slider; // Array containing traces for the slider
+  let slider_steps = []; // Array containing the step values (necessary to store consistent steps for different traces on the same graph, in case they are filtered differently)
   let shapes = []; // Store the shapes (vertical lines) for the slider
   let numsteps;
   let xmin;
@@ -253,19 +255,36 @@ PlotlyGraph.prototype.plot = function (params) {
     for (let trace_data of self.graph_data.traces) {
       /* Getting path from given trace or from whole graph */
       filepath = trace_data.datapath ? trace_data.datapath : self.filepath;
-      let trace = {};
+      let trace_default = {
+        name: trace_data.name,
+        type: trace_data.type ?? "scatter",
+        yaxis: trace_data.yaxis ?? "y",
+        xaxis: trace_data.xaxis ?? "x",
+      }
+      let trace = { ...trace_default };
       let step = {};
       let data = self.data[filepath];
-
-      trace.name = trace_data.name;
-      trace.type = trace_data.type ?? "scatter";
-      trace.yaxis = trace_data.yaxis ?? "y";
 
       // Filtering the data when both filter and data are present
       if (trace_data.where && data) {
         data = data.filter((item) => {
-            return Object.keys(trace_data.where).every(key => item[key] === trace_data.where[key]);
-        })
+          return Object.keys(trace_data.where).every((key) => {
+            const conditions = Array.isArray(trace_data.where[key]) 
+              ? trace_data.where[key] 
+              : [trace_data.where[key]]; // Ensure it's always an array
+
+            // Check if item[key] satisfies ALL conditions
+            return conditions.every((condition) => {
+              if (condition.startsWith("<")) {
+                return item[key] < parseFloat(condition.slice(1));
+              } else if (condition.startsWith(">")) {
+                return item[key] > parseFloat(condition.slice(1));
+              } else {
+                return item[key] === condition;
+              }
+            });
+          });
+        });
       }
 
       // If there are still data to be plotted
@@ -398,18 +417,37 @@ PlotlyGraph.prototype.plot = function (params) {
           // Grouping the information on data according to the values of the quantity defined in self.graph_data.slider
           // This will become a new object where each value of self.graph_data.slider gives an object to be put
           // as a step on the slider
+          let step_counter = 0;
+          let previous_step;
+          // Check if slider values need to be obtained or use from previous traces
+          let get_slider_values = slider_steps.length>0 ? false : true;
           const grouped_data = data.reduce((acc, obj) => {
             const step = obj[self.graph_data.slider];
             const jobid = obj['jobid'];
+            if (get_slider_values) {
+              // Counting the number of different steps
+              if (step !== previous_step) {
+                previous_step = step;
+                step_counter++;
+              }
+              // Checking if step needs to be skipped
+              if ((typeof self.graph_data.step === 'undefined')||(step_counter%parseInt(self.graph_data.step)!=1)) {
+                return acc;
+              }
+              // Storing current step
+              if (!slider_steps.includes(step)) {
+                slider_steps.push(step)
+              }
+            } else {
+              // If using previous values, check if the current step is in slider_steps array
+              if (!slider_steps.includes(step)) {
+                return acc
+              }
+            }
 
             // If 'ts' is not already in the accumulator, initialize it
             if (!acc[step]) {
               acc[step] = {};
-            }
-
-            // If 'jobid' is not already in the nested structure, initialize it
-            if (!acc[step][jobid]) {
-              acc[step][jobid] = [];
             }
 
             // Push the item to the correct 'ts' and 'jobid' group
@@ -419,7 +457,7 @@ PlotlyGraph.prototype.plot = function (params) {
           }, {});
 
           // Getting number of steps in the slider
-          numsteps = Object.keys(grouped_data).length
+          numsteps = slider_steps.length
 
           // Looping over the different values defined for the "slider"
           Object.keys(grouped_data)
@@ -460,8 +498,10 @@ PlotlyGraph.prototype.plot = function (params) {
             // event to update the graphs ourselves. This way, we can add only the traces that are needed for that particular 
             // key/step, and hopefully the update is not too slow.
 
-            // Adding an array that will hold the traces for this step
-            traces_slider.push([])
+            // Check if the key exists; if not, initialize array that will hold the traces for this step
+            if (!traces_slider_obj[key]) {
+              traces_slider_obj[key] = [];
+            }
 
             // Starting a new step (that will include many traces - one for each jobid)
             step = {};
@@ -470,41 +510,41 @@ PlotlyGraph.prototype.plot = function (params) {
             Object.keys(grouped_data[key])
             .forEach(jobid => {
               // Starting a new trace (one per jobid)
-              trace = {};
+              let steptrace = {...trace_default};
 
-              trace.type = trace_data.mode ?? 'scatter';
-              trace.mode = trace_data.mode ?? 'lines+markers';
-              // trace.showlegend = trace_data.showlegend ?? false;
-              // trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
+              steptrace.type = trace_data.mode ?? 'scatter';
+              steptrace.mode = trace_data.mode ?? 'lines+markers';
+              // steptrace.showlegend = trace_data.showlegend ?? false;
+              // steptrace.legendgroup = trace_data.legendgroup ?? trace_data.name;
 
               if (!self.graph_data.include_previous_steps) {
                 self.graph_data.include_previous_steps = 0
               }
               // Current + previous steps (if it is configured to be added)
-              trace.x = []
-              trace.y = []
-              trace.color = []
-              trace.size = []
-              trace.customdata = []
+              steptrace.x = []
+              steptrace.y = []
+              steptrace.color = []
+              steptrace.size = []
+              steptrace.customdata = []
               for (let i = self.graph_data.include_previous_steps; i >= 0; i--) {
                 if (((index - i)>=0)&&(grouped_data[grouped_data_keys[index - i]][jobid])){
                   // If this jobid exist (to check if it exists in the previous keys), add its value
                   
                   // Getting x values
                   if ((layout.xaxis.type !== 'date')&&( self.graph_data.xcol && self.graph_data.xcol != 'date' )) {
-                    trace.x.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
+                    steptrace.x.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
                   } else {
-                    trace.x.push(self.parseToDate(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
+                    steptrace.x.push(self.parseToDate(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
                   }
-                  trace.y.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][trace_data.ycol]));
-                  trace.color.push(i===0?grouped_data[grouped_data_keys[index - i]][jobid]['color']:'gray');
-                  trace.size.push(i===0?10:5);
+                  steptrace.y.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][trace_data.ycol]));
+                  steptrace.color.push(i===0?grouped_data[grouped_data_keys[index - i]][jobid]['color']:'gray');
+                  steptrace.size.push(i===0?15:5);
 
                   // Creating hovertemplate if given on config
                   if (trace_data.onhover) {
                     // Geting data from grouped_data[key][jobid] in the correct format in customdata
                     // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-                    trace.customdata.push(trace_data.onhover.map(entry => {
+                    steptrace.customdata.push(trace_data.onhover.map(entry => {
                       // Extract the key and value (since each entry is a single key-value pair object)
                       const [hoverkey, value] = Object.entries(entry)[0];
                     
@@ -523,12 +563,12 @@ PlotlyGraph.prototype.plot = function (params) {
                   }
                 }
               }
-              trace.name = jobid
-              trace.marker = {
-                color: trace.color,
-                size: trace.size,
+              steptrace.name = jobid
+              steptrace.marker = {
+                color: steptrace.color,
+                size: steptrace.size,
               }
-              trace.line = { width: 3, color: 'gray', simplify: false};
+              steptrace.line = { width: 3, color: 'gray', simplify: false};
               
               // Preparing the hover template
               if (trace_data.onhover) {
@@ -536,59 +576,56 @@ PlotlyGraph.prototype.plot = function (params) {
                 for (const entry of trace_data.onhover) {
                   const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
                   // Add information on new line, when there's already some info there
-                  trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
-                  trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
+                  steptrace.hovertemplate = steptrace.hovertemplate ? steptrace.hovertemplate + "<br>" : '';
+                  steptrace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
                   i++
                 }
               }
-
-              // Adding this trace to the current key/step
-              traces_slider[traces_slider.length - 1].push(trace)
-              // Getting the last step to plot first
-              traces = traces_slider[traces_slider.length - 1]
+              // Adding this steptrace to the current key/step
+              traces_slider_obj[key].push(steptrace)
             });
 
-            // If no lines (shapes) are to added, only traces are modified (method: restyle)
-            let method =  'restyle';
-            let args = [{},{}]; // Empty arguments, as we are now using `execute: false` and we update the plot ourselves
-            shapes.push(layout.shapes??[])
-            if (self.graph_data.vertical_line) {
-              // If vertical lines (shapes) are to be added, both traces and layout need to be modified (method: update)
-              shapes[shapes.length-1].push(...shapes[shapes.length-1],{
-                type: 'line',
-                x0: self.parseToDate(key),
-                y0: 0,
-                x1: self.parseToDate(key),
-                yref: 'paper',
-                y1: 1,
-                line: {
-                  color: 'grey',
-                  width: 1.5,
-                  dash: 'dot',
-                }
-              })
+            if (get_slider_values) {
+              // If no lines (shapes) are to added, only traces are modified (method: restyle)
+              let method =  'restyle';
+              let args = [{},{}]; // Empty arguments, as we are now using `execute: false` and we update the plot ourselves
+              shapes.push(layout.shapes??[])
+              if (self.graph_data.vertical_line) {
+                // If vertical lines (shapes) are to be added, both traces and layout need to be modified (method: update)
+                shapes[shapes.length-1].push(...shapes[shapes.length-1],{
+                  type: 'line',
+                  x0: self.parseToDate(key),
+                  y0: 0,
+                  x1: self.parseToDate(key),
+                  yref: 'paper',
+                  y1: 1,
+                  line: {
+                    color: 'gray',
+                    width: 1.5,
+                    dash: 'dot',
+                  }
+                })
+                // method = 'update' // change method to 'update' and add layout change below
+                // args.push(
+                //   {shapes: shapes_with_lines} // adding lines as shapes to layout
+                // )
+              }
 
-              // method = 'update' // change method to 'update' and add layout change below
-              // args.push(
-              //   {shapes: shapes_with_lines} // adding lines as shapes to layout
-              // )
+              step = {
+                label: self.parseToDate(key).toLocaleString('sv-SE'),
+                value: key,
+                method: method,
+                args: args,
+                execute: false,
+              }
+
+              // Adding vertical line for the first step that is shown
+              if ((index === numsteps - 1)&&(self.graph_data.vertical_line)) {
+                layout.shapes = shapes[shapes.length-1]
+              }
+
+              steps.push(step)
             }
-
-            step = {
-              label: self.parseToDate(key).toLocaleString('sv-SE'),
-              value: key,
-              method: method,
-              args: args,
-              execute: false,
-            }
-
-            // Adding vertical dashed line for the current step that is shown, 
-            // indicating the timestamp of that queue snapshot
-            if ((index === numsteps - 1)&&(self.graph_data.vertical_line)) {
-              layout.shapes = shapes[shapes.length-1]
-            }
-
-            steps.push(step)
           });
 
         } else {                                    // SCATTER PLOT 
@@ -697,18 +734,6 @@ PlotlyGraph.prototype.plot = function (params) {
             new_annotation[key] = new_annotation[key] + "<br>"
           }
         });
-      
-        // Getting x range to fix range below
-        if (trace.x[0] instanceof Date) {
-          xmin = new Date(Math.min(xmin ?? new Date("2101/01/01"),...trace.x))
-          xmax = new Date(Math.max(xmax ?? new Date("2001/01/01"),...trace.x))
-        } else {
-          xmin = Math.min(xmin ?? Infinity,...trace.base??trace.x)
-          xmax = Math.max(xmax ?? -Infinity,...trace.base?trace.base.map((a, i) => a + trace.x[i]):trace.x)
-        }
-        // Getting min and max values of y for each y axis to adjust ranges below
-        ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
-        ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
       }
 
       // Add traces if this data does not contain a slider, as in that case, all the traces were added already
@@ -716,6 +741,35 @@ PlotlyGraph.prototype.plot = function (params) {
         traces.push(trace);
       }
     }
+
+    // Getting traces to be plotted on slider (for each step and the default one)
+    if (self.graph_data.slider) {
+      // Transforming object that stored all traces for each timestamp into an array of arrays
+      traces_slider = Object.keys(traces_slider_obj)
+          .map(Number)                            // convert keys to numbers
+          .sort((a, b) => a - b)                  // sort in ascending order
+          .map(key => traces_slider_obj[key]);    // map sorted keys to their arrays
+      // Getting the last step to plot first
+      if (traces_slider.length) {
+        traces = traces_slider[traces_slider.length - 1]
+      }
+    }
+
+    // Fixing x and y ranges
+    for (let trace of traces) {
+      // Getting x range to fix range below
+      if (trace.x[0] instanceof Date) {
+        xmin = new Date(Math.min(xmin ?? new Date("2101/01/01"),...trace.x))
+        xmax = new Date(Math.max(xmax ?? new Date("2001/01/01"),...trace.x))
+      } else {
+        xmin = Math.min(xmin ?? Infinity,...trace.base??trace.x)
+        xmax = Math.max(xmax ?? -Infinity,...trace.base?trace.base.map((a, i) => a + trace.x[i]):trace.x)
+      }
+      // Getting min and max values of y for each y axis to adjust ranges below
+      ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
+      ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
+    }
+
     /* Substituting new annotations */
     Object.keys(matches).forEach((key) => {
       if (matches[key]) {
@@ -740,72 +794,83 @@ PlotlyGraph.prototype.plot = function (params) {
       yaxis2 = true;
     }
   })
-  if (yaxis2) {
-    //--------------------------------------------------------------------------
-    // Coupling the grids for both yaxis (left and right)
-    // Adapted from: https://github.com/VictorBezak/Plotly_Multi-Axes_Gridlines/blob/master/multiAxis.js
-    // This works only for nonnegative y-axis
-    delete layout.yaxis.tickmode;
-    delete layout.yaxis2.tickmode;
-    layout.yaxis.autorange = false;
-    layout.yaxis2.autorange = false;
+  if (!layout.grid){
+    // If yaxis is used in traces
+    if (yaxis2) {
+      layout.yaxis2.overlaying = 'y'
+      layout.yaxis2.side = 'right'
 
-    let ydtick = {};
-    let ydtick_ratio = {};
-    Object.keys(ymax).forEach((key) => {
-      // for (const [key, value] of Object.entries(ymax)) {
-      ymax[key] = ymax[key] * 1000000;  // mult by 1000 to account for ranges < 1
-      let y1_len = Math.floor(ymax[key]).toString().length;
-      let y1_pow10_divisor = Math.pow(10, y1_len - 1);
-      let y1_firstdigit = Math.floor(ymax[key] / y1_pow10_divisor);
-      let y1_max_base = y1_pow10_divisor * y1_firstdigit / 1000000;  // div by 1000 to account for ranges < 1
+      //--------------------------------------------------------------------------
+      // Coupling the grids for both yaxis (left and right)
+      // Adapted from: https://github.com/VictorBezak/Plotly_Multi-Axes_Gridlines/blob/master/multiAxis.js
+      // This works only for nonnegative y-axis
+      delete layout.yaxis.tickmode;
+      delete layout.yaxis2.tickmode;
+      layout.yaxis.autorange = false;
+      layout.yaxis2.autorange = false;
 
-      ydtick[key] = y1_max_base / self.GRIDLINES;
+      let ydtick = {};
+      let ydtick_ratio = {};
+      Object.keys(ymax).forEach((key) => {
+        // for (const [key, value] of Object.entries(ymax)) {
+        ymax[key] = ymax[key] * 1000000;  // mult by 1000 to account for ranges < 1
+        let y1_len = Math.floor(ymax[key]).toString().length;
+        let y1_pow10_divisor = Math.pow(10, y1_len - 1);
+        let y1_firstdigit = Math.floor(ymax[key] / y1_pow10_divisor);
+        let y1_max_base = y1_pow10_divisor * y1_firstdigit / 1000000;  // div by 1000 to account for ranges < 1
 
-      ymax[key] = ymax[key] / 1000000;  // range reset
-      ydtick_ratio[key] = ymax[key] / ydtick[key];
-    })
-    // Increase the ratio by 0.1 so that your range maximums are extended just
-    // far enough to not cut off any part of your highest value
-    // console.log('dtickratio', ydtick_ratio, Object.values(ydtick_ratio))
-    global_dtick_ratio = Math.max(...Object.values(ydtick_ratio))+0.1
+        ydtick[key] = y1_max_base / self.GRIDLINES;
 
-    // Taking into account that graphs may have either no points or only values at 0, 
-    // such that ydtick = 0, and ydtick_ratio and global_dtick_ratio = NaN
-    if (ydtick["y"] == 0) {
-      layout.yaxis.showgrid = false
+        ymax[key] = ymax[key] / 1000000;  // range reset
+        ydtick_ratio[key] = ymax[key] / ydtick[key];
+      })
+      // Increase the ratio by 0.1 so that your range maximums are extended just
+      // far enough to not cut off any part of your highest value
+      // console.log('dtickratio', ydtick_ratio, Object.values(ydtick_ratio))
+      global_dtick_ratio = Math.max(...Object.values(ydtick_ratio))+0.1
+
+      // Taking into account that graphs may have either no points or only values at 0, 
+      // such that ydtick = 0, and ydtick_ratio and global_dtick_ratio = NaN
+      if (ydtick["y"] == 0) {
+        layout.yaxis.showgrid = false
+      } else {
+        layout.yaxis.range = [0, (global_dtick_ratio ? global_dtick_ratio : (ydtick_ratio["y"] + 0.1)) * ydtick["y"]]
+        layout.yaxis.dtick = ydtick["y"]
+      }
+      if (ydtick["y2"] == 0) {
+        layout.yaxis2.showgrid = false
+      } else {
+        layout.yaxis2.range = [0, (global_dtick_ratio ? global_dtick_ratio : (ydtick_ratio["y"] + 0.1)) * ydtick["y2"]]
+        layout.yaxis2.dtick = ydtick["y2"]
+      }
+      //--------------------------------------------------------------------------
     } else {
-      layout.yaxis.range = [0, (global_dtick_ratio ? global_dtick_ratio : (ydtick_ratio["y"] + 0.1)) * ydtick["y"]]
-      layout.yaxis.dtick = ydtick["y"]
+      // Remove secondary axis
+      delete layout.yaxis2;
     }
-    if (ydtick["y2"] == 0) {
-      layout.yaxis2.showgrid = false
-    } else {
-      layout.yaxis2.range = [0, (global_dtick_ratio ? global_dtick_ratio : (ydtick_ratio["y"] + 0.1)) * ydtick["y2"]]
-      layout.yaxis2.dtick = ydtick["y2"]
-    }
-    //--------------------------------------------------------------------------
-  } else {
-    // Remove secondary axis
-    delete layout.yaxis2;
   }
 
   // Adding a slider if that's defined
   if ((self.graph_data.slider)&&traces.length > 0) {
-
     // Adding our own update of the graph when the slider is changed, due to slowness of using
     // all traces at once, and bugs updating the traces when passing them in the steps (see long comment above)
-    $(`#${self.id}`).on('plotly_sliderchange', function (e,steps) {
+    graphDiv[0].on('plotly_sliderchange', function (e) {
       // Updating shapes in layout
-      layout.shapes = shapes[steps.step._index]
+      layout.shapes = shapes[e.step._index]
       // Updating the graph, as the slider update has problems
-      Plotly.react(self.id, traces_slider[steps.step._index], layout, self.config);
-      })
+      Plotly.react(self.id, traces_slider[e.step._index], layout, self.config);
+      // Updating range to fix double click or 'reset axis'
+      graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
+      graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
+    })
+
     layout.sliders = [{
       active: numsteps-1,
       pad: {
         t: 30
       },
+      len: 0.9,
+      x: 0,
       currentvalue: {
         xanchor: 'right',
         prefix: 'Queue view at: ',
@@ -818,10 +883,86 @@ PlotlyGraph.prototype.plot = function (params) {
     }]
     layout.margin.l = 60
     layout.margin.r = 60
-  }
 
-  // Getting div where plot is going to be added
-  let graphDiv = $(`#${self.id}`);
+    // Adding previous and next buttons
+    layout.updatemenus = [{
+      showactive: false,
+      pad: {t: 60, l: 30},
+      type: 'buttons',
+      xanchor: 'right',
+      yanchor: 'top',
+      x: 1.0,
+      y: 0,
+      direction: 'left',
+      buttons: [{
+        label: 'previous',
+        args: [],
+        execute: false
+      },{
+        label: 'next',
+        args: [],
+        execute: false
+      }]
+    }]
+    // Adding action of selecting previous or next step when clicking the buttons
+    graphDiv[0].on('plotly_buttonclicked', function (e) {
+      let index = graphDiv[0]._fullLayout.sliders[0].active
+      if (e.button._index)
+        ++index
+      else
+        --index
+
+      if(traces_slider[index]) {
+        layout.sliders[0].active = index
+        // Updating shapes in layout
+        layout.shapes = shapes[index]
+        // Updating the graph, as the slider update has problems
+        Plotly.react(self.id, traces_slider[index], layout, self.config);
+        // Updating range to fix double click or 'reset axis'
+        graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
+        graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
+      }
+    })
+    // Add click event to mark a given job ID as selected
+    graphDiv[0].on('plotly_click', (e) => { 
+      let jobid = e.points[0].data.name
+      let index = graphDiv[0]._fullLayout.sliders[0].active
+
+      // Iterate over each inner array in traces_slider to mark selected jobid
+      traces_slider.forEach(steps => {
+        steps.forEach(job => {
+          // Ensure the marker object exists
+          job.marker = job.marker || {};
+
+          if (job.name == jobid) {
+            // For the matching jobid, add (or update) the line property
+            job.marker.line = {
+              color: "black",
+              width: 2,
+            };
+            job.marker.symbol = 'star';
+            job.line.color = 'black';
+          } else {
+            // For non-matching items, remove the line property if it exists
+            if (job.marker.line) {
+              delete job.marker.line;
+              delete job.marker.symbol;
+              job.line.color = 'gray';
+            }
+          }
+        });
+      });
+      Plotly.update(self.id, traces_slider[index], layout, self.config);
+      // if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
+      //   // Storing the information of the clicked box
+      //   saved_info = e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index])
+      //   // Adding text and close button
+      //   // The click event is not needed because the unhover will be triggered anyway
+      //   hoverinfo.html(saved_info).prepend(closeBtn);
+      // }
+    });
+
+  }
 
   // Checking if info div is to be added to the left (for hoverinfo or calendar)
   if ((self.graph_data.layout.calendar == 'left')||(self.graph_data.layout.hovermode == 'left')) {
@@ -872,15 +1013,15 @@ PlotlyGraph.prototype.plot = function (params) {
         infoDiv.append(hoverinfo);
       }
   
-      graphDiv[0].on('plotly_hover', (ed) => { 
-        if ((ed.points[0].data.hovertemplatecustom)&&(ed.points[0].data.hovertemplatecustom.length>0)) {
-          hoverinfo.html(ed.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => ed.points[0].customdata[index]));
+      graphDiv[0].on('plotly_hover', (e) => { 
+        if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
+          hoverinfo.html(e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index]));
         }
       });
-      graphDiv[0].on('plotly_click', (ed) => { 
-        if ((ed.points[0].data.hovertemplatecustom)&&(ed.points[0].data.hovertemplatecustom.length>0)) {
+      graphDiv[0].on('plotly_click', (e) => { 
+        if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
           // Storing the information of the clicked box
-          saved_info = ed.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => ed.points[0].customdata[index])
+          saved_info = e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index])
           // Adding text and close button
           // The click event is not needed because the unhover will be triggered anyway
           hoverinfo.html(saved_info).prepend(closeBtn);
@@ -937,9 +1078,8 @@ PlotlyGraph.prototype.plot = function (params) {
     $(".calendar").datepicker("option", "maxDate", self.parseToDate(layout.xaxis.range[1]));
   }
 
-
-  // Fixing zoom when double clicking or 
-  if (($(`#${self.id}`).length>0)&&(typeof layout?.xaxis?.range != 'undefined')) {
+  // Fixing zoom when double clicking or clicking on the 'reset axis' modebar button
+  if ((graphDiv.length>0)&&(typeof layout?.xaxis?.range != 'undefined')) {
     graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
     graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
   }
@@ -1111,27 +1251,27 @@ function mergeDeep(...objects) {
 }
 
 
-function sync_relayout(ed,graphs) {
-  if (Object.entries(ed).length == 0) { return; }
+function sync_relayout(e,graphs) {
+  if (Object.entries(e).length == 0) { return; }
 
   graphs.forEach( (graph) => {
     let div = $("#" + graph.id)[0];
     let x = div.layout.xaxis;
     let update = {};
-    if ("xaxis.autorange" in ed && ed["xaxis.autorange"] != x.autorange) {
-      update['xaxis.autorange'] = ed["xaxis.autorange"];
+    if ("xaxis.autorange" in e && e["xaxis.autorange"] != x.autorange) {
+      update['xaxis.autorange'] = e["xaxis.autorange"];
     }
-    if ("xaxis.autorange" in ed && "rangeslider" in x) {
-      update['layout.xaxis.rangeslider.autorange'] = ed["xaxis.autorange"];
+    if ("xaxis.autorange" in e && "rangeslider" in x) {
+      update['layout.xaxis.rangeslider.autorange'] = e["xaxis.autorange"];
     }
-    if ("xaxis.range[0]" in ed && ed["xaxis.range[0]"] != x.range[0]) {
-      update['xaxis.range[0]'] = ed["xaxis.range[0]"];
+    if ("xaxis.range[0]" in e && e["xaxis.range[0]"] != x.range[0]) {
+      update['xaxis.range[0]'] = e["xaxis.range[0]"];
     }
-    if ("xaxis.range[1]" in ed && ed["xaxis.range[1]"] != x.range[1]) {
-      update['xaxis.range[1]'] = ed["xaxis.range[1]"];
+    if ("xaxis.range[1]" in e && e["xaxis.range[1]"] != x.range[1]) {
+      update['xaxis.range[1]'] = e["xaxis.range[1]"];
     }
-    if ("xaxis.range" in ed && ed["xaxis.range"] != x.range) {
-      update['xaxis.range'] = ed["xaxis.range"];
+    if ("xaxis.range" in e && e["xaxis.range"] != x.range) {
+      update['xaxis.range'] = e["xaxis.range"];
     }
     /* Use ".update" instead of ".relayout" to avoid triggering the function again */
     Plotly.update(div, {}, update);
@@ -1144,9 +1284,9 @@ function sync_relayout(ed,graphs) {
 }
 
 // Function to get mouse event from one graph and trigger hover over the same x over all curves in other divs
-function couple_hover(ed, id, graphs) {
+function couple_hover(e, id, graphs) {
   // Getting x-value from mouse hover event data
-  let xval = ed.xvals[0];
+  let xval = e.xvals[0];
   // Looping over all divs different than given id
   graphs.filter(graph => graph.id != id).forEach((graph) => {
     // Triggering the hover event
