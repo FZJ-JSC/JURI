@@ -801,9 +801,11 @@ PlotlyGraph.prototype.plot = function (params) {
         });
 
         // Getting min and max values of y for each y axis to adjust ranges below
-        // (min and max for x are adjusted below, to do also for other types of graphs)
-        ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
-        ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
+        // (min and max for x are adjusted below)
+        if (((self.minmax)&&(trace.min))||(trace.y)) {
+          ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
+          ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));  
+        }
       }
 
       // Add traces if this data does not contain a slider, as in that case, all the traces were added already
@@ -1267,20 +1269,23 @@ PlotlyGraph.prototype.resize = function () {
 }
 
 /**
- * 
+ * Converts a timestamp or string date into a new Date object
  * @param {str} input either timestamp or date in a string
  * @returns new Date object
  */
 PlotlyGraph.prototype.parseToDate = function(input) {
+  // Convert the input to a string, whether it starts as a number or string.
+  const strInput = input.toString();
+
   // Check if the input is a valid timestamp (only contains digits)
-  if (/^\d+$/.test(input)) {
+  if (/^\d+$/.test(strInput)) {
     // If it's in seconds (10 digits), convert to milliseconds
-    const timestamp = input.length === 10 ? parseInt(input) * 1000 : parseInt(input);
+    const timestamp = strInput.length === 10 ? parseInt(strInput) * 1000 : parseInt(strInput);
     return new Date(timestamp); // Return Date object from timestamp
   }
 
   // Check if the input is a valid date string
-  const date = new Date(input);
+  const date = new Date(strInput);
   if (!isNaN(date.getTime())) {
     return date; // Return Date object if valid
   }
