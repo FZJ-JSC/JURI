@@ -709,7 +709,7 @@ PlotlyGraph.prototype.plot = function (params) {
           }
           // Parsing values and min/max when present
           values = data.map(function (y) {
-            let val = y[trace_data.ycol].split(";");
+            let val = typeof y[trace_data.ycol] == 'string'? y[trace_data.ycol].split(";") : [ y[trace_data.ycol] ];
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
