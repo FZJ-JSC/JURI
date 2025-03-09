@@ -18,8 +18,6 @@ function PlotlyGraph(graph_data) {
   this.graph_data = graph_data;
   this.filepath = "";
   this.timeout = null;
-  this.controller = new AbortController();
-  this.signal = this.controller.signal;
   this.sliderpos = null;
   /* Default values */
   this.GRIDLINES = 4;
@@ -147,35 +145,102 @@ PlotlyGraph.prototype.add_data_to_graph = function (params) {
 /* Apply a data selection to the given graph to select a data file to be downloaded */
 PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
   let self = this;
-  let deferrer = Array();
-  self.controller.abort();
-  // Footer plots
-  footer_plot: if (self.graph_data.datapath) {
-    self.filepath = replaceDataPlaceholder(self.graph_data.datapath, params);
-    if (self.filepath in self.data) break footer_plot // If file was already read, skip it (to avoid having data multiple times)
-    self.data[self.filepath] = Array()
-    /* Download the graph data to be plotted */
-    deferrer.push(d3.csv(self.filepath, self.signal, (data) => { // TODO replace by jquery download and manual CSV parsing to avoid d3 function
-      self.data[self.filepath].push(data);
-    }));
+
+  // Abort any pending $.get requests from a previous invocation.
+  if (self._pendingRequests && self._pendingRequests.length) {
+    self._pendingRequests.forEach((req) => req.abort());
   }
-  // Graph-page plots (if there's a self.graph_data.traces.datapath)
-  for (let trace of self.graph_data.traces) {
-    if (trace.datapath) {
-      trace.datapath = replaceDataPlaceholder(trace.datapath, params);
-      if (trace.datapath in self.data) continue // If file was already read, skip it (to avoid having data multiple times)
-      self.data[trace.datapath] = Array()
-      deferrer.push(d3.csv(trace.datapath, self.signal , (data) => { // TODO replace by jquery download and manual CSV parsing to avoid d3 function
-        self.data[trace.datapath].push(data);
-      }).catch(()=>{return;}));  // Catching error to allow plot to continue even if one file is not found
+  // Reset the pending requests array for this call.
+  self._pendingRequests = [];
+
+  let deferrer = [];  // Array to hold all asynchronous CSV loading tasks (jqXHR objects)
+
+  // Generate a unique call ID for this invocation.
+  // This will be used to invalidate callbacks from previous calls.
+  const callId = Date.now();
+  self._currentCallId = callId;
+
+  // Local variable to capture the main footer plot filepath.
+  // This will be used later to update self.filepath for self.plot(params).
+  let localFilepath = null;
+
+  // Footer plots: Check if there's a data path for the main graph data.
+  if (self.graph_data.datapath) {
+    // Replace placeholders in the datapath with the provided parameters.
+    localFilepath = replaceDataPlaceholder(self.graph_data.datapath, params);
+    
+    // If the file has already been read, skip downloading to avoid duplicate data.
+    if (!(localFilepath in self.data)) {
+      // Initialize an array to store CSV data for this file.
+      let currentDataArray = [];
+      self.data[localFilepath] = currentDataArray;
+      
+      // Download the graph data using jQuery's $.get.
+      // The CSV text is then parsed using csvToArr.
+      let jqxhr = $.get(localFilepath)
+        .done(function (csvText) {
+          // Only process if this call is still current.
+          if (self._currentCallId !== callId) return;
+          // Parse the CSV text into an array of objects.
+          let parsed = csvToArr(csvText, ",");
+          // Push each parsed row into the data array.
+          parsed.forEach((row) => currentDataArray.push(row));
+        })
+        .fail(function () {
+          // Allow plotting to continue even if one file is not found.
+        });
+      
+      deferrer.push(jqxhr);
+      self._pendingRequests.push(jqxhr);
     }
   }
-  $.when.apply($, deferrer).then(function () {
-    self.plot(params);
-  }).fail(function () {
-    console.error("Something wrong when plotting!");
-  });
-}
+
+  // Graph-page plots: Process each trace in self.graph_data.traces.
+  for (let trace of self.graph_data.traces) {
+    if (trace.datapath) {
+      // Replace placeholders in the trace datapath with parameters.
+      let localTracePath = replaceDataPlaceholder(trace.datapath, params);
+      
+      // If the file has already been read, skip to avoid duplicate data.
+      if (localTracePath in self.data) continue;
+      
+      // Initialize an array to store CSV data for this trace.
+      let currentTraceArray = [];
+      self.data[localTracePath] = currentTraceArray;
+      
+      // Download the CSV data for this trace.
+      let jqxhr = $.get(localTracePath)
+        .done(function (csvText) {
+          // Only process if this call is still current.
+          if (self._currentCallId !== callId) return;
+          // Parse the CSV text and push each row into the trace's data array.
+          let parsed = csvToArr(csvText, ",");
+          parsed.forEach((row) => currentTraceArray.push(row));
+        })
+        .fail(function () {
+          // Catch error to allow plotting to continue even if one file is not found.
+        });
+      
+      deferrer.push(jqxhr);
+      self._pendingRequests.push(jqxhr);
+    }
+  }
+
+  // When all asynchronous CSV download tasks complete,
+  // update self.filepath and call the plot function.
+  $.when.apply($, deferrer)
+    .then(function () {
+      // If this call is no longer current, do nothing.
+      if (self._currentCallId !== callId) return;
+      self.filepath = localFilepath;
+      self.plot(params);
+    })
+    .fail(function () {
+      // Only log the error if this call is still current.
+      if (self._currentCallId !== callId) return;
+      console.error("Something went wrong when plotting!");
+    });
+};
 
 Math.sum = (...a) => Array.prototype.reduce.call(a, (a, b) => a + b)
 Math.avg = (...a) => Math.sum(...a) / a.length;
@@ -734,6 +799,11 @@ PlotlyGraph.prototype.plot = function (params) {
             new_annotation[key] = new_annotation[key] + "<br>"
           }
         });
+
+        // Getting min and max values of y for each y axis to adjust ranges below
+        // (min and max for x are adjusted below, to do also for other types of graphs)
+        ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
+        ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
       }
 
       // Add traces if this data does not contain a slider, as in that case, all the traces were added already
@@ -755,19 +825,18 @@ PlotlyGraph.prototype.plot = function (params) {
       }
     }
 
-    // Fixing x and y ranges
+    // Getting min and max values of x for each x axis to adjust ranges below
     for (let trace of traces) {
-      // Getting x range to fix range below
-      if (trace.x[0] instanceof Date) {
-        xmin = new Date(Math.min(xmin ?? new Date("2101/01/01"),...trace.x))
-        xmax = new Date(Math.max(xmax ?? new Date("2001/01/01"),...trace.x))
-      } else {
-        xmin = Math.min(xmin ?? Infinity,...trace.base??trace.x)
-        xmax = Math.max(xmax ?? -Infinity,...trace.base?trace.base.map((a, i) => a + trace.x[i]):trace.x)
+      if (trace.x) {
+        // Getting x range to fix range below
+        if (trace.x[0] instanceof Date) {
+          xmin = new Date(Math.min(xmin ?? new Date("2101/01/01"),...trace.x))
+          xmax = new Date(Math.max(xmax ?? new Date("2001/01/01"),...trace.x))
+        } else {
+          xmin = Math.min(xmin ?? Infinity,...trace.base??trace.x)
+          xmax = Math.max(xmax ?? -Infinity,...trace.base?trace.base.map((a, i) => a + trace.x[i]):trace.x)
+        }
       }
-      // Getting min and max values of y for each y axis to adjust ranges below
-      ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
-      ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
     }
 
     /* Substituting new annotations */
@@ -1058,7 +1127,7 @@ PlotlyGraph.prototype.plot = function (params) {
       // Create a new div and initialize it as a jQuery UI datepicker (inline calendar)
       let calendar = $('<div>').addClass('calendar').datepicker({
         numberOfMonths: 1,
-        onSelect: (dateText, inst) => self.selecDate(dateText, inst),
+        onSelect: (dateText, inst) => self.selectDate(dateText, inst),
       });
 
       // Prepend the calendar to the container without removing its current elements
@@ -1090,7 +1159,8 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 }
 
-PlotlyGraph.prototype.selecDate = function (dateText, inst) {
+PlotlyGraph.prototype.selectDate = function (dateText, inst) {
+  // TODO
   console.log('select date',dateText, inst,$(this))
   return
 }
