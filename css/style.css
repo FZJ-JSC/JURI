@@ -474,7 +474,7 @@ li > .dropdown-menu {
   vertical-align: middle;
 }
 
-.loading:before {
+.loading::before {
   content: '';
   display: inline-block;
   vertical-align: middle;

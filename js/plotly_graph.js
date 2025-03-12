@@ -565,7 +565,21 @@ PlotlyGraph.prototype.plot = function (params) {
 
             // Check if the key exists; if not, initialize array that will hold the traces for this step
             if (!traces_slider_obj[key]) {
-              traces_slider_obj[key] = [];
+              // Adding empty traces for each yaxis in layout, such that the plots are generated every time
+              traces_slider_obj[key] = Object.keys(layout)
+                .filter(key => /^yaxis(\d+)?$/.test(key))
+                .map(key => {
+                  const yaxisName = key === 'yaxis' ? 'y' : key.replace('yaxis', 'y');
+                  const xaxisName = key === 'yaxis' ? 'x' : key.replace('yaxis', 'x');
+                  return {
+                    name: 'empty',
+                    type: 'scatter',
+                    yaxis: yaxisName,
+                    xaxis: xaxisName,
+                    y: [],
+                    x: []
+                  };
+                });
             }
 
             // Starting a new step (that will include many traces - one for each jobid)
@@ -838,6 +852,11 @@ PlotlyGraph.prototype.plot = function (params) {
           xmin = Math.min(xmin ?? Infinity,...trace.base??trace.x)
           xmax = Math.max(xmax ?? -Infinity,...trace.base?trace.base.map((a, i) => a + trace.x[i]):trace.x)
         }
+        // Fixing xmin where the vertical dashed line is located (when vertical_line = true)
+        // Note: this only works because there's only this shape given
+        if (self.graph_data.vertical_line) {
+          xmin = layout.shapes[0].x0
+        }
       }
     }
 
@@ -928,8 +947,12 @@ PlotlyGraph.prototype.plot = function (params) {
     graphDiv[0].on('plotly_sliderchange', function (e) {
       // Updating shapes in layout
       layout.shapes = shapes[e.step._index]
+      layout.xaxis.range = [ self.graph_data.vertical_line?layout.shapes[0].x0:Math.min(...traces_slider[e.step._index].flatMap(trace => trace.x)),Math.max(...traces_slider[e.step._index].flatMap(trace => trace.x)) ]
+      // Resettting autorange to false, as after zoom it may be changed to true (must be xaxis, which is used in 'matched' for all graphs)
+      layout.xaxis.autorange = false
       // Updating the graph, as the slider update has problems
       Plotly.react(self.id, traces_slider[e.step._index], layout, self.config);
+    
       // Updating range to fix double click or 'reset axis'
       graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
       graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
@@ -940,7 +963,7 @@ PlotlyGraph.prototype.plot = function (params) {
       pad: {
         t: 30
       },
-      len: 0.9,
+      len: 0.93,
       x: 0,
       currentvalue: {
         xanchor: 'right',
@@ -965,12 +988,16 @@ PlotlyGraph.prototype.plot = function (params) {
       x: 1.0,
       y: 0,
       direction: 'left',
+      font: {
+        family: "FontAwesome",
+        size: 12
+      },  
       buttons: [{
-        label: 'previous',
+        label: "&#xf048;",
         args: [],
         execute: false
       },{
-        label: 'next',
+        label: "&#xf051;",
         args: [],
         execute: false
       }]
@@ -987,6 +1014,10 @@ PlotlyGraph.prototype.plot = function (params) {
         layout.sliders[0].active = index
         // Updating shapes in layout
         layout.shapes = shapes[index]
+        layout.xaxis.range = [ self.graph_data.vertical_line?layout.shapes[0].x0:Math.min(...traces_slider[index].flatMap(trace => trace.x)),Math.max(...traces_slider[index].flatMap(trace => trace.x)) ]
+        // Resettting autorange to false, as after zoom it may be changed to true (must be xaxis, which is used in 'matched' for all graphs)
+        layout.xaxis.autorange = false
+
         // Updating the graph, as the slider update has problems
         Plotly.react(self.id, traces_slider[index], layout, self.config);
         // Updating range to fix double click or 'reset axis'
