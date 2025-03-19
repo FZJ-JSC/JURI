@@ -1981,6 +1981,7 @@ function resize() {
                         $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
   if ($("#myGrid")) {
     $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
+    if (view.gridApi) resizeGrid()
   }
   for (let i = 0; i < view.resize_function.length; ++i) {
     view.resize_function[i]();

@@ -235,10 +235,10 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
       self.filepath = localFilepath;
       self.plot(params);
     })
-    .fail(function () {
+    .fail(function (e) {
       // Only log the error if this call is still current.
       if (self._currentCallId !== callId) return;
-      console.error("Something went wrong when plotting!");
+      console.error("Something went wrong when plotting!", e);
     });
 };
 
@@ -409,7 +409,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Parsing values and min/max when present
           values = data.map(function (y) {
-            let val = y[trace_data.ycol].split(";");
+            let val = typeof y[trace_data.ycol] == 'string'? y[trace_data.ycol].split(";") : [ y[trace_data.ycol] ];
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
@@ -1055,13 +1055,6 @@ PlotlyGraph.prototype.plot = function (params) {
         });
       });
       Plotly.update(self.id, traces_slider[index], layout, self.config);
-      // if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
-      //   // Storing the information of the clicked box
-      //   saved_info = e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index])
-      //   // Adding text and close button
-      //   // The click event is not needed because the unhover will be triggered anyway
-      //   hoverinfo.html(saved_info).prepend(closeBtn);
-      // }
     });
 
   }
@@ -1087,7 +1080,6 @@ PlotlyGraph.prototype.plot = function (params) {
 
   // Adding listener to add data to the info div
   if ((self.graph_data.layout.hovermode == 'left')||(self.graph_data.layout.hovermode == 'right')) {
-
     // Adding listener to hover to add data to 'info' div
     if (($(`.info.${self.id}`).length>0)&&(graphDiv.children().length>0)) {
       graphDiv[0].removeAllListeners('plotly_hover');
@@ -1309,7 +1301,7 @@ PlotlyGraph.prototype.parseToDate = function(input) {
   const strInput = input.toString();
 
   // Check if the input is a valid timestamp (only contains digits)
-  if (/^\d+$/.test(strInput)) {
+  if (/^((\d+\.?\d*)|(\.\d+))$/.test(strInput)) {
     // If it's in seconds (10 digits), convert to milliseconds
     const timestamp = strInput.length === 10 ? parseInt(strInput) * 1000 : parseInt(strInput);
     return new Date(timestamp); // Return Date object from timestamp
