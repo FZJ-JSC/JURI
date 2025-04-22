@@ -163,12 +163,12 @@ function init_grid() {
     rowMultiSelectWithClick: true,      // Allow row de-selection
     onRowSelected: onRowSelected,       // Function to run when a row is selected
     onModelUpdated: onChange,           // To run when displayed rows have changed. Triggered after sort, filter or tree expand / collapse events.
-    onVirtualColumnsChanged: onChange,  // To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
-    onColumnVisible: resizeGrid,          // To run when a column, or group of columns, was hidden / shown.
     navigateToNextCell: navigateToNextCell, // To navigate using arrow keys
     onFilterChanged: onFilterChanged,   // To run after filtering 
     onSortChanged: onSortChanged,       // To run after sorting
-    onColumnGroupOpened: onChange,      // A column group was opened / closed.
+    onVirtualColumnsChanged: onChange,  // To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
+    onColumnVisible: resizeGrid,          // To run when a column, or group of columns, was hidden / shown.
+    onColumnGroupOpened: resizeGrid,      // A column group was opened / closed.
     // onFirstDataRendered: onFirstData,   // Fired the first time data is rendered into the grid. 
     // onGridReady: onGridReady,           // When the grid is ready
     onStateUpdated: onStateUpdated,     // Grid state has been updated.
