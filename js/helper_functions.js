@@ -155,7 +155,7 @@ function gen_project_user_link(params,config,project) {
     let url = `index.html?config=${config}&project=${params.data[project]}&user=${params.value}`;
     result = `<a href="${url}">${params.value}</a>`;
   } else {
-    result = user;
+    result = params.value;
   }
   return result;
 };
@@ -167,20 +167,30 @@ function gen_project_link(params,config) {
     let url = `index.html?config=${config}&project=${params.value}`;
     result = `<a href="${url}">${params.value}</a>`;
   } else {
-    result = project;
+    result = params.value;
   }
   return result;
 };
 
 function gen_mentor_link(params,config) {
-  //    console.log("gen_project_link: "+config+" "+params.value);
+  //    console.log("gen_mentor_link: "+config+" "+params.value);
   let result = "";
   if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
     let url = `index.html?config=${config}&mentor=${params.value}`;
     result = `<a href="${url}">${params.value}</a>`;
   } else {
-    result = project;
+    result = params.value;
   }
   return result;
 };
 
+function gen_benchmark_link(params) {
+  //    console.log("gen_benchmark_link: "+config+" "+params.value);
+  let result = "";
+  if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
+    result = `<a href="javascript:void(0);" onclick="view.selectPage('cb_${params.value}'); return false;">${params.value}</a>`;
+  } else {
+    result = params.value;
+  }
+  return result;
+};

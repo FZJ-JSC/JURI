@@ -199,8 +199,12 @@ function init_grid() {
                              .attr('id',"filter-text-box") 
                              .attr('placeholder',"Filter")
                              .on('input',() => {onFilterTextBoxChanged(); return;})
-    filter.append(filter_input)                  
+    filter.append(filter_input)
     $('#filter_container').append(filter)
+    // Adding initial value obtained from URL, when present
+    if (view.initial_data.quickfilter) {
+      $("#filter-text-box").val(view.initial_data.quickfilter)
+    }
 
     // Parse filter options to add possible dates
     view.page_data.options = parseOptions(view.page_data.options)
@@ -247,11 +251,18 @@ function init_grid() {
 function onStateUpdated(event) {
   // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
   if (!['scroll','filter','columnSizing'].includes(event?.sources[0])) {
-    if ((view.gridApi.getAllDisplayedColumns().length*100 > $('#main_content').width())) {
-      view.gridApi.autoSizeAllColumns(false);
-    } else {
-      view.gridApi.sizeColumnsToFit({defaultMinWidth: $('#main_content').width()/view.gridApi.getAllDisplayedColumns().length});
-    }  
+    resizeGrid()
+  }
+}
+
+/**
+ * Resize Grid according to the number of columns and window width
+ */
+function resizeGrid() {
+  if ((view.gridApi.getAllDisplayedColumns().length*93 > $('#main_content').width())) {
+    view.gridApi.autoSizeAllColumns(false);
+  } else {
+    view.gridApi.sizeColumnsToFit({defaultMinWidth: $('#main_content').width()/view.gridApi.getAllDisplayedColumns().length});
   }
 }
 
@@ -336,10 +347,13 @@ function onRowSelected(event) {
 
 /* Function for quickfilter */
 function onFilterTextBoxChanged() {
+  let text = $("#filter-text-box").val()
   view.gridApi.setGridOption(
                               "quickFilterText",
-                              document.getElementById("filter-text-box").value,
+                              text,
                             );
+  view.initial_data.quickfilter = text;
+  view.setHash();
 }
 
 function add_filter_placeholder() {
@@ -419,6 +433,7 @@ let dateFilterParams = {
  * It can use '>(number)', '<(number)' or '(number)-(number)' (for InRange)
  * 
  */
+let uniqueIdCounter = 0; // Counter to create unique custom filters
 class NumberFloatingFilterComponent {
   init(params) {
     // Creating the eGUI as in a regular Number filter
@@ -438,6 +453,9 @@ class NumberFloatingFilterComponent {
                             .addClass('ag-input-field-input ag-text-field-input')
                             .attr('type','text')
                             .attr('tabindex','0')
+                            .attr('id',`ag-custom-${uniqueIdCounter++}-input`)
+                            .attr('aria-label',`${params.column.colDef.headerName} Filter Input`)
+                            .attr('autocomplete','off')
     eWrapper.append(input)
     div.append(eLabel).append(eWrapper)
     this.eGui.append(div)
@@ -445,7 +463,6 @@ class NumberFloatingFilterComponent {
     // Selecting the DOM input of the floating filter
     this.eFilterInput = this.eGui.find('input')[0];
     this.config = params.filterParams
-
     // Disallow character pattern (to allow only digits or '>'/'<')
     if (this.config.allowedCharPattern) {
       this.preventDisallowedCharacters();

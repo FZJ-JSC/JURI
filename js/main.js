@@ -16,7 +16,7 @@ var view;
 
 /** 
  * View object constituting most of the website: configuration, URL, filepaths
- * @param {object} parameters Parameters from URL that is parsed via getURLParameter()
+ * @param {object} parameters Parameters from URL that is parsed via getHash()
  *                            It includes config elements after ? and initial parameters after #
  **/
 function View(parameters) {
@@ -1349,7 +1349,7 @@ View.prototype.add_autorefresh = function () {
 
 /* Force reload page */
 View.prototype.reloadPage = function () {
-  var self = this;
+  let self = this;
   if (self.selected_page != 'live') {
     if($("#main_content > table").length){
       // Storing jobid that is selected before
@@ -1362,8 +1362,9 @@ View.prototype.reloadPage = function () {
     // Re-select current page and subpage
     self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
       // When there is a selected job...
-      if (selected_jobid?.length) {
+      if ((typeof selected_jobid !== 'undefined')&&(selected_jobid?.length)) {
         if($("#main_content > table").length){
+          index = self.headers[self.clicked_page].indexOf('JobID');
           // ...reselecting row with the same jobid (when present)
           jobid_row = $(`#main_content > table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
           if (jobid_row) {
@@ -1764,64 +1765,6 @@ View.prototype.addStyle = function (style, deferred) {
 
 
 /**
- * Update URL with parameters in initial_data.page 
- * initial_data.filter and initial_data.sort
- * @param {boolean} keep_history Flag to keep page in history
- */
-View.prototype.setHash = function (keep_history) {
-  self = this;
-  let hash = "";
-  parameter = {};
-  // Add active page
-  if (self.initial_data.page) {
-    parameter["page"] = self.initial_data.page;
-  }
-  // Add active filter
-  if (self.initial_data.filter) {
-    // parameter = Object.assign({}, parameter, self.initial_data.filter);
-    Object.assign(parameter, self.initial_data.filter);
-  }
-  // Add active sort
-  if (self.initial_data.sort) {
-    // parameter = Object.assign({}, parameter, self.initial_data.sort);
-    Object.assign(parameter, self.initial_data.sort);
-  }
-  // Add colorscale
-  if (self.initial_data.colors) {
-    // parameter = Object.assign({}, parameter, self.initial_data.colors);
-    Object.assign(parameter, self.initial_data.colors);
-  }
-  // Add auto-refresh
-  if (self.initial_data.refresh) {
-    Object.assign(parameter, self.initial_data.refresh);
-  }
-  // Add Presentation Mode
-  if (self.initial_data.presentation) {
-    Object.assign(parameter, self.initial_data.presentation);
-  }
-  // Add description box
-  if (self.initial_data.description) {
-    Object.assign(parameter, self.initial_data.description);
-  }
-  // Add options box
-  if (self.initial_data.options) {
-    Object.assign(parameter, self.initial_data.options);
-  }
-
-  // Build hash into URL
-  for (let key in parameter) {
-    if (key.length > 0 && parameter[key].length > 0) {
-      hash += ((hash.length > 0) ? "&" : "") + encodeURIComponent(key) + "=" + encodeURIComponent(parameter[key]);
-    }
-  }
-  if (keep_history) {
-    window.location.href = `${window.location.pathname}${window.location.search}#${hash}`;
-  } else {
-    history.replaceState({}, document.title, window.location.pathname + window.location.search + "#" + hash);
-  }
-}
-
-/**
  * Download config file defined in this.config and return its jqXHR response object
  * @returns {object} jqXHR from $.getJSON
  */
@@ -2038,6 +1981,7 @@ function resize() {
                         $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
   if ($("#myGrid")) {
     $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
+    if (view.gridApi) resizeGrid()
   }
   for (let i = 0; i < view.resize_function.length; ++i) {
     view.resize_function[i]();
@@ -2052,11 +1996,75 @@ String.prototype.capitalize = function () {
   return this.charAt(0).toUpperCase() + this.slice(1);
 }
 
+
+/**
+ * Update URL with parameters in initial_data.page 
+ * initial_data.filter and initial_data.sort
+ * @param {boolean} keep_history Flag to keep page in history
+ */
+View.prototype.setHash = function (keep_history) {
+  let self = this;
+  let hash = "";
+  parameter = {};
+  // Add active page
+  if (self.initial_data.page) {
+    parameter["page"] = self.initial_data.page;
+  }
+  // Add active filter
+  if (self.initial_data.filter) {
+    // parameter = Object.assign({}, parameter, self.initial_data.filter);
+    Object.assign(parameter, self.initial_data.filter);
+  }
+  // Add active sort
+  if (self.initial_data.sort) {
+    // parameter = Object.assign({}, parameter, self.initial_data.sort);
+    Object.assign(parameter, self.initial_data.sort);
+  }
+  // Add colorscale
+  if (self.initial_data.colors) {
+    // parameter = Object.assign({}, parameter, self.initial_data.colors);
+    Object.assign(parameter, self.initial_data.colors);
+  }
+  // Add auto-refresh
+  if (self.initial_data.refresh) {
+    Object.assign(parameter, self.initial_data.refresh);
+  }
+  // Add Presentation Mode
+  if (self.initial_data.presentation) {
+    Object.assign(parameter, self.initial_data.presentation);
+  }
+  // Add description box
+  if (self.initial_data.description) {
+    Object.assign(parameter, self.initial_data.description);
+  }
+  // Add options box
+  if (self.initial_data.options) {
+    Object.assign(parameter, self.initial_data.options);
+  }
+  // Add quickfilter
+  if (self.initial_data.quickfilter) {
+    parameter["quickfilter"] = self.initial_data.quickfilter;
+  }
+
+  // Build hash into URL
+  for (let key in parameter) {
+    if (key.length > 0 && parameter[key].length > 0) {
+      hash += ((hash.length > 0) ? "&" : "") + encodeURIComponent(key) + "=" + encodeURIComponent(parameter[key]);
+    }
+  }
+  if (keep_history) {
+    window.location.href = `${window.location.pathname}${window.location.search}#${hash}`;
+  } else {
+    history.replaceState({}, document.title, window.location.pathname + window.location.search + "#" + hash);
+  }
+}
+
+
 /**
  * Parse the URL address to get configuration and parameters
  * @returns {object} Object containing parameters given in URL
  */
-function getURLParameter() {
+function getHash() {
   data_str = {
     "config": "",
     "inital": ""
@@ -2067,7 +2075,7 @@ function getURLParameter() {
     return;
   }
   data_str.inital = window.location.hash.substring(1).split('&');
-  paras = {
+  params = {
     "config": {},
     "inital": {
       "filter": {},
@@ -2079,14 +2087,14 @@ function getURLParameter() {
       "options": {},
     }
   };
-  for (let key in paras) {
+  for (let key in params) {
     for (let i = 0; i < data_str[key].length; ++i) {
       let p = data_str[key][i].split('=', 2);
       let content = "";
       if (p.length > 1)
         content = decodeURIComponent(p[1].replace(/\+/g, " "));
       let entry = decodeURIComponent(p[0]);
-      let target = paras[key];
+      let target = params[key];
       if (entry == "demo") {
         if (content.length == 0)
           content = true;
@@ -2096,28 +2104,30 @@ function getURLParameter() {
       }
       if (key == "inital") {
         if (entry == "page") {
-          target = paras[key];
+          target = params[key];
         } else if (entry == "colId" || entry == "sort") {
-          target = paras[key].sort;
+          target = params[key].sort;
         } else if (entry == "colorscale") {
-          target = paras[key].colors;
+          target = params[key].colors;
         } else if (entry == "disablerefresh") {
-          target = paras[key].refresh;
+          target = params[key].refresh;
         } else if (entry == "present") {
-          target = paras[key].presentation;
+          target = params[key].presentation;
         } else if (entry == "showinfo") {
-          target = paras[key].description;
+          target = params[key].description;
         } else if (entry == "showoptions") {
-          target = paras[key].options;
+          target = params[key].options;
+        } else if (entry == "quickfilter") {
+          target = params[key];
         } else {
-          target = paras[key].filter;
+          target = params[key].filter;
           entry = entry;
         }
       }
       target[entry] = content;
     }
   }
-  return paras;
+  return params;
 }
 
 /**
@@ -2166,7 +2176,7 @@ $(document).ready(function () {
   $("#navbarSupportedContent").bind('shown.bs.collapse', resize);
   $("#navbarSupportedContent").bind('hidden.bs.collapse', resize);
   // Read and store parameters defined in the URL
-  let parameters = getURLParameter();
+  let parameters = getHash();
   // Listener to reload page when clicking Back/Forward buttons (not only changing the address)
   $(window).on("popstate", function(e) {
     if (e.originalEvent.state !== null) {

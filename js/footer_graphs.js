@@ -149,13 +149,26 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
     const dy = m_pos - e.y;
     m_pos = e.y;
     footer.height(footer.height() + dy);
-    view.footersize = footer.height();
+    if (footer.height() < $("#footer_footer").height()+$("#footer_infoline").height()+105) {
+      $("#footer_content").hide();
+    } else {
+      $("#footer_content").show();
+    }
+    self.resize_graph()
     return;
   }
   function on_mouse_up() {
     document.removeEventListener("mousemove", resize_footer, false);
     document.removeEventListener("mouseup", on_mouse_up, false);
-    self.resize_graph()
+    const footer = $("footer");
+    // If footer is too small, hide it
+    if (footer.height() < $("#footer_footer").height()+$("#footer_infoline").height()+105) {
+      footer.height($("#footer_footer").height()+$("#footer_infoline").height());
+      $("#footer_content").hide();
+      // Fixing table size
+      self.resize_graph()
+    }
+    view.footersize = footer.height();
     return;
   }
   drag.on('mousedown', function(e){
