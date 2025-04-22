@@ -1349,7 +1349,7 @@ View.prototype.add_autorefresh = function () {
 
 /* Force reload page */
 View.prototype.reloadPage = function () {
-  var self = this;
+  let self = this;
   if (self.selected_page != 'live') {
     if($("#main_content > table").length){
       // Storing jobid that is selected before
@@ -2003,7 +2003,7 @@ String.prototype.capitalize = function () {
  * @param {boolean} keep_history Flag to keep page in history
  */
 View.prototype.setHash = function (keep_history) {
-  self = this;
+  let self = this;
   let hash = "";
   parameter = {};
   // Add active page
