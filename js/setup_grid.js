@@ -164,7 +164,7 @@ function init_grid() {
     onRowSelected: onRowSelected,       // Function to run when a row is selected
     onModelUpdated: onChange,           // To run when displayed rows have changed. Triggered after sort, filter or tree expand / collapse events.
     onVirtualColumnsChanged: onChange,  // To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
-    onColumnVisible: onChange,          // To run when a column, or group of columns, was hidden / shown.
+    onColumnVisible: resizeGrid,          // To run when a column, or group of columns, was hidden / shown.
     navigateToNextCell: navigateToNextCell, // To navigate using arrow keys
     onFilterChanged: onFilterChanged,   // To run after filtering 
     onSortChanged: onSortChanged,       // To run after sorting
@@ -250,7 +250,7 @@ function init_grid() {
 
 function onStateUpdated(event) {
   // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
-  if (!['scroll','filter','columnSizing'].includes(event?.sources[0])) {
+  if ((typeof event.sources == 'array')&&(!['scroll','filter','columnSizing'].includes(event.sources[0]))) {
     resizeGrid()
   }
 }
