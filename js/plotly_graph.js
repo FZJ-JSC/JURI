@@ -255,6 +255,8 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
     .fail(function (e) {
       // Only log the error if this call is still current.
       if (self._currentCallId !== callId) return;
+      // Cleaning up plot, as it cannot be plotted
+      self.plot();
       console.error("Something went wrong when plotting!", e);
     });
 };
