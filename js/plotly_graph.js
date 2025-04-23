@@ -42,11 +42,22 @@ function PlotlyGraph(graph_data) {
       rangemode: 'nonnegative',
       automargin: true,
       spikesnap: 'data',
+      title: {
+        font: {
+          size: 12,
+        },
+      },
       // autorange: true,
     },
     yaxis: {
       zeroline: true,
       showline: true,
+      title: {
+        font: {
+          family: 'sans-serif',
+          size: 12,
+        },
+      },
       titlefont: {
         family: 'sans-serif',
         size: 12
@@ -64,6 +75,12 @@ function PlotlyGraph(graph_data) {
       zeroline: true,
       showline: true,
       mirror: 'ticks',
+      title: {
+        font: {
+          family: 'sans-serif',
+          size: 12,
+        },
+      },
       titlefont: {
         family: 'sans-serif',
         size: 12
@@ -1157,6 +1174,30 @@ PlotlyGraph.prototype.plot = function (params) {
 
       // Prepend the calendar to the container without removing its current elements
       infoDiv.prepend(calendar);
+    }
+  }
+
+  // Fixing axes labels after plotly update to 3.0.0
+  if (typeof layout?.yaxis?.title === 'string') {
+    layout.yaxis.title = {
+      text: layout.yaxis.title
+    }
+  }
+  if ((typeof layout?.yaxis?.title !== 'undefined')&&(typeof layout?.yaxis?.title?.font === 'undefined')) {
+    layout.yaxis.title.font = { 
+      family: 'sans-serif',
+      size: 12,
+    }
+  }
+  if (typeof layout?.xaxis?.title === 'string') {
+    layout.xaxis.title = {
+      text: layout.xaxis.title
+    }
+  }
+  if ((typeof layout?.xaxis?.title !== 'undefined')&&(typeof layout?.xaxis?.title?.font === 'undefined')) {
+    layout.xaxis.title.font = { 
+      family: 'sans-serif',
+      size: 12,
     }
   }
 
