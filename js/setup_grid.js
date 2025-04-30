@@ -166,7 +166,7 @@ function init_grid() {
     navigateToNextCell: navigateToNextCell, // To navigate using arrow keys
     onFilterChanged: onFilterChanged,   // To run after filtering 
     onSortChanged: onSortChanged,       // To run after sorting
-    onVirtualColumnsChanged: onChange,  // To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
+    onVirtualColumnsChanged: resizeGrid,  // To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
     onColumnVisible: resizeGrid,          // To run when a column, or group of columns, was hidden / shown.
     onColumnGroupOpened: resizeGrid,      // A column group was opened / closed.
     // onFirstDataRendered: onFirstData,   // Fired the first time data is rendered into the grid. 
