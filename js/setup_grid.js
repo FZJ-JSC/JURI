@@ -148,11 +148,14 @@ function init_grid() {
     tooltipShowDelay: 0,                // Delay to show tooltip on mousehover over header (0 = no delay)
     enableCellTextSelection: true,      // Enable selection of cell contents
     ensureDomOrder: true,               // Make selection in the correct order
-    autoSizeStrategy: {                 // Automatically resize cells...
-      type: 'fitCellContents'           // ...to fit contents
-      // type: 'fitGridWidth',             // ...to fit GridWidth
-      // defaultMinWidth: 100
-    },
+
+    // NOTE: The autoSizeStrategy is commented out, as it was "overwriting" the manual resizing done in resizeGrid()
+    // autoSizeStrategy: {                 // Automatically resize cells...
+    //   type: 'fitCellContents'           // ...to fit contents
+    //   // type: 'fitGridWidth',             // ...to fit GridWidth
+    //   // defaultMinWidth: 100
+    // },
+
     // suppressColumnVirtualisation: true, // Supress column virtualisation to take into account non-visible columns in resizing columns, for example
     // suppressRowVirtualisation: true, // Supress row virtualisation to take into account non-visible rows in resizing columns, for example
     headerHeight: 25,                   // Height of header row
@@ -172,6 +175,7 @@ function init_grid() {
     // onFirstDataRendered: onFirstData,   // Fired the first time data is rendered into the grid. 
     // onGridReady: onGridReady,           // When the grid is ready
     onStateUpdated: onStateUpdated,     // Grid state has been updated.
+    // onRowDataUpdated: onGridReady,
     // suppressCellFocus: true,            // Turn off cell focus (if turning on, can't move selection with arrows)
     // onSelectionChanged: onSelectionChanged, // Function to run when selected row has changed
 
@@ -245,7 +249,7 @@ function init_grid() {
 }
 
 // function onGridReady(event) {
-//   console.log('onGridReady',event)
+//   resizeGrid()
 // }
 
 function onStateUpdated(event) {
@@ -259,10 +263,12 @@ function onStateUpdated(event) {
  * Resize Grid according to the number of columns and window width
  */
 function resizeGrid() {
-  if ((view.gridApi.getAllDisplayedColumns().length*93 > $('#main_content').width())) {
+  let content_width = $('#main_content').width();
+  let num_displayed_cols = view.gridApi.getAllDisplayedColumns().length;
+  if ((num_displayed_cols*93 > content_width)) {
     view.gridApi.autoSizeAllColumns(false);
   } else {
-    view.gridApi.sizeColumnsToFit({defaultMinWidth: $('#main_content').width()/view.gridApi.getAllDisplayedColumns().length});
+    view.gridApi.sizeColumnsToFit({defaultMinWidth: content_width/num_displayed_cols});
   }
 }
 

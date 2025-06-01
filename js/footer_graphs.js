@@ -172,7 +172,7 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
     return;
   }
   drag.on('mousedown', function(e){
-    // if(e.preventDefault) e.preventDefault();
+    e.preventDefault() // This is added to avoid selecting text or scrolling the table while dragging
     if(e.offsetY < BORDER_SIZE) {
       document.addEventListener("mouseup", on_mouse_up, false);
     
