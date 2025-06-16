@@ -19,6 +19,8 @@ function PlotlyGraph(graph_data) {
   this.filepath = "";
   this.timeout = null;
   this.sliderpos = null;
+  this.empty = true; // Marks empty plots
+  this.mousePressed = false; // Stores the state of the primary mouse button
   /* Default values */
   this.GRIDLINES = 4;
   this.layout = {
@@ -26,6 +28,7 @@ function PlotlyGraph(graph_data) {
       bgcolor: 'rgba(0,0,0,0)',
       color: '#C7C7C7',
       activecolor: '#7C7C7C',
+      editable: false,
     },
     margin: {
       l: 50,
@@ -364,7 +367,7 @@ PlotlyGraph.prototype.plot = function (params) {
               } else if (condition.startsWith(">")) {
                 return item[key] > parseFloat(condition.slice(1));
               } else {
-                return item[key] === condition;
+                return item[key] == condition; // Comparison should use "==" as numbers may be given as strings
               }
             });
           });
@@ -373,6 +376,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
       // If there are still data to be plotted
       if (data) {
+        self.empty = false;
         // Calculating factor if present, otherwise set to 1
         let factor = typeof (trace_data.factor) == "string" ? eval(trace_data.factor) : 1;
 
@@ -470,6 +474,13 @@ PlotlyGraph.prototype.plot = function (params) {
             });  
           } else if (trace_data.colorcol) {
             trace.marker.color = data.map(function (d)  { return d[trace_data.colorcol] });
+            // Storing original colors in a separate array to be able to recover them when clicking
+            trace.marker._originalColors = [...trace.marker.color]
+            // Adding line around bars to be 0, to be able to change on hover later on
+            trace.marker.line = {
+              width: Array.from({length: trace.marker.color.length}, (v) => 0),
+              color: 'black'
+            };
           }
 
           // Creating hovertemplate if given on config
@@ -495,6 +506,14 @@ PlotlyGraph.prototype.plot = function (params) {
           // cuts the first and last bar/bar group
           if (trace.orientation == 'v') {
             layout.xaxis.autorange = true;
+          }
+
+          // Adding values for highlighted keys as custom entries in trace
+          // to be used later for comparison
+          if (Array.isArray(self.graph_data.highlight)) {
+            for (const item of self.graph_data.highlight) {
+              trace[item] = data.map(function (d)  { return d[item] });
+            }
           }
         } else if (self.graph_data.slider) { // PLOT WITH A SLIDER
 
@@ -780,7 +799,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Creating hovertemplate if given on config
           if (trace_data.onhover) {
-            prepare_hoverinfo(trace,trace_data,data)
+            self.prepare_hoverinfo(trace,trace_data,data)
           }
 
           // If a map is given for the values:
@@ -839,11 +858,11 @@ PlotlyGraph.prototype.plot = function (params) {
           ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
           ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));  
         }
-      }
 
-      // Add traces if this data does not contain a slider, as in that case, all the traces were added already
-      if (!self.graph_data.slider) {
-        traces.push(trace);
+        // Add traces if this data does not contain a slider, as in that case, all the traces were added already
+        if (!self.graph_data.slider) {
+          traces.push(trace);
+        }
       }
     }
 
@@ -959,11 +978,23 @@ PlotlyGraph.prototype.plot = function (params) {
     }
   }
 
-  // Adding a slider if that's defined
-  if ((self.graph_data.slider)&&traces.length > 0) {
+  // Removing all listeners before adding new ones
+  if (graphDiv.hasClass('js-plotly-plot')) {
+    graphDiv[0].removeAllListeners();
+    // graphDiv[0].removeAllListeners('plotly_sliderchange');
+    // graphDiv[0].removeAllListeners('plotly_buttonclicked');
+    // graphDiv[0].removeAllListeners('plotly_hover');
+    // graphDiv[0].removeAllListeners('plotly_unhover');
+    // graphDiv[0].removeAllListeners('plotly_click');  
+    // graphDiv[0].removeAllListeners('plotly_update');  
+  }
+
+
+  // Adding a slider if that's defined, and the actions when changing the slider or clicking the buttons
+  if ((self.graph_data.slider)&&(!self.empty)) {
     // Adding our own update of the graph when the slider is changed, due to slowness of using
     // all traces at once, and bugs updating the traces when passing them in the steps (see long comment above)
-    graphDiv[0].on('plotly_sliderchange', function (e) {
+    var slider_change = function (e) {
       // Updating shapes in layout
       layout.shapes = shapes[e.step._index]
       layout.xaxis.range = [ self.graph_data.vertical_line?layout.shapes[0].x0:Math.min(...traces_slider[e.step._index].flatMap(trace => trace.x)),Math.max(...traces_slider[e.step._index].flatMap(trace => trace.x)) ]
@@ -975,7 +1006,7 @@ PlotlyGraph.prototype.plot = function (params) {
       // Updating range to fix double click or 'reset axis'
       graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
       graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
-    })
+    }
 
     layout.sliders = [{
       active: numsteps-1,
@@ -1021,8 +1052,8 @@ PlotlyGraph.prototype.plot = function (params) {
         execute: false
       }]
     }]
-    // Adding action of selecting previous or next step when clicking the buttons
-    graphDiv[0].on('plotly_buttonclicked', function (e) {
+    // Adding function and listener of selecting previous or next step when clicking the buttons
+    var change_step = function (e) {
       let index = graphDiv[0]._fullLayout.sliders[0].active
       if (e.button._index)
         ++index
@@ -1043,9 +1074,9 @@ PlotlyGraph.prototype.plot = function (params) {
         graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
         graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
       }
-    })
-    // Add click event to mark a given job ID as selected
-    graphDiv[0].on('plotly_click', (e) => { 
+    }
+    // Add function and click event to mark a given job ID as selected
+    var mark_job = function (e) {
       let jobid = e.points[0].data.name
       let index = graphDiv[0]._fullLayout.sliders[0].active
 
@@ -1073,9 +1104,12 @@ PlotlyGraph.prototype.plot = function (params) {
           }
         });
       });
-      Plotly.update(self.id, traces_slider[index], layout, self.config);
-    });
-
+      Plotly.update(self.id, traces_slider[index], layout);
+    }
+    graphDiv[0]
+      .on('plotly_sliderchange', slider_change)
+      .on('plotly_buttonclicked', change_step)
+      .on('plotly_click', mark_job);
   }
 
   // Checking if info div is to be added to the left (for hoverinfo or calendar)
@@ -1101,8 +1135,6 @@ PlotlyGraph.prototype.plot = function (params) {
   if ((self.graph_data.layout.hovermode == 'left')||(self.graph_data.layout.hovermode == 'right')) {
     // Adding listener to hover to add data to 'info' div
     if (($(`.info.${self.id}`).length>0)&&(graphDiv.children().length>0)) {
-      graphDiv[0].removeAllListeners('plotly_hover');
-      graphDiv[0].removeAllListeners('plotly_unhover');
       let saved_info = '';
       // Creatign 'close' button, to clean up the info when clicked
       let closeBtn = $('<span class="close-btn"><i class="fa fa-times"></i></span>');
@@ -1125,13 +1157,15 @@ PlotlyGraph.prototype.plot = function (params) {
         // Prepend the calendar to the container without removing its current elements
         infoDiv.append(hoverinfo);
       }
-  
-      graphDiv[0].on('plotly_hover', (e) => { 
+
+      var print_hoverinfo = function(e) { 
         if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
+          // console.log('e.points[0].customdata',e.points[0].customdata)
+          // console.log( e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index]) )
           hoverinfo.html(e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index]));
         }
-      });
-      graphDiv[0].on('plotly_click', (e) => { 
+      }
+      var stick_hoverinfo = function(e) {
         if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
           // Storing the information of the clicked box
           saved_info = e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index])
@@ -1139,8 +1173,8 @@ PlotlyGraph.prototype.plot = function (params) {
           // The click event is not needed because the unhover will be triggered anyway
           hoverinfo.html(saved_info).prepend(closeBtn);
         }
-      });
-      graphDiv[0].on('plotly_unhover', () => { 
+      }
+      var clean_hoverinfo = function(e) {
         if (saved_info.length>0) {
           hoverinfo.html(saved_info).prepend(closeBtn);
           closeBtn.on('click', function() {
@@ -1151,7 +1185,11 @@ PlotlyGraph.prototype.plot = function (params) {
         } else {
           hoverinfo.html('')
         }
-      });
+      }
+      graphDiv[0]
+        .on('plotly_hover', print_hoverinfo)
+        .on('plotly_click', stick_hoverinfo)
+        .on('plotly_unhover', clean_hoverinfo);
     }
   }
 
@@ -1169,14 +1207,20 @@ PlotlyGraph.prototype.plot = function (params) {
     let calendar = infoDiv.children('.calendar');
     if (calendar.length === 0) {
       // Create a new div and initialize it as a jQuery UI datepicker (inline calendar)
-      let calendar = $('<div>').addClass('calendar').datepicker({
+      calendar = $('<div>').addClass('calendar').datepicker({
         numberOfMonths: 1,
         onSelect: (dateText, inst) => self.selectDate(dateText, inst),
       });
-
-      // Prepend the calendar to the container without removing its current elements
-      infoDiv.prepend(calendar);
     }
+
+    // Restricting dates on the calendar
+    if (layout.xaxis?.range?.length>0) {
+      calendar.datepicker("option", "minDate", self.parseToDate(layout.xaxis.range[0]));
+      calendar.datepicker("option", "maxDate", self.parseToDate(layout.xaxis.range[1]));
+    }
+    // Prepend the calendar to the container without removing its current elements
+    infoDiv.prepend(calendar);
+
   }
 
   // Fixing axes labels after plotly update to 3.0.0
@@ -1203,30 +1247,256 @@ PlotlyGraph.prototype.plot = function (params) {
     }
   }
 
-  /*********************
-   * CREATING THE PLOT
-   *********************/
+  /**************************************
+   **         CREATING THE PLOT        **
+   **************************************/
   if (params) layout.datarevision = params.JobID
-  Plotly.react(self.id, traces, layout, self.config);
+  Plotly.react(self.id, traces, layout, self.config).then(_ => {
 
-  // Restricting dates on the calendar
-  if (($(".calendar").length)&&(layout.xaxis?.range.length>0)) {
-    $(".calendar").datepicker("option", "minDate", self.parseToDate(layout.xaxis.range[0]));
-    $(".calendar").datepicker("option", "maxDate", self.parseToDate(layout.xaxis.range[1]));
-  }
+    // Fixing zoom when double clicking or clicking on the 'reset axis' modebar button
+    if ((graphDiv.length>0)&&(typeof layout?.xaxis?.range != 'undefined')) {
+      graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0];
+      graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1];
+    }
 
-  // Fixing zoom when double clicking or clicking on the 'reset axis' modebar button
-  if ((graphDiv.length>0)&&(typeof layout?.xaxis?.range != 'undefined')) {
-    graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
-    graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
-  }
+    // Moving the rangeslider when that is the case
+    if (layout.xaxis.rangeslider?.translate) {
+      self.move_slider(self.id, layout.xaxis.rangeslider.translate)
+    }
+    graphDiv[0].on('plotly_update', () => {
+      // Moving the rangeslider when that is the case
+      if (layout.xaxis.rangeslider?.translate) {
+        self.move_slider(self.id, layout.xaxis.rangeslider.translate)
+      }
+    })
 
-  // Moving the rangeslider when that is the case
-  if (layout.xaxis.rangeslider?.translate) {
-    self.move_slider(self.id, layout.xaxis.rangeslider.translate)
-  }
+    // When a list for highlighing is given and the graph is not empty
+    // Add the 'hover' and 'click' listeners to highlight the bars
+    if (Array.isArray(self.graph_data.highlight)&&(!self.empty)) {
+
+      let timerhover = null
+      let timerunhover = null
+      let timerevent = null
+      let accumulatedIndices = null
+      
+      // Set all marker linewidths to 0
+      function resetBarWidth(traces) {
+        // Reset all marker.line.width values to 0 for every trace
+        traces.forEach(trace => {
+          // Reset the width array by mapping every element to 0
+          if (trace.marker && trace.marker.line && Array.isArray(trace.marker.line.width)) {
+            trace.marker.line.width = trace.marker.line.width.map(() => 0);
+          }
+        });
+      }
+
+      // Set all colors back to the original one
+      function resetColors(traces) {
+        traces.forEach(trace => {
+          // Check if the original colors are stored in each trace
+          if (trace.marker && trace.marker._originalColors && Array.isArray(trace.marker._originalColors)) {
+            // Restore the marker color array from the stored original colors
+            trace.marker.color = [...trace.marker._originalColors];
+          }
+        });
+      }
+
+      var grayOthers = function(traces, curveNumber, accumulatedIndices) {
+        // If mouse if pressed, make all other curves gray
+        console.log(self.mousePressed)
+        if (self.mousePressed) {
+          traces.forEach((trace, idx) => {
+            if (trace.marker && Array.isArray(trace.marker.color)) {
+              if (idx === curveNumber) {
+                // For the trace that matches curveNumber, only preserve colors at indices in accumulatedIndices.
+                trace.marker.color = trace.marker.color.map((color, i) =>
+                  accumulatedIndices.has(i) ? color : "gray"
+                );
+              } else {
+                // For all other traces, change all colors to "gray".
+                trace.marker.color = trace.marker.color.map(() => "gray");
+              }
+            }
+          });
+        }                
+      }
+
+      // Function to be called on hover to highlight a bar (increasing edge linewidth)
+      var highlight = function(e) {
+        if(timerevent)
+          clearTimeout(timerevent)
+
+        // Wrapping over a timeout to cancel intermediate hover events
+        timerevent = setTimeout(_ => {
+          timerevent = null
+
+          // Accumulate the indices of the traces that should be highlighted
+          accumulatedIndices = new Set();
+          // Looping over all "keys" to be checked:
+          // Gets the values of the current hovered item and get 
+          // the indices of all of the other traces that have the same value
+          for (const item of self.graph_data.highlight) {
+            const highlight_value = e.points[0].data[item][e.points[0].pointIndex];
+            const indices = e.points[0].data[item].reduce((acc, element, index) => {
+              if (element === highlight_value) {
+                acc.push(index);
+              }
+              return acc;
+            }, []);
+            // indices store all the indices of the traces that have the same value
+            // of the hovered element to be highlighted
+            indices.forEach(idx => accumulatedIndices.add(idx));  
+          }
+
+          // Reseting bar linewidths to 0 to clean up
+          resetBarWidth(traces)
+
+          // For each global index in accumulatedIndices, update that element's width to 2
+          accumulatedIndices.forEach(index => {
+            // Check that globalIndex is valid
+            traces[e.points[0].curveNumber].marker.line.width[index] = 2;
+          });
+
+          // If mousePressed, this means that the mouse was clicked and 
+          // now it's hovered on a bar. In this case, the accumularedIndices should have
+          // colors, but all others should be grayed out
+          grayOthers(traces,e.points[0].curveNumber,accumulatedIndices)
+
+          Plotly.update(self.id, traces, layout);
+
+        }, 100)
+      }
+
+      var unhighlight = function() {
+        if(timerevent)
+          clearTimeout(timerevent)
+
+        timerevent = setTimeout(_ => {
+          timerevent = null
+          lastrace = null
+
+          resetBarWidth(traces);
+          resetColors(traces);
+
+          Plotly.update(self.id, traces, layout);
+        }, 100)
+      }
+
+      // Plotly does not have events for mousedown and mouseup
+      // so we have to catch all the bars and set the events "by hand"
+      console.log("Adding events for mouse")
+      // Adding listeners to to mouse events to keep track of the state of the primary mouse button
+      document.addEventListener("mousedown", self.setPrimaryButtonState);
+      document.addEventListener("mousemove", self.setPrimaryButtonState);
+      document.addEventListener("mouseup", self.setPrimaryButtonState);
+      console.log("Adding events for mplotly")
+
+      // Getting all bar (or point) objects
+      graphDiv[0]
+        .on("plotly_hover", highlight)
+        .on("plotly_unhover", unhighlight)
+        .on("plotly_relayout", data => { // Trigerring mouseup and mousedown events
+          console.log("relayout triggered!")
+          let bars = document.querySelectorAll(".barlayer .bars .points .point path")
+          for(let i = 0; i < bars.length; i++) {
+            bars[i].onmousemove = e => {
+              console.log("Mousemove!")
+              if(graphDiv[0]._fullLayout._lasthover)
+                graphDiv[0]._fullLayout._lasthover.dispatchEvent(new MouseEvent("mousemove", e))
+            }
+            bars[i].onmouseout = e => {
+              console.log("Mouseout!")
+              if(graphDiv[0]._fullLayout._lasthover)
+                graphDiv[0]._fullLayout._lasthover.dispatchEvent(new MouseEvent("mouseout", e))
+            }
+            bars[i].onmousedown = e => {
+              console.log("Mousedown!")
+              // grayOthers(traces)
+              // Plotly.update(self.id, traces, layout);
+            }
+            bars[i].onmouseup = e => {          
+              console.log("Mouseup!")
+              // resetColors(traces)
+              // Plotly.update(self.id, traces, layout);
+            }
+          }
+        })
+      Plotly.relayout(self.id, {})
+
+      // let bars = document.querySelectorAll(".barlayer .bars .points .point path")
+      // console.log(bars)
+      // for(let i = 0; i < bars.length; i++) {
+      //   bars[i].onmousemove = e => {
+      //     if(graphDiv[0]._fullLayout._lasthover)
+      //       graphDiv[0]._fullLayout._lasthover.dispatchEvent(new MouseEvent("mousemove", e))
+      //   }
+      //   bars[i].onmouseout = e => {
+      //     if(graphDiv[0]._fullLayout._lasthover)
+      //       graphDiv[0]._fullLayout._lasthover.dispatchEvent(new MouseEvent("mouseout", e))
+      //   }
+      //   bars[i].onmousedown = e => {
+      //     console.log("Mousedown!")
+      //     grayOthers(traces)
+      //     Plotly.update(self.id, traces, layout);
+      //   }
+      //   bars[i].onmouseup = e => {          
+      //     console.log("Mouseup!")
+      //     resetColors(traces)
+      //     Plotly.update(self.id, traces, layout);
+      //   }
+      // }
+
+
+
+
+
+      // let bars = document.querySelectorAll(".barlayer .bars .points .point path")
+      // // Looping over the bars
+      // for(let i = 0; i < bars.length; i++) {
+      //   bars[i].onmousemove = e => {
+      //     if(layer._fullLayout._lasthover)
+      //       layer._fullLayout._lasthover.dispatchEvent(new MouseEvent("mousemove", e))
+      //   }
+      //   bars[i].onmouseout = e => {
+      //     if(layer._fullLayout._lasthover)
+      //       layer._fullLayout._lasthover.dispatchEvent(new MouseEvent("mouseout", e))
+      //   }
+      //   bars[i].onmousedown = e => {
+      //     Plotly.restyle(layer, {
+      //       "marker.color": "red"
+      //     }, [lastrace])
+      //   }
+      //   bars[i].onmouseup = e => {          
+      //     Plotly.restyle(layer, {
+      //       "marker.color": colors[lastrace]
+      //     }, [lastrace])
+      //   }
+      // }
+
+
+
+
+    }
+
+  })
 }
 
+/**
+ * Function to check and store the primary mouse button state
+ * to be used with mousedown/mouseup events on the highlighting of jobs
+ */
+PlotlyGraph.prototype.setPrimaryButtonState = function(e) {
+  let self = this
+  var flags = e.buttons !== undefined ? e.buttons : e.which;
+  self.mousePressed = (flags & 1) === 1;
+}
+
+/**
+ * Function to perform when a date is selected in the calendar
+ * @param {string} dateText Date in text format
+ * @param {obj} inst 
+ * @returns 
+ */
 PlotlyGraph.prototype.selectDate = function (dateText, inst) {
   // TODO
   console.log('select date',dateText, inst,$(this))
@@ -1290,6 +1560,7 @@ PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
     const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
     // Add information on new line, when there's already some info there
     if ((self.graph_data?.layout?.hovermode == 'left')||(self.graph_data?.layout?.hovermode == 'right')) {
+      // If the hover information is to be shown on the left or right of the graph
       if (i==0) {
         trace.hovertemplatecustom = '<table><tbody>'
       }
@@ -1298,8 +1569,9 @@ PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
         trace.hovertemplatecustom += '</tbody></table>'
       }
     } else {
+      // If the hover information is to be shown on top of the graph (usual way)
       if (i==0) {
-        trace.hovertemplate = ''
+        trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
       }
       trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;  
       if (i<trace_data.onhover.length) {
@@ -1416,11 +1688,6 @@ function sync_relayout(e,graphs) {
     }
     /* Use ".update" instead of ".relayout" to avoid triggering the function again */
     Plotly.update(div, {}, update);
-
-    // Moving the rangeslider when that is the case
-    if (x.rangeslider?.translate) {
-      graph.move_slider(graph.id, x.rangeslider.translate)
-    }
   });
 }
 
