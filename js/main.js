@@ -722,7 +722,9 @@ View.prototype.update_status_info = function () {
         // Fixing date format
         result = new Date(`20${result[0]}`.replace(/-/g,"T").replace(/\//g,"-"));
         let now = new Date();
-        if ((now-result)/60000 > 10.0) {
+	// Considering the TimeZone of local client
+	let tz_client = now.getTimezoneOffset();
+        if ((now-result)/60000-(-120-tz_client) > 10.0) {
           $("#view_status_info").css("color",'red')
         } else {
           $("#view_status_info").css("color",'')
