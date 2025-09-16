@@ -338,6 +338,7 @@ function onSortChanged(event) {
 
 
 function onRowSelected(event) {
+  if (view.footer_graph === null) return;
   // For the selected row (the one that is de-selected also throws an event with event.node.isSelected()=false)
   if (event.node.isSelected()) {
     // Getting the parameter values for each column in the form of {headerName: value} for the current row
@@ -380,7 +381,7 @@ function onChange(event) {
     return;
   }
   // If only one row is shown, select it
-  if (view.gridApi.getDisplayedRowCount() == 1) {
+  if ((view.footer_graph !== null)&&(view.gridApi.getDisplayedRowCount() == 1)) {
     view.gridApi.setNodesSelected({ nodes: [view.gridApi.getDisplayedRowAtIndex(0)], newValue: true });
   }
   let selected = view.gridApi.getSelectedNodes()[0]

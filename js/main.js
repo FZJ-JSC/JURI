@@ -541,9 +541,9 @@ View.prototype.changeSystem = function (system) {
     $("#main_content").empty();
     $("#filter_container").empty();
     $("#options").empty()
-    $("#footer_graphs").empty();
+    $("#footer_content").empty();
     $("#footer_infoline_page_options").empty();
-    $('#footer_infoline > #dragger').remove();
+    $("#footer_infoline > #dragger").remove();
     $("footer").height($("#footer_infoline").height() + $("#footer_footer").height());
     self.gridApi = null;
 
@@ -1695,14 +1695,16 @@ View.prototype.getPagesInfo = function (elem) {
   }
 
   // Getting scripts needed on the website and removing from config
-  self.addons.scripts = new Set([...self.addons.scripts, ...self.getEntries(elem.scripts,'scripts',true)])
+  self.addons.scripts = new Set([...self.addons.scripts, ...self.getEntries(elem.scripts,'scripts')]);
+  delete elem.scripts;
   // Getting scripts from refs
-  self.addons.scripts = new Set([...self.addons.scripts, ...self.getEntries(elem.ref,'scripts',false,self.refdata)])
+  self.addons.scripts = new Set([...self.addons.scripts, ...self.getEntries(elem.ref,'scripts',self.refdata)]);
 
   // Getting styles needed on the website and removing from config
-  self.addons.styles = new Set([...self.addons.styles, ...self.getEntries(elem.styles,'styles',true)])
+  self.addons.styles = new Set([...self.addons.styles, ...self.getEntries(elem.styles,'styles')]);
+  delete elem.styles;
   // Getting styles from refs
-  self.addons.styles = new Set([...self.addons.styles, ...self.getEntries(elem.ref,'styles',false,self.refdata)])
+  self.addons.styles = new Set([...self.addons.styles, ...self.getEntries(elem.ref,'styles',self.refdata)]);
 
   // Check for default value
   if (elem.default) {
@@ -1723,7 +1725,7 @@ View.prototype.getPagesInfo = function (elem) {
  * @param {object} refdata Reference data to give list of entries with single keyword
  * @returns 
  */
-View.prototype.getEntries = function (object, type, remove = false, refdata) {
+View.prototype.getEntries = function (object, type, refdata) {
   let entries = new Set();
   if (object) {
     object.forEach(function (ref) {
@@ -1737,7 +1739,6 @@ View.prototype.getEntries = function (object, type, remove = false, refdata) {
         entries.add(ref)
       }
     });
-    if (remove) { delete object; }
   }
   return entries;
 }

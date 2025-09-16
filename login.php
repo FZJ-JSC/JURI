@@ -44,6 +44,8 @@ if (strpos($dir, 'demo') !== false) {
 $remarks = "";
 // $remarks = "<P>Current web service login: <b>". $user ."</b>";
 
+// print_r($_SERVER);
+
 $systemname=$inifile["config"]["system"];
 
 // Find jobID in mapping and forward to HTML report
