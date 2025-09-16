@@ -3,6 +3,10 @@
         "scripts": ["table_sort.js", "table_filter.js", "table_download.js"],
         "functions": ["set_filter", "set_initial_sort", "enable_table_download", "add_column_css"]
     },
+    "history": {
+        "scripts": ["table_sort.js", "table_filter.js", "table_download.js", "joblist_history.js"],
+        "functions": ["set_filter", "set_initial_sort", "enable_table_download", "add_column_css", "init_dates"]
+    },
     "llview": {
         "scripts": ["table_sort.js", "llview.js"],
         "functions": ["init_llview"],

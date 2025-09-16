@@ -39,6 +39,7 @@ function View(parameters) {
   this.clicked_page = null;     // Page to be shown (after clicking)
   this.selected_page = null;    // Shown page (before clicking)
   this.selected_subpage = null;
+  this.page_separator = '.';    // Which character to use to separate page from subpage in URL
   this.page_data = null;
   this.page_template = null;
   this.page_context = null;
@@ -266,12 +267,12 @@ View.prototype.show = function () {
           // If browser support local storage, get the 'last_page' to set as initial page
           inital_page = sessionStorage.getItem("last_page")
           if (inital_page) {
-            [inital_page,inital_subpage] = inital_page.split('-');
+            [inital_page,inital_subpage] = inital_page.split(self.page_separator);
           }
         }
         if (self.initial_data.page) {
           // If initial_data is set, set initial_date (overwrite previous condition above)
-          [inital_page,inital_subpage] = self.initial_data.page.split('-');
+          [inital_page,inital_subpage] = self.initial_data.page.split(self.page_separator);
         }
         if (inital_page && self.all_page_sections.indexOf(inital_page) != -1) {
           // If initial_data is set and that page is present on the sections of the page, select it
@@ -501,7 +502,7 @@ View.prototype.changeSystem = function (system) {
 
   if (Array.isArray(page)) {
     /* Adding the possibility of changing to a subpage when selectPage is called */
-    subpage = parseInt(page[1]);
+    subpage = page[1];
     page = page[0];
   }
 
@@ -600,19 +601,14 @@ View.prototype.changeSystem = function (system) {
         // Call functions for the given page or reference
         self.page_functions.forEach(function (function_name) {
           if (window[function_name]) {
-            window[function_name]();
+            window[function_name](subpage);
           }
         });
       }
 
       // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
       document.getElementById('main_content').scrollTo({top: 0});
-
-      if ((typeof subpage === 'number')&&(!isNaN(subpage))) {
-        // Calling subpage with given number
-        self.initDates(subpage);
-        // set_filter();
-      }
+      
       if ((self.selected_page == page) && (self.footer_graph)) {
         // Adding handler (only if on the same page, as footer already exists and handler will not be added)
         self.footer_graph.add_event_handler();
@@ -662,13 +658,13 @@ View.prototype.changeSystem = function (system) {
     });
   // Store page
   if (typeof (Storage) !== "undefined") {
-    sessionStorage.setItem("last_page", subpage ? `${page}-${subpage}` : page);
+    sessionStorage.setItem("last_page", subpage ? `${page}${self.page_separator}${subpage}` : page);
   }
 
   if (reset_initial_params) {
     self.initial_data = {};
   }
-  self.initial_data.page = subpage ? `${page}-${subpage}` : page;
+  self.initial_data.page = subpage ? `${page}${self.page_separator}${subpage}` : page;
   
   // Setting Hash on URL
   self.setHash(true);

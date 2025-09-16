@@ -17,7 +17,8 @@ function init_dates(active_date) {
 
 View.prototype.initDates = function(active_date) {
   let self = this;
-  active_date = (typeof(active_date) === "undefined")?0:active_date;
+  active_date = parseInt(active_date);
+  active_date = ((typeof(active_date) === "undefined")||(isNaN(active_date)))?0:active_date;
   $("#day_selection").empty();
   $("#day_selection").append($("<span>").text("Jobs ended on:"));
   for (let i=0; i<=21; ++i) {
