@@ -31,6 +31,10 @@
   border-right: 1px solid rgba(189, 195, 199, 0.58);
 }
 
+.ag-root-wrapper {
+  border-top: 0;
+}
+
 .ag-cell {
   /* display: table; */
   height: 100%;

@@ -43,13 +43,14 @@ View.prototype.Graph.prototype.hide_hover = function (ed) {
 
 /* Create graphs for current page */
 View.prototype.Graph.prototype.create_graphs = function () {
-  this.graphs = [];
+  let self = this;
+  self.graphs = [];
   // Creating divs for the graphs
-  // let graphs_data = this.config.graphs;
-  let graphs_data = this.config.graphs;
+  // let graphs_data = self.config.graphs;
+  let graphs_data = self.config.graphs;
   // Calculating width of the element considering the number of columns
-  let element_width = Math.floor(12 / this.config.columns);
-  let rows = Math.ceil(graphs_data.length / this.config.columns)
+  let element_width = Math.floor(12 / self.config.columns);
+  let rows = Math.ceil(graphs_data.length / self.config.columns)
   // Adding divs for each row
   for (var i = 0; i < rows; i++) {
     let row_div = $("<div>").attr("id", "graph_row_"+i).addClass("graph_row").addClass("row").addClass("d-none").addClass("d-sm-flex");
@@ -59,10 +60,10 @@ View.prototype.Graph.prototype.create_graphs = function () {
     let graph_data = graphs_data[i];
     let id = "graph_" + graph_data.name.replaceAll(' ', '_');
     let graph_div = $("<div>").attr("id", id).addClass("system_graph").addClass("col-" + element_width);
-    let row = Math.floor(i / this.config.columns)
+    let row = Math.floor(i / self.config.columns)
     graph_data.div = graph_div;
     $("#graph_row_" + row).append(graph_div);
-    this.graphs.push(new PlotlyGraph(graph_data));
+    self.graphs.push(new PlotlyGraph(graph_data));
     // Creating plots and turning on synchronization
     this.graphs.at(-1).plot();
     // Synchronizing zoom between different graphs
@@ -70,9 +71,9 @@ View.prototype.Graph.prototype.create_graphs = function () {
     // Creating hover event listener to couple hover information across divs
     graph_div[0].on('plotly_hover', (ed) => { this.couple_hover(ed, id); });
     // Creating mouse leave event listener to hide hover over all graphs
-    graph_div.find(".nsewdrag").on("mouseleave", (ed) => { this.hide_hover(ed); });
+    graph_div.find(".nsewdrag").on("mouseleave", (ed) => { this.hide_hover(ed); });    
     // Adding data
-    this.graphs.at(-1).add_data_to_graph();
+    self.graphs.at(-1).add_data_to_graph();
   }
   resize();
 }

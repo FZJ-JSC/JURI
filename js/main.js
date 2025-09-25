@@ -128,19 +128,37 @@ View.prototype.show = function () {
     // Processing configuration
     if (self.navdata.pages) {
       self.navdata.pages.forEach(function (elem) {
-        // Adding d3 script to use colorscales on 'cell_color' helper function
-        // self.addons.scripts = new Set([...self.addons.scripts])
+        const items = elem.pages ?? [elem]; // Getting pages that are directly given or as subpages
 
-        // If there are (sub-)pages inside
-        if (elem.pages) {
-          elem.pages.forEach(function (inner_elem) {
-            self.getPagesInfo(inner_elem);
+        items.forEach(function (item) {
+          // Normalize: collect what is to be processed: either the tabs (enriched with parent info) or the item (page/subpage) itself
+          const toProcess = item.tabs // if there are tabs, get tab information, else, get the item itself
+            ? item.tabs.map(tab => {
+                tab.parent_section = item.section;
+                tab.description    = item.description;
+                return tab;
+              })
+            : [item];
+
+          toProcess.forEach(function (pageOrTab) {
+            // Add reference data, that is added from the "ref" keyword on yaml
+            self.add_refdata(pageOrTab);
+            // TODO: Should we enforce this or do we leave for the scripts in the configuration only (either scripts or ref)?
+            // If we enforce, this should be before adding the scripts to the page
+            // with a check if any page has (data.footer_graph_config || data.graph_page_config)
+
+            // Add scripts and layout for graphs (footer_graph and graph_page)
+            // But here the call to init_footer_graphs or init_graphs_page should remain
+            self.add_graph_data(pageOrTab);
+
+            // Get information from all the pages that should be added to the web portal 
+            // (sections, scripts, styles, default page)
+            self.getPagesInfo(pageOrTab);
           });
-        } else {
-          self.getPagesInfo(elem);
-        }
+        });
       });
     }
+
     // Adding scripts and styles to the page deferring them
     for (let type in self.addons) {
       if (self.addons[type]) {
@@ -261,22 +279,23 @@ View.prototype.show = function () {
           $("#logo").addClass("clickable");
         }
 
-        let inital_page = ""
+        let initial_page = ""
         let inital_subpage = ""
         if (typeof (Storage) !== "undefined") {
           // If browser support local storage, get the 'last_page' to set as initial page
-          inital_page = sessionStorage.getItem("last_page")
-          if (inital_page) {
-            [inital_page,inital_subpage] = inital_page.split(self.page_separator);
+          initial_page = sessionStorage.getItem("last_page")
+          if (initial_page) {
+            [initial_page,inital_subpage] = initial_page.split(self.page_separator);
           }
         }
         if (self.initial_data.page) {
           // If initial_data is set, set initial_date (overwrite previous condition above)
-          [inital_page,inital_subpage] = self.initial_data.page.split(self.page_separator);
+          [initial_page,inital_subpage] = self.initial_data.page.split(self.page_separator);
         }
-        if (inital_page && self.all_page_sections.indexOf(inital_page) != -1) {
+        
+        if (initial_page && self.all_page_sections.indexOf(initial_page) != -1) {
           // If initial_data is set and that page is present on the sections of the page, select it
-          self.selectPage([inital_page,inital_subpage], false);
+          self.selectPage([initial_page,inital_subpage], false);
         } else if (self.default_section) {
           // Otherwise, select default_section
           self.selectPage(self.default_section);
@@ -489,13 +508,16 @@ View.prototype.changeSystem = function (system) {
 
 /**
  * Select a page (outer or inner element)
+ * If the same page is selected, do nothing;
+ * If another page is selected, empty current page and create the new one;
  * @param {object} page Object containing information on the page to be loaded
  * @param {boolean} reset_initial_params Option to reset all parameters
  */
- View.prototype.selectPage = async function (page, reset_initial_params, reload = true, postprocess) {
+View.prototype.selectPage = async function (page, reset_initial_params, reload = true, postprocess) {
   let self = this;
   let subpage = null;
   let page_data = {};
+  let tabs = false;
 
   // Updating map between jobid to day (can be used to check if job exists)
   self.mapjobid_to_day = await update_mapjobid_to_day();
@@ -506,10 +528,13 @@ View.prototype.changeSystem = function (system) {
     page = page[0];
   }
 
+  let pageChanged = self.selected_page != page;
+  let subpageChanged = self.selected_subpage != subpage;
+
   // Updating clicked page
   self.clicked_page = page
 
-  if ( !reload && (self.selected_page == page) && (!subpage || (self.selected_subpage == subpage))) {
+  if ( !reload && (!pageChanged) && (!subpage || (!subpageChanged))) {
     // Same page and subpage, nothing to do
     return;
   }
@@ -517,10 +542,34 @@ View.prototype.changeSystem = function (system) {
   // Remove keydown events
   $(document).off("keydown");
 
-  // If the page has changed
-  if (self.selected_page != page) {
-    // Adding or updating loading screen
-    self.loading(true)
+  // Search for page entry
+  let activeId = null;
+  for (let i = 0; i < self.navdata.pages.length && !activeId; i++) {
+    const elem = self.navdata.pages[i];
+    if (elem.pages) {
+      for (let j = 0; j < elem.pages.length; j++) {
+        const inner = elem.pages[j];
+        if (inner.section === page) {
+          Object.assign(page_data, inner);
+          activeId = elem.section + "_dropdown_button";
+          break;
+        }
+      }
+    } else if (elem.section === page) {
+      Object.assign(page_data, elem);
+      activeId = page + "_button";
+    }
+  }
+
+  // If the page or subpage has changed
+  if ((pageChanged)||(subpageChanged)) {
+
+    // If the page has changed, use loading page and clean up top menus
+    if (pageChanged) {
+      // Adding or updating loading screen
+      self.loading(true)
+      $("main").children(":not(#main_content)").remove();
+    }
 
     // Automatically close navbar on small devices
     $(".navbar-collapse").collapse('hide');
@@ -539,7 +588,6 @@ View.prototype.changeSystem = function (system) {
 
     // Clean old content, footer, infoline and filter elements
     $("#main_content").empty();
-    $("#main_content").empty();
     $("#filter_container").empty();
     $("#options").empty()
     $("#footer_content").empty();
@@ -548,38 +596,27 @@ View.prototype.changeSystem = function (system) {
     $("footer").height($("#footer_infoline").height() + $("#footer_footer").height());
     self.gridApi = null;
 
-    // Search for page entry
     // Toggle navigation entry
     $("nav li").removeClass("active");
-    self.navdata.pages.forEach(function (elem) {
-      if (elem.pages) {
-        elem.pages.forEach(function (inner_elem) {
-          if (inner_elem.section == page) {
-            Object.assign(page_data, inner_elem);
-            $("#" + elem.section + "_dropdown_button").addClass("active");
-          }
-        });
-      } else if (elem.section == page) {
-        Object.assign(page_data, elem);
-        $("#" + page + "_button").addClass("active");
-      }
-    });
+    $("#" + activeId).addClass("active");
 
-    // Add reference data, that is added from the "ref" keyword on yaml
-    self.add_refdata(page_data)
-    // TODO: Should we enforce this or do we leave for the scripts in the configuration only (either scripts or ref)?
-    // If we enforce, this should be before adding the scripts to the page
-    // with a check if any page has (data.footer_graph_config || data.graph_page_config)
-    // Add scripts and layout for graphs (footer_graph and graph_page)
-    // But here the call to init_footer_graphs or init_graphs_page should remain
-    self.add_graph_data(page_data)
+    // Check if tabs are to be selected, otherwise, keep the same page_data:
+    if (page_data.tabs?.length) {
+      // Storing page tabs to use later when creating the tabs (page_data is overwritten below)
+      page_tabs = page_data.tabs;
+      tabs = true;
+      // Getting current tab for page_data
+      page_data =  page_data.tabs.find(element => element.name === subpage) || page_data.tabs[0];
+    } 
 
-    // Store current data, template, context and functions to reuse when needed
-    self.page_data = (page_data.data) ? page_data.data : null;
-    self.page_description = (page_data.description) ? page_data.description : null;
-    self.page_template = (page_data.template) ? page_data.template : null;
-    self.page_context = (page_data.context) ? page_data.context : null;
-    self.page_functions = (page_data.functions) ? page_data.functions : null;
+    // Store current data, template, context and functions of current page/subpage to reuse when needed
+    self.page_data = (page_data.data) ?? null;
+    self.page_description = (page_data.description) ?? null;
+    self.page_template = (page_data.template) ?? null;
+    self.page_context = (page_data.context) ?? null;
+    self.page_functions = (page_data.functions) ?? null;
+    self.footer_graph_config = (page_data.footer_graph_config) ?? null;
+    self.graph_page_config = (page_data.graph_page_config) ?? null;
   }
   // Updating page_context depending on subpage
   self.page_context = ((typeof subpage === 'number')&&(!isNaN(subpage))) ? self.get_history_context(subpage) : replaceDataPlaceholder(self.page_context);
@@ -606,10 +643,15 @@ View.prototype.changeSystem = function (system) {
         });
       }
 
+      // Adding tabs
+      if (pageChanged && tabs) {
+        self.addTabs(page_tabs,page,subpage)
+      }
+
       // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
       document.getElementById('main_content').scrollTo({top: 0});
       
-      if ((self.selected_page == page) && (self.footer_graph)) {
+      if ((!pageChanged) && (self.footer_graph)) {
         // Adding handler (only if on the same page, as footer already exists and handler will not be added)
         self.footer_graph.add_event_handler();
       }
@@ -626,10 +668,12 @@ View.prototype.changeSystem = function (system) {
       }
 
       // Add button that shows more information about current page (when a description is given)
-      if (self.page_description) {
-        self.add_infobutton(self.page_description);
-      } else {
-        $("#information").empty()
+      if(pageChanged) {
+        if (self.page_description) {
+          self.add_infobutton(self.page_description);
+        } else {
+          $("#information").empty()
+        }
       }
 
       // Set title overlay/tooltip handling
@@ -671,6 +715,54 @@ View.prototype.changeSystem = function (system) {
   // Update info in footer_footer
   self.update_status_info()
   return;
+}
+
+
+/**
+ * Updates the status info text on the footer_footer bar
+ */
+View.prototype.addTabs = function (page_tabs, page, subpage) {
+  let self = this;
+
+  let tabs = $("<div id='tabs'></div>");
+  let foundActive = false;
+
+  // Preparing tabs
+  page_tabs.forEach(tab => {
+    let link = $("<a href='#'></a>").text(tab.name);
+
+    if (tab.section === subpage) {
+      link.addClass("active");
+      foundActive = true;
+    }
+
+    // Attach click handler with closure capturing section
+    link.on("click", function (e) {
+      e.preventDefault();
+
+      // Switch active class
+      $(this).siblings().removeClass("active");
+      $(this).addClass("active");
+
+      // Call the class method with [selected_page, section]
+      self.selectPage([page,tab.section]);
+    });
+
+    tabs.append(link);
+  });
+
+  // If no tab was marked active, activate the first one
+  if (!foundActive && tabs.children().length > 0) {
+    tabs.children().first().addClass("active");
+    self.initial_data.page = `${page}${self.page_separator}${page_tabs[0].section}`
+    self.setHash();
+  }
+
+  let tabs_scroll = $("<div id='tabs_scroll'></div>").append(tabs);
+
+  // Add tabs before the main content
+  let main = $("#main_content");
+  tabs_scroll.insertBefore(main);
 }
 
 /**
@@ -718,8 +810,9 @@ View.prototype.update_status_info = function () {
         // Fixing date format
         result = new Date(`20${result[0]}`.replace(/-/g,"T").replace(/\//g,"-"));
         let now = new Date();
-	// Considering the TimeZone of local client
-	let tz_client = now.getTimezoneOffset();
+
+        // Considering the TimeZone of local client
+        let tz_client = now.getTimezoneOffset();
         if ((now-result)/60000-(-120-tz_client) > 10.0) {
           $("#view_status_info").css("color",'red')
         } else {
@@ -1107,7 +1200,7 @@ View.prototype.add_filter_options = function (filter,options) {
                         .attr("aria-label","Click to hide the options to filter the table")
           self.initial_data.options = { 'showoptions': 'true' };
           self.setHash();
-          $('#main_content').prepend(optionsdiv);
+          $('main').prepend(optionsdiv);
           // Checking which options should be already selected
           self.check_filteroptions(self.initial_data.filter);
           optionsdiv.slideDown(function() {
@@ -1182,7 +1275,7 @@ View.prototype.add_infobutton = function (description) {
     $('#information').append(button)
   }
   let infotext = $('<div>',{id: "infotext"}).attr("aria-label",description)
-                                            .text(description)
+                                            .html(description)
                                             .hide();
 
   // If show info is active (from URL), activate it
@@ -1220,7 +1313,7 @@ View.prototype.add_infobutton = function (description) {
             .attr("aria-label","Click to hide description of page");
       self.initial_data.description = { 'showinfo': 'true' };
       self.setHash();
-      $('#main_content').prepend(infotext);
+      $('main').prepend(infotext);
       infotext.slideDown(function() {
         resize()
       });
@@ -1533,7 +1626,7 @@ View.prototype.loading = function (state) {
   // if (cover_element){
   //     console.log($("#main_content > table:first-child"))
   //     loading = $("<div>").addClass("loading");
-  //     loading.css("top", $("#header").height()+$("#day_selection_scroll").height() + $("#main_content thead").height() + 10);
+  //     loading.css("top", $("#header").height()+$("#tabs_scroll").height() + $("#main_content thead").height() + 10);
   //     loading.css("bottom", $("footer").height());
   //     loading.css("left", "15px");
   //     loading.css("right", "15px");
@@ -1666,11 +1759,7 @@ View.prototype.add_graph_data = function (data) {
         }
       });
     });
-    this.footer_graph_config = data.footer_graph_config;
-    this.graph_page_config = data.graph_page_config;
     data.footer_template = "graph_footer_plotly";
-  } else {
-    this.footer_graph_config = null;
   }
 }
 
@@ -1684,7 +1773,7 @@ View.prototype.add_graph_data = function (data) {
  */
 View.prototype.getPagesInfo = function (elem) {
   let self = this;
-  self.all_page_sections.push(elem.section);
+  self.all_page_sections.push(elem.parent_section??elem.section);
   // If footer page or graph page is used, add corresponding scripts
   if (elem.footer_graph_config || elem.graph_page_config) {
     self.addons.scripts = new Set([...self.addons.scripts, ...["plotly_graph.js","mermaid_graph.js", elem.footer_graph_config ? "footer_graphs.js" : "page_graph.js" ]])
@@ -1974,10 +2063,10 @@ function resize() {
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
   // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
   $("#main_content").height($(window).height() - $("#header").height() - $("footer").height() - 10);
-  $("#main_content th").css("top", $("#day_selection_scroll").height() - 10);
-  $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height() + $("#day_selection_scroll").height()- 10);
+  $("#main_content th").css("top", $("#tabs_scroll").height() - 10);
+  $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height() + $("#tabs_scroll").height()- 10);
   $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
-                        $("#main_content thead tr.filter").height() + $("#day_selection_scroll").height() - 14);
+                        $("#main_content thead tr.filter").height() + $("#tabs_scroll").height() - 14);
   if ($("#myGrid")) {
     $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
     if (view.gridApi) resizeGrid()

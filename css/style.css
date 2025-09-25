@@ -304,14 +304,16 @@ a {
 /*** End of Alert banner ***/
 
 #infotext, #optionsdiv {
+  margin-left: 15px;
+  margin-right: 15px;
   border: 1px solid black;
   border-radius: 5px;
   padding: 15px;
   text-align: center;
   font-weight: bold;
-  font-size: 1.1em;
+  font-size: 0.8em;
   background: var(--fzj-color-gray);
-  transform: translateY(-20px);
+  transform: translateY(-10px);
   margin-top: 4px;  
   align-items: center;
   display: flex;
@@ -455,6 +457,12 @@ li > .dropdown-menu {
   overflow: auto;
   display: grid;
   grid-auto-rows: min-content;
+}
+
+/* if main contains a #tabs_scroll that comes before #main_content,
+   remove the padding from #main_content (no extra top space needed) */
+main:has(> #tabs_scroll ~ #main_content) > #main_content {
+  padding-top: 0;
 }
 
 .hidden {
@@ -851,7 +859,7 @@ footer.container-fluid {
 }
 
 /* Element specific layout */
-#day_selection_scroll {
+#tabs_scroll {
   position: sticky;
   /* overflow-x:auto; */
   overflow-y: hidden;
@@ -860,27 +868,50 @@ footer.container-fluid {
   transform: rotateX(180deg); 
   padding-right: 15px;
   padding-left: 15px;
-  }
+  padding-bottom: 10px; /* This padding is actually at the top, since it si flipped */
+}
 
-#day_selection {
+#tabs {
   transform: rotateX(180deg); 
   white-space: nowrap;
   font-size: 0.7rem;
+  margin-left: 1px;
 }
 
-#day_selection a, #day_selection span {
-  padding: 0.1rem 0.4rem 0.4rem 0.4rem;
-  /* padding-bottom: 0.4rem; */
-  /* margin-right: 0.8rem; */
+/* tabs: make each link look like a tab */
+#tabs a, #tabs span {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;        /* a bit more comfortable padding */
   line-height: 1rem;
+  text-decoration: none;
+  color: #333;
+  background: #f5f6f7;           /* light gray tab face */
+  border: 1px solid #cfcfcf;     /* subtle gray border */
+  border-bottom-color: #bfbfbf;  /* slightly darker bottom edge */
+  border-radius: 0.3rem 0.3rem 0 0; /* rounded top corners only */
+  position: relative;
+  margin-bottom: -1px;           /* pull up to overlap content edge like a tab */
+  box-shadow: none;
+  transition: background .15s ease;
 }
 
-#day_selection a.active {
+/* non-active hover state */
+#tabs a:not(.active):hover {
+  background: #e9eaeb;
+}
+
+/* active tab: blue, sits above the other tabs and has no bottom border so it merges with content */
+#tabs a.active {
   font-weight: bold;
   background-color: var(--fzj-color-blue);
   color: #ffffff;
-  border-radius: 0.3rem 0.3rem 0rem 0rem;
+  border-color: var(--fzj-color-blue);
+  border-bottom-color: transparent; /* visually merges with content below */
+  z-index: 2;                         /* sit above neighbouring tabs */
+  margin-bottom: 0;                   /* not pulled up — sits flush with content */
+  box-shadow: 0 1px 0 rgba(0,0,0,0.03) inset;
 }
+
 
 #graphdiv_io_selector a {
   margin-left: 0.6rem;

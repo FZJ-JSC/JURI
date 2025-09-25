@@ -33,7 +33,7 @@ function PlotlyGraph(graph_data) {
     margin: {
       l: 50,
       r: 40,
-      t: this.graph_data.datapath ? 0 : 30, // If self.graph_data.datapath is present, it is a footer plot: use 0 margin. For a graph page, use margin 30
+      t: this.graph_data.datapath ? 5 : 30, // If self.graph_data.datapath is present, it is a footer plot: use margin 5. For a graph page, use margin 30
       b: 30
     },
     paper_bgcolor: 'rgba(0,0,0,0)',
@@ -980,7 +980,8 @@ PlotlyGraph.prototype.plot = function (params) {
 
   // Removing all listeners before adding new ones
   if (graphDiv.hasClass('js-plotly-plot')) {
-    graphDiv[0].removeAllListeners();
+    // This CANNOT be done here, otherwise it will remove the listeners added outside (in page_graph.js or footer_graph.js)
+    // graphDiv[0].removeAllListeners();
     // graphDiv[0].removeAllListeners('plotly_sliderchange');
     // graphDiv[0].removeAllListeners('plotly_buttonclicked');
     // graphDiv[0].removeAllListeners('plotly_hover');

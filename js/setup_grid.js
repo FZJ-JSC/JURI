@@ -380,7 +380,7 @@ function onChange(event) {
   if (!view.gridApi) {
     return;
   }
-  // If only one row is shown, select it
+  // If there's a footer and only one row is shown, select it
   if ((view.footer_graph !== null)&&(view.gridApi.getDisplayedRowCount() == 1)) {
     view.gridApi.setNodesSelected({ nodes: [view.gridApi.getDisplayedRowAtIndex(0)], newValue: true });
   }
