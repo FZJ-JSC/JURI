@@ -2062,11 +2062,10 @@ function resize() {
   // Set height of the footer (that can be dragged with the mouse)
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
   // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
-  $("#main_content").height($(window).height() - $("#header").height() - $("footer").height() - 10);
-  $("#main_content th").css("top", $("#tabs_scroll").height() - 10);
-  $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height() + $("#tabs_scroll").height()- 10);
+  $("#main_content").height($(window).height() - $("#header").height() - $("#tabs_scroll").height() - $("footer").height() - 10);
+  $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height());
   $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
-                        $("#main_content thead tr.filter").height() + $("#tabs_scroll").height() - 14);
+                        $("#main_content thead tr.filter").height() - 4);
   if ($("#myGrid")) {
     $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
     if (view.gridApi) resizeGrid()

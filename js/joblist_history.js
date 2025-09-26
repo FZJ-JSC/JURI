@@ -16,22 +16,36 @@ function init_dates(active_date) {
 }
 
 View.prototype.initDates = function(active_date) {
-  let self = this;
-  active_date = parseInt(active_date);
-  active_date = ((typeof(active_date) === "undefined")||(isNaN(active_date)))?0:active_date;
-  $("#tabs").empty();
-  $("#tabs").append($("<span>").text("Jobs ended on:"));
-  for (let i=0; i<=21; ++i) {
-    let date = new Date()
-    date.setDate(date.getDate() - i);
-    let date_str = String(date.getDate()).padStart(2, '0')+"."+String(date.getMonth() + 1).padStart(2, '0')+"."+date.getFullYear();
-    let link = $("<a>").attr("href","#").text(date_str).click(function() {self.selectPage([self.selected_page,i]); return false;});
-    if (i == active_date) {
-      link.addClass("active");
-    }
-    $("#tabs").append(link);
+  const self = this;
+
+  // normalize active_date (fallback to 0 as in your original)
+  let a = parseInt(active_date);
+  a = (typeof a === "undefined" || isNaN(a)) ? 0 : a;
+
+  // build tabs array: { name: date_str, section: "0"|"1"|... }
+  const page_tabs = [];
+  for (let i = 0; i <= 21; ++i) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr =
+      String(d.getDate()).padStart(2, "0") + "." +
+      String(d.getMonth() + 1).padStart(2, "0") + "." +
+      d.getFullYear();
+    page_tabs.push({ name: dateStr, section: String(i) });
   }
+
+  // // remove any previous tabs_scroll to avoid duplicates
+  // $("#tabs_scroll").remove();
+
+  // create tabs using existing addTabs (uses this.selected_page as page)
+  this.addTabs(page_tabs, this.selected_page, String(a));
+
+  // Insert the "Jobs ended on:" label to the left of the tabs.
+  // Remove any previous label first (safety), then prepend the label element.
+  // $("#tabs").find(".tabs-label").remove();
+  $("#tabs").prepend($("<span class='tabs-label'>").text("Jobs ended on:"));
 }
+
 
 View.prototype.get_history_context = function(nr) {
   return (nr == 0)?replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/today.json"):replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/jobbyday_" + String(nr).padStart(3, '0') + ".json")

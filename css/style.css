@@ -457,6 +457,7 @@ li > .dropdown-menu {
   overflow: auto;
   display: grid;
   grid-auto-rows: min-content;
+  outline: none;
 }
 
 /* if main contains a #tabs_scroll that comes before #main_content,
@@ -564,20 +565,9 @@ th input:not(:placeholder-shown) {
   background-color: var(--fzj-color-green);
 }
 
-#main_content > table thead th {
-  top: -10px;
-}
 /* Table on Live view */
 #main_content table#jobs thead th {
   top: 0px;
-}
-
-#main_content > table thead tr.filter th {
-  top: 0.7rem;
-}
-
-#main_content > table thead tr.aggregate th {
-  top: 2rem;
 }
 
 tr.filter th, tr.aggregate th {
@@ -879,7 +869,7 @@ footer.container-fluid {
 }
 
 /* tabs: make each link look like a tab */
-#tabs a, #tabs span {
+#tabs a {
   display: inline-block;
   padding: 0.25rem 0.6rem;        /* a bit more comfortable padding */
   line-height: 1rem;
@@ -894,6 +884,21 @@ footer.container-fluid {
   box-shadow: none;
   transition: background .15s ease;
 }
+
+#tabs span {
+  display: inline-block;
+  padding: 0.25rem 0.6rem;
+  line-height: 1rem;
+  text-decoration: none;
+  color: #333;
+  background: #ffffff;
+  border: none;
+  position: relative;
+  margin-bottom: -1px;
+  box-shadow: none;
+}
+
+
 
 /* non-active hover state */
 #tabs a:not(.active):hover {
