@@ -11,15 +11,21 @@
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
 */
 
-function init_dates(active_date) {
-  view.initDates(active_date);
-}
-
-View.prototype.initDates = function(active_date) {
+/**
+ * Initializes the tabs for history with the correct links to 
+ * select other history days
+ * @param {*} page Page that was clicked
+ * @param {*} subpage Subpage that was clicked
+ * @returns 
+ */
+View.prototype.initDates = function(page,subpage) {
   const self = this;
+  // If 'page' that is changing to now is the same as
+  // the previous 'self.selected_page', there's nothing to do
+  if (self.selected_page == page) return
 
-  // normalize active_date (fallback to 0 as in your original)
-  let a = parseInt(active_date);
+  // normalize subpage (fallback to 0 as in your original)
+  let a = parseInt(subpage);
   a = (typeof a === "undefined" || isNaN(a)) ? 0 : a;
 
   // build tabs array: { name: date_str, section: "0"|"1"|... }
@@ -34,15 +40,10 @@ View.prototype.initDates = function(active_date) {
     page_tabs.push({ name: dateStr, section: String(i) });
   }
 
-  // // remove any previous tabs_scroll to avoid duplicates
-  // $("#tabs_scroll").remove();
-
   // create tabs using existing addTabs (uses this.selected_page as page)
-  this.addTabs(page_tabs, this.selected_page, String(a));
+  self.addTabs(page_tabs, page, String(a));
 
   // Insert the "Jobs ended on:" label to the left of the tabs.
-  // Remove any previous label first (safety), then prepend the label element.
-  // $("#tabs").find(".tabs-label").remove();
   $("#tabs").prepend($("<span class='tabs-label'>").text("Jobs ended on:"));
 }
 
@@ -51,31 +52,3 @@ View.prototype.get_history_context = function(nr) {
   return (nr == 0)?replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/today.json"):replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "support/jobbyday_" + String(nr).padStart(3, '0') + ".json")
 }
 
-// View.prototype.select_date = function (nr) {
-//     let self = this;
-//     context = self.get_history_context(nr);
-//     // Remove keydown events, will be resetted in add_job_event_handler()
-//     $(document).off("keydown");
-//     self.applyTemplates([
-//         {
-//             "element":"#main_content",
-//             "template": self.page_template,
-//             "context_location": context
-//         },
-//          ],function() {
-//             $("#footer_infoline_page_options").empty();
-//             view.initDates(nr);
-//             self.footer_graph.add_event_handler();
-//             self.footer_graph.add_resize_controls();
-//             set_filter();
-//             enable_table_download();
-//             resize();
-//             view.loading(false);
-//             // Set title overlay handling
-//             self.apply_tooltip($('[title]'));
-//             // Set focus on main content to allow direct scrolling
-//             $("#main_content").focus();
-//             return;
-//          }
-//     );
-// }

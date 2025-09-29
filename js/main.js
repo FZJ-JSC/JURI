@@ -43,6 +43,9 @@ function View(parameters) {
   this.page_data = null;
   this.page_template = null;
   this.page_context = null;
+  this._templateRequests = [];  // Store the open template requests
+  this._resourceCache = {};     // Variable for caching templates and contexts
+  this._activeWorkers = [];     // Workers that will compile and run the template
   this.page_functions = null;
   // Store all pages
   this.all_page_sections = [];
@@ -91,7 +94,7 @@ View.prototype.show = function () {
   let self = this;
 
   // Add loading screen
-  self.loading(true);
+  self.loading(true,false);
 
   // Parsing reference data from json
   self.deferrer.push($.getJSON("json/ref.json", function (json_data) {
@@ -159,15 +162,37 @@ View.prototype.show = function () {
       });
     }
 
+    // Adding scripts and styles to the page in a local deferrer
+    // (they should be finished before doing the rest, 
+    // to make sure all scripts and styles are added and function may be called)
+    const local_deferrer = [];
     // Adding scripts and styles to the page deferring them
     for (let type in self.addons) {
-      if (self.addons[type]) {
-        self.addons[type].forEach((entry) => {
-          self.deferrer.push($.Deferred(function () { self[`add${type.charAt(0).toUpperCase()+type.slice(1, -1)}`](entry, this); return; }));
-        });
-        // Adding counter to skip scripts
-        self.counter += self.addons[type].size;
-      }
+      if (!self.addons[type]) continue;
+
+      self.addons[type].forEach((entry) => {
+        // create a deferred that will be resolved by the loader
+        const d = $.Deferred();
+        local_deferrer.push(d.promise()); // push the promise so $.when works reliably
+
+        // call the loader and pass the deferred so it resolves on load
+        // you must implement the loader to call d.resolve()/d.reject()
+        // The loader name calculation keeps your original approach
+        const loaderName = `add${type.charAt(0).toUpperCase() + type.slice(1, -1)}`;
+        if (typeof self[loaderName] === 'function') {
+          try {
+            self[loaderName](entry, d);
+          } catch (err) {
+            // in case loader throws synchronously, reject the deferred
+            d.reject(err);
+          }
+        } else {
+          // No loader found — reject so we don't hang
+          d.reject(new Error('Loader not found: ' + loaderName));
+        }
+      });
+      // Adding counter to skip scripts
+      self.counter += self.addons[type].size;
     }
     // console.log("self.addons.scripts",self.addons.scripts)
     // console.log("self.addons.styles",self.addons.styles)
@@ -175,7 +200,9 @@ View.prototype.show = function () {
 
     // Applying initial template for navigation
     // The deferrer for the scripts is also synchronised at this point
-    self.applyTemplates(
+    $.when.apply($, local_deferrer).done(function () {
+      // force async continuation if you need to avoid reentrancy
+      setTimeout(() =>     self.applyTemplates(
       {
         "element": "#navbarSupportedContent",
         "template": "navigation",
@@ -302,7 +329,8 @@ View.prototype.show = function () {
         }
         return;
       }
-    );
+    ) , 0); // end of setTimeout for applyTemplates
+    });
     return;
   });
 }
@@ -563,11 +591,11 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
 
   // If the page or subpage has changed
   if ((pageChanged)||(subpageChanged)) {
+    // Adding or updating loading screen
+    self.loading(true,pageChanged?false:true)
 
-    // If the page has changed, use loading page and clean up top menus
+    // If the page has changed, clean up top menus
     if (pageChanged) {
-      // Adding or updating loading screen
-      self.loading(true)
       $("main").children(":not(#main_content)").remove();
     }
 
@@ -600,14 +628,29 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     $("nav li").removeClass("active");
     $("#" + activeId).addClass("active");
 
-    // Check if tabs are to be selected, otherwise, keep the same page_data:
+    // Check if tabs are to be selected:
+    let index; 
+    let tabs = false;
     if (page_data.tabs?.length) {
       // Storing page tabs to use later when creating the tabs (page_data is overwritten below)
       page_tabs = page_data.tabs;
-      tabs = true;
       // Getting current tab for page_data
       page_data =  page_data.tabs.find(element => element.name === subpage) || page_data.tabs[0];
-    } 
+      // If the page was changed (or opened the first time),
+      // tabs need to be created
+      if (pageChanged) {
+        self.addTabs(page_tabs,page,subpage);
+      }
+      tabs = true;
+    } else if ((index = page_data.functions.indexOf('init_dates')) > -1) {
+      // If this is a history page, with init_dates to be called,
+      // call it here to generate the tabs
+      // Creating history tabs
+      self.initDates(page,subpage)
+      tabs = true;
+    }
+    // Updating loading screen
+    self.loading(true,tabs)
 
     // Store current data, template, context and functions of current page/subpage to reuse when needed
     self.page_data = (page_data.data) ?? null;
@@ -617,46 +660,40 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     self.page_functions = (page_data.functions) ?? null;
     self.footer_graph_config = (page_data.footer_graph_config) ?? null;
     self.graph_page_config = (page_data.graph_page_config) ?? null;
+
+    // Updating page_context depending on subpage
+    self.page_context = ((typeof subpage === 'undefined')||(isNaN(parseInt(subpage)))) ? replaceDataPlaceholder(self.page_context) : self.get_history_context(subpage);
   }
-  // Updating page_context depending on subpage
-  self.page_context = ((typeof subpage === 'number')&&(!isNaN(subpage))) ? self.get_history_context(subpage) : replaceDataPlaceholder(self.page_context);
 
   self.applyTemplates([
     {
       "element": "#main_content",
       "template": self.page_template,
       "context_location": self.page_context,
-      // "scripts": page_data.scripts,
-      // "styles": page_data.styles
     },
     {
       "element": "#footer_content",
-      "template": page_data.footer_template
+      // If page didn't change, footer does not need to be loaded again
+      // (Only the event_handler, that is added in post-processing below)
+      "template": (pageChanged||subpageChanged)?page_data.footer_template:null
     }], 
     function () {
       if (self.page_functions) {
         // Call functions for the given page or reference
         self.page_functions.forEach(function (function_name) {
           if (window[function_name]) {
-            window[function_name](subpage);
+            window[function_name](page,subpage);
           }
         });
       }
 
-      // Adding tabs
-      if (pageChanged && tabs) {
-        self.addTabs(page_tabs,page,subpage)
-      }
-
       // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
       document.getElementById('main_content').scrollTo({top: 0});
-      
-      if ((!pageChanged) && (self.footer_graph)) {
-        // Adding handler (only if on the same page, as footer already exists and handler will not be added)
+
+      if ((!pageChanged) && (!subpageChanged) && (self.footer_graph)) {
+        // Adding handler (only on reload, as footer already exists and handler will not be added)
         self.footer_graph.add_event_handler();
       }
-      // Add colorscale controls
-      // self.add_colorscale_controls();
 
       // Resize view and reset autoresize
       resize();
@@ -698,6 +735,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       if (postprocess) {
         postprocess()
       }
+
       return;
     });
   // Store page
@@ -714,6 +752,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
   self.setHash(true);
   // Update info in footer_footer
   self.update_status_info()
+
   return;
 }
 
@@ -1442,6 +1481,7 @@ View.prototype.add_autorefresh = function () {
 View.prototype.reloadPage = function () {
   let self = this;
   if (self.selected_page != 'live') {
+    // For pages different than the 'live view', try to store the current selected job
     if($("#main_content > table").length){
       // Storing jobid that is selected before
       index = self.headers[self.clicked_page].indexOf('JobID');
@@ -1450,7 +1490,8 @@ View.prototype.reloadPage = function () {
       self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
       selected_jobid = self.gridApi.getSelectedNodes(); // Get selected job
     }
-    // Re-select current page and subpage
+
+    // Re-select current page and subpage and re-select the job, if possible
     self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
       // When there is a selected job...
       if ((typeof selected_jobid !== 'undefined')&&(selected_jobid?.length)) {
@@ -1622,30 +1663,19 @@ View.prototype.getHeaders = function () {
  * Add, update or remove loading screen
  * @param {boolean} state boolean to set the loading div or remove it
  **/
-View.prototype.loading = function (state) {
-  // if (cover_element){
-  //     console.log($("#main_content > table:first-child"))
-  //     loading = $("<div>").addClass("loading");
-  //     loading.css("top", $("#header").height()+$("#tabs_scroll").height() + $("#main_content thead").height() + 10);
-  //     loading.css("bottom", $("footer").height());
-  //     loading.css("left", "15px");
-  //     loading.css("right", "15px");
-  //     loading.append($("<span>").text("LLview is loading. Please wait...").prepend("<br/>").prepend($("<span>").addClass("fa").addClass("fa-spinner").addClass("fa-spin")));
-  //     $("body").append(loading);
-  //     return;
-  // }
+View.prototype.loading = function (state,tabs) {
   if (state) {
     let loading;
     $("html,body").css("cursor", "progress");
     if ($(".loading").length == 0) {
       loading = $("<div>").addClass("loading");
-      loading.css("top", $("#header").height());
+      loading.css("top", $("#header").height()+(tabs?$("#tabs_scroll").outerHeight():0)+1);
       loading.css("bottom", $("#footer_footer").height());
       loading.append($("<span>").text("LLview is loading. Please wait...").prepend("<br/>").prepend($("<span>").addClass("fa").addClass("fa-spinner").addClass("fa-spin")));
       $("body").append(loading);
     } else {
       loading = $(".loading");
-      loading.css("top", $("#header").height());
+      loading.css("top", $("#header").height()+(tabs?$("#tabs_scroll").outerHeight():0)+1);
       loading.css("bottom", $("#footer_footer").height());
     }
   } else {
@@ -1902,116 +1932,267 @@ View.prototype.add_dropmenu_hover = function () {
   });
 }
 
+
 /**
- * Load and render handlebar templates using the given context into a given
- * element. postprocess can be used to execute a specific function afterwards.
- * @param {object} templates Object containing the styles, templatex, context and element to be added to the page
- * @param {function} postprocess Function to be run after the template is loaded
+ * @typedef {Object} TemplateEntry
+ * @property {string} [template]             Name of the Handlebars template (without .handlebars). Optional.
+ * @property {string} [context_location]     Path to a .json/.csv/.txt context file. Optional.
+ * @property {Object|string} [context]       Inline context (object for templates or HTML string if no template).
+ * @property {string} element                jQuery selector (or DOM selector) where the output is inserted.
+ */
+
+/**
+ * Fetches and applies one or more Handlebars templates (and their contexts) into the DOM.
+ * This version uses a Web Worker to offload heavy template compilation and rendering,
+ * keeping the main UI thread responsive.
+ *
+ * @param {TemplateEntry|TemplateEntry[]} templates
+ * @param {function} [postprocess]
+ * @returns {void}
  */
 View.prototype.applyTemplates = function (templates, postprocess) {
-  let self = this;
+  const self = this;
+  // normalize input
   templates = Array.isArray(templates) ? templates : [templates];
-  if (templates.length > 0) {
-    for (let i = 0; i < templates.length; ++i) {
-      // Getting script files (NOT NEEDED AS THEY ARE ADDED IN THE BEGINNING)
-      // if (templates[i].scripts) {
-      //     templates[i].scripts.forEach(function (scripts) {
-      //         if (Array.isArray(scripts)) {
-      //             deferrer.push($.Deferred(function () { addScriptsInOrder(scripts, this); }));
-      //         } else {
-      //             deferrer.push($.Deferred(function () { addScriptsInOrder([scripts], this); }));
-      //         }
-      //     });
-      // }
-      // Adding CSS style files
-      // if (templates[i].styles) {
-      //     console.log("ADDED STYLES",templates[i].styles)
-      //     templates[i].styles.forEach(function (style_name) {
-      //         $("head").append($("<link>", {
-      //             rel: "stylesheet",
-      //             href: "css/" + style_name
-      //         }));
-      //     });
-      // }
-      // If a template is given, add the related files
-      if (templates[i].template) {
-        // Process path of template handlebar
-        let template_path = process_path(templates[i].template + ".handlebars","templates/");
-        // Create deferrer for template file (as text)
-        self.deferrer.push($.get(template_path, function () { return; }, "text"));
-        if (templates[i].context_location) {
-          // If a context if given, create deferrer for its file too
-          if (templates[i].context_location.endsWith(".json")) {
-            self.deferrer.push($.getJSON(templates[i].context_location, function (data) { self.contexts[templates[i].context_location] = data; return; }));
-          } else if (templates[i].context_location.endsWith(".csv")) {
-            self.deferrer.push($.get(templates[i].context_location, function (data) { self.contexts[templates[i].context_location] = csvToArr(data, ";"); return; }, "text"));
-          } else {
-            self.deferrer.push($.get(templates[i].context_location, function () { return; }, "text"));
-          }
-        }
-      }
-    }
-    // When all the deferrers are finished, continue with template application
-    $.when.apply($, self.deferrer).done(function () {
-        // Restarting deferrer as the current ones are done
-        self.deferrer.length = 0;
-
-        for (let i = 0; i < templates.length; ++i) {
-          // Skip scripts from counter (NOT NEEDED AS SCRIPTS ARE NOT ADDED ANYMORE)
-          // if (templates[i].scripts) {
-          //     counter += templates[i].scripts.length;
-          // }
-
-          // If a template is given, process it
-          if (templates[i].template) {
-            // Get returned data from deferrer (if it is an array - i.e., from many deferrer files -, get first element)
-            let template_data = arguments[self.counter++];
-            if (Array.isArray(template_data)) {
-              template_data = template_data[0];
-            }
-            // Getting context from 'context_location' or, if that is not present, from 'context'                      
-            let context;
-            if (templates[i].context_location) {
-              context = arguments[self.counter++][0];
-            } else {
-              context = templates[i].context ? templates[i].context : {};
-            }
-            // Compiling 'template', applying with 'context', and adding to HTML 'element'
-            // This will create the repetitions defined in the templates (from Handlebars)
-            let template = Handlebars.compile(template_data);
-            $(templates[i].element).html(template(context));
-          }
-        }
-        // Restarting counter for next call
-        self.counter = 0;
-        // Template was loaded, page is not empty
-        self.empty = false;
-        // Running post-processing function when it is present
-        if (postprocess) {
-          postprocess();
-        }
-      }
-    ).fail(function () {
-      console.error("No data found or error while applying templates");
-      // Template was not loaded, page is empty
-      self.empty = true;
-      self.deferrer.length = 0;
-      self.loading(false);
-      // Restarting counter for next call
-      self.counter = 0;
-      // Running post-processing function when it is present
-      if (postprocess) {
-        postprocess();
-      }
-      return;
-    });
-  } else {
-    if (postprocess) {
-      postprocess();
-    }
+  if (!templates.length) {
+    if (typeof postprocess === "function") postprocess();
+    return;
   }
-  return;
-}
+
+  // Terminate all workers from a previous run. This is the primary, immediate
+  // cancellation mechanism for the heavy computation part.
+  self._activeWorkers.forEach(worker => worker.terminate());
+  self._activeWorkers = []; // Clear the array for the new run.
+
+  // cancel any previous AJAX requests
+  self._templateRequests.forEach(r => { try { if (r && typeof r.abort === "function") r.abort(); } catch (e) {} });
+  self._templateRequests.length = 0;
+
+  // bump id for this applyTemplates run so we can detect stale runs
+  self._applyTemplatesId = (self._applyTemplatesId || 0) + 1;
+  const localApplyId = self._applyTemplatesId;
+
+  // fetch + parse resource (json/csv/text), dedupe via cache, push jqXHR for aborting
+  function getResource(path) {
+    // ... (This function remains unchanged, it's perfect as is)
+    if (self._resourceCache[path]) {
+      return self._resourceCache[path];
+    }
+    let jq; let promise;
+    if (path.endsWith(".json")) {
+      jq = $.getJSON(path);
+      promise = jq;
+    } else if (path.endsWith(".csv")) {
+      jq = $.get(path, null, "text");
+      promise = jq.then(text => csvToArr(text, ";"));
+    } else {
+      jq = $.get(path, null, "text");
+      promise = jq;
+    }
+
+    // store jq so we can abort it later if needed
+    if (jq && typeof jq.abort === "function") {
+      self._templateRequests.push(jq);
+    }
+    // normalize to a Promise (jq is thenable)
+    const p = Promise.resolve(promise)
+      .then(res => res)
+      .catch(err => { 
+        // If this promise is rejected (e.g., by an abort), we MUST remove it
+        // from the cache. Otherwise, the cache becomes "poisoned" with a
+        // permanently rejected promise for this resource.
+        delete self._resourceCache[path];
+
+        // Re-throw the error so that the Promise.all that is waiting for this
+        // resource will correctly fail for the current applyTemplates run.
+        throw err; 
+      });
+    self._resourceCache[path] = p;
+    return p;
+  }
+
+  // Build fetch promises for all templates (parallel)
+  const allFetchPromises = templates.map(t => {
+    if (!t.template) {
+      const ctxPromise = t.context_location ? getResource(t.context_location) : Promise.resolve(t.context ?? {});
+      return ctxPromise.then(contextData => ({
+        templateEntry: t,
+        templateText: null,
+        contextData
+      }));
+    }
+    const template_path = process_path(t.template + ".handlebars", "templates/");
+    const tplPromise = getResource(template_path);
+    const ctxPromise = t.context_location ? getResource(t.context_location) : Promise.resolve(t.context ?? {});
+    return Promise.all([tplPromise, ctxPromise]).then(([templateText, contextData]) => ({
+      templateEntry: t,
+      templateText,
+      contextData
+    }));
+  });
+
+  // Wait for all fetches
+  Promise.all(allFetchPromises)
+    .then(async results => {
+      if (localApplyId !== self._applyTemplatesId) return;
+
+      self._templateRequests.length = 0;
+
+      // This flag will prevent race conditions where multiple workers might
+      // try to trigger the same main-thread UI function.
+      let addControlsCalledThisRun = false;
+
+      // Map each template task to a promise that resolves when its worker is done.
+      // This launches all worker jobs in parallel.
+      const allRenderPromises = results.map(result => {
+        const { templateEntry, templateText, contextData } = result;
+
+        // Immediately handle templates that don't need a worker.
+        if (!templateEntry.template) {
+          // If no template is given, return a resolved promise
+          // so Promise.all doesn't hang.
+          return Promise.resolve(null);
+        }
+
+        // Return a new promise representing the entire lifecycle of one worker task.
+        return new Promise((resolve, reject) => {
+          // Check for cancellation before creating the worker
+          if (localApplyId !== self._applyTemplatesId) return reject('aborted');
+
+          // Starting a separate worker to keep main thread free and responsive.
+          // This worker will render the page with the templates, which is the heavier
+          // part when loading the page.
+          const worker = new Worker('js/template.worker.js');
+
+          // Add the newly created worker to the active fleet.
+          self._activeWorkers.push(worker);
+
+          worker.onmessage = event => {
+            // Check again for cancellation *after* the worker finishes,
+            // to prevent rendering stale content.
+            if (localApplyId !== self._applyTemplatesId) {
+              worker.terminate(); // Clean up this worker
+              return reject('aborted'); // Ignore messages from old workers
+            }
+
+            const { command, html, error, name, scale } = event.data;
+
+            // Different commands that may be received from the worker
+            // If new messages/commands should be communicated, they must be defined here.
+            switch (command) {
+              case 'render_complete':
+                // This is the message to indicate that the render
+                // is complete and the worker job is done.
+                worker.terminate(); // Worker's job is done, clean it up.
+                // Resolve with an object containing the HTML and its target element.
+                resolve({ html, element: templateEntry.element });
+                break;
+              
+              case 'cache_colorscale':
+                // The worker computed a new colorscale, that should be 
+                // updated on the main thread's 'used_colorscales'.
+                self.used_colorscales[name] = scale;
+                break;
+              
+              case 'add_controls':
+                // The worker finished rendering and there are columns with colors. 
+                // The main thread should call add_colorscale_controls.
+                // Use the flag to ensure this is only called once per applyTemplates run.
+                if (!addControlsCalledThisRun) {
+                  self.add_colorscale_controls();
+                  addControlsCalledThisRun = true;
+                }
+                break;
+              
+              case 'error':
+                // The worker encountered an error during its work.
+                worker.terminate();
+                console.error("Error from worker:", error);
+                reject(new Error("An error occurred in the template worker. See console for details."));
+                break;
+            }
+          };
+
+          worker.onerror = err => {
+            worker.terminate();
+            console.error("A worker error occurred:", err);
+            const errorMessage = err.message || "An unknown worker error occurred.";
+            reject(new Error(`Worker error: ${errorMessage} in ${err.filename} at line ${err.lineno}`));
+          };
+
+          // Before sending the job, create a plain object containing a snapshot
+          // of the data from the 'view' (self) object that helpers will need.
+          const helperContext = {
+            is_demo: (self.navdata.data.demo || self.url_data.demo) ? true : false,
+            permission: self.navdata.data.permission,
+            mapjobid_to_day: self.mapjobid_to_day,
+            system: self.navdata.data.system,
+            fs: self.navdata.data.fs,
+            colorscale: self.initial_data.colors.colorscale,
+            default_colorscale: self.default_colorscale,
+            used_colorscales: self.used_colorscales, // cached colorscales
+            // Add any other properties from `self` that other helpers might need here.
+          };
+
+          // Send the context object along with the template and data.
+          worker.postMessage({
+            templateText,
+            contextData,
+            helperContext // The payload for helpers
+          });
+        });
+      });
+
+      // Wait for ALL the parallel worker jobs to complete.
+      return Promise.all(allRenderPromises);
+    })
+    .then(renderedTemplates => {
+      // This .then() only runs after every single worker has finished.
+      if (localApplyId !== self._applyTemplatesId) return;
+
+      // The run was successful, the workers are terminated, clear the array.
+      self._activeWorkers = [];
+
+      // Now, perform the final, fast DOM insertions.
+      renderedTemplates.forEach(result => {
+        // The check for `result` handles the non-worker templates that resolved to `null`.
+        if (result && result.element) {
+          $(result.element).html(result.html);
+        }
+      });
+      
+      // All done, proceed with post-processing.
+      self.empty = false;
+      if (typeof postprocess === "function") postprocess();
+    })
+    .catch(err => {
+      // If a newer applyTemplates run has started, this .catch() block belongs
+      // to a stale, cancelled run. It must NOT perform any cleanup, as that
+      // would interfere with the new, active run.
+      if (localApplyId !== self._applyTemplatesId) {
+        return; // Exit silently
+      }
+      // If we are here, this is the currently active run, and it has failed.
+      // Now we can safely perform cleanup.
+      
+      // Clear the active workers array to reset the state.
+      // (The individual workers should have already been terminated by their
+      // own onerror handlers, but this ensures the main array is clean).
+      self._activeWorkers = [];
+
+      // If we are here, it means this is the currently active run, and a
+      // genuine, non-cancellation error occurred. Proceed with cleanup.
+      const isAbort = err && (err.statusText === "abort" || err === "abort");
+      if (!isAbort) {
+        console.error("Error while applying templates:", err);
+        self.empty = true;
+        if (typeof self.loading === "function") self.loading(false);
+      }
+      // cleanup and still call postprocess (if applicable) so callers can finalize UI state
+      self._templateRequests.length = 0;
+      if (typeof postprocess === "function") postprocess();
+    });
+};
 
 
 /**
@@ -2062,7 +2243,7 @@ function resize() {
   // Set height of the footer (that can be dragged with the mouse)
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
   // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
-  $("#main_content").height($(window).height() - $("#header").height() - $("#tabs_scroll").height() - $("footer").height() - 10);
+  $("#main_content").height($(window).height() - $("#header").height() - ($("#tabs_scroll").height()??0) - $("footer").height() - 10);
   $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height());
   $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
                         $("#main_content thead tr.filter").height() - 4);

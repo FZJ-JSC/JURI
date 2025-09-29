@@ -28,6 +28,7 @@
 body {
   overflow: auto;
   font-family: Weissenhof Grotesk,Helvetica Neue,Arial,Helvetica,sans-serif;
+  overflow-y: hidden;
 }
 
 a {
@@ -451,19 +452,20 @@ li > .dropdown-menu {
 
 /* Main content layout */
 #main_content {
-  margin-top: 0;
-  padding-top: 10px;
+  margin-top: 10px;
+  padding-top: 0;
   font-size: 0.75rem;
   overflow: auto;
   display: grid;
   grid-auto-rows: min-content;
   outline: none;
+  height: 0; /* default size 0 while things are loading, before auto resizing */
 }
 
 /* if main contains a #tabs_scroll that comes before #main_content,
    remove the padding from #main_content (no extra top space needed) */
 main:has(> #tabs_scroll ~ #main_content) > #main_content {
-  padding-top: 0;
+  margin-top: 0;
 }
 
 .hidden {
@@ -629,6 +631,7 @@ footer.container-fluid {
   display: flex;
   flex-direction: column;
   z-index: 50;
+  height: 0; /* default size 0 while things are loading, before auto resizing */
 }
 
 #footer_infoline_page_options > * {
