@@ -980,14 +980,9 @@ PlotlyGraph.prototype.plot = function (params) {
 
   // Removing all listeners before adding new ones
   if (graphDiv.hasClass('js-plotly-plot')) {
-    // This CANNOT be done here, otherwise it will remove the listeners added outside (in page_graph.js or footer_graph.js)
+    // removeAllListeners CANNOT be done here, otherwise it will remove the listeners added outside (in page_graph.js or footer_graph.js)
     // graphDiv[0].removeAllListeners();
-    // graphDiv[0].removeAllListeners('plotly_sliderchange');
-    // graphDiv[0].removeAllListeners('plotly_buttonclicked');
-    // graphDiv[0].removeAllListeners('plotly_hover');
-    // graphDiv[0].removeAllListeners('plotly_unhover');
-    // graphDiv[0].removeAllListeners('plotly_click');  
-    // graphDiv[0].removeAllListeners('plotly_update');  
+    // graphDiv[0].removeListener('plotly_update');  
   }
 
 
@@ -1107,6 +1102,11 @@ PlotlyGraph.prototype.plot = function (params) {
       });
       Plotly.update(self.id, traces_slider[index], layout);
     }
+    // Removing listeners before adding new ones
+    graphDiv[0].removeListener('plotly_sliderchange', slider_change);
+    graphDiv[0].removeListener('plotly_buttonclicked', change_step);
+    graphDiv[0].removeListener('plotly_click', mark_job);  
+
     graphDiv[0]
       .on('plotly_sliderchange', slider_change)
       .on('plotly_buttonclicked', change_step)
@@ -1187,6 +1187,12 @@ PlotlyGraph.prototype.plot = function (params) {
           hoverinfo.html('')
         }
       }
+
+      // Removing listeners before adding new ones
+      graphDiv[0].removeListener('plotly_hover', print_hoverinfo);
+      graphDiv[0].removeListener('plotly_click', stick_hoverinfo);  
+      graphDiv[0].removeListener('plotly_unhover', clean_hoverinfo);
+
       graphDiv[0]
         .on('plotly_hover', print_hoverinfo)
         .on('plotly_click', stick_hoverinfo)
@@ -1264,12 +1270,18 @@ PlotlyGraph.prototype.plot = function (params) {
     if (layout.xaxis.rangeslider?.translate) {
       self.move_slider(self.id, layout.xaxis.rangeslider.translate)
     }
-    graphDiv[0].on('plotly_update', () => {
-      // Moving the rangeslider when that is the case
+
+
+    // Defining function to add in 'plotly_update' listener (and to be able to remove it)
+    var moveSlider = function () {
       if (layout.xaxis.rangeslider?.translate) {
-        self.move_slider(self.id, layout.xaxis.rangeslider.translate)
+        self.move_slider(self.id, layout.xaxis.rangeslider.translate);
       }
-    })
+    }
+    // Removing listeners before adding new ones
+    graphDiv[0].removeAllListeners('plotly_update');  
+
+    graphDiv[0].on('plotly_update', moveSlider)
 
     // When a list for highlighing is given and the graph is not empty
     // Add the 'hover' and 'click' listeners to highlight the bars
@@ -1391,6 +1403,9 @@ PlotlyGraph.prototype.plot = function (params) {
       document.addEventListener("mousemove", self.setPrimaryButtonState);
       document.addEventListener("mouseup", self.setPrimaryButtonState);
       console.log("Adding events for mplotly")
+
+      graphDiv[0].removeListener('plotly_hover', highlight);
+      graphDiv[0].removeListener('plotly_unhover', unhighlight);
 
       // Getting all bar (or point) objects
       graphDiv[0]

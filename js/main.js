@@ -202,7 +202,7 @@ View.prototype.show = function () {
     // The deferrer for the scripts is also synchronised at this point
     $.when.apply($, local_deferrer).done(function () {
       // force async continuation if you need to avoid reentrancy
-      setTimeout(() =>     self.applyTemplates(
+      setTimeout(() => self.applyTemplates(
       {
         "element": "#navbarSupportedContent",
         "template": "navigation",
@@ -682,7 +682,10 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
         // Call functions for the given page or reference
         self.page_functions.forEach(function (function_name) {
           if (window[function_name]) {
-            window[function_name](page,subpage);
+            console.log(function_name)
+              setTimeout(() => {
+                window[function_name](page,subpage);
+              }, 0);
           }
         });
       }
@@ -1974,11 +1977,11 @@ View.prototype.applyTemplates = function (templates, postprocess) {
 
   // fetch + parse resource (json/csv/text), dedupe via cache, push jqXHR for aborting
   function getResource(path) {
-    // ... (This function remains unchanged, it's perfect as is)
     if (self._resourceCache[path]) {
       return self._resourceCache[path];
     }
-    let jq; let promise;
+    let jq; 
+    let promise;
     if (path.endsWith(".json")) {
       jq = $.getJSON(path);
       promise = jq;
@@ -1996,7 +1999,16 @@ View.prototype.applyTemplates = function (templates, postprocess) {
     }
     // normalize to a Promise (jq is thenable)
     const p = Promise.resolve(promise)
-      .then(res => res)
+      .then(res => {
+        // Caching context to use later on
+        if (path.endsWith(".json") || path.endsWith(".csv")) {
+          self.contexts[path] = res;
+        }
+
+        // Return the result to keep the promise chain intact
+        // for the rest of the applyTemplates logic.
+        return res;
+      })
       .catch(err => { 
         // If this promise is rejected (e.g., by an abort), we MUST remove it
         // from the cache. Otherwise, the cache becomes "poisoned" with a
@@ -2327,6 +2339,20 @@ View.prototype.setHash = function (keep_history) {
   }
 }
 
+
+/** Function to split long tasks
+ * Source: https://web.dev/articles/optimize-long-tasks?utm_source=devtools&utm_campaign=stable#cross-browser_support
+ */
+function yieldToMain () {
+  if (globalThis.scheduler?.yield) {
+    return scheduler.yield();
+  }
+
+  // Fall back to yielding with setTimeout.
+  return new Promise(resolve => {
+    setTimeout(resolve, 0);
+  });
+}
 
 /**
  * Parse the URL address to get configuration and parameters
