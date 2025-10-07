@@ -52,6 +52,29 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
     } else {
       $("#main_content > table tbody tr").removeClass("selected");
       $(this).addClass("selected");
+
+      // Getting positions to scroll clicked job into view
+      let container = document.getElementById("main_content");
+      let rowTop = this.offsetTop;
+      let rowHeight = this.offsetHeight;
+      let containerScrollTop = container.scrollTop;
+      let containerHeight = container.clientHeight;
+
+      let rowBottom = rowTop + rowHeight;
+      let viewTop = containerScrollTop;
+      let viewBottom = containerScrollTop + containerHeight;
+
+      // Only scroll if row is outside the visible area
+      if (rowBottom <= viewTop || rowTop >= viewBottom) {
+        let targetScrollTop = rowTop - (containerHeight / 2) + (rowHeight / 2);
+
+        container.scrollTo({
+          top: targetScrollTop,
+          left: container.scrollLeft, // keep horizontal position unchanged
+          behavior: "smooth"
+        });
+      }
+
       let params = {};
       let i = 0;
       for (let key of keys) {
@@ -265,7 +288,7 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
 /* Apply a downloaded configuration file */
 View.prototype.FooterGraph.prototype.apply_config = function () {
   let self = this;
-  this.config.forEach(element => {
+  self.config.forEach(element => {
     let link = $("<a>").attr("title", "Graph page: " + element.name).text(element.name).click(function () {
       self.select_page(element.name);
       return;
@@ -274,7 +297,7 @@ View.prototype.FooterGraph.prototype.apply_config = function () {
     view.apply_tooltip(link);
   });
   // Select first available page by default
-  this.select_page($("#graph_selection ul li").first().text());
+  self.select_page($("#graph_selection ul li").first().text());
 }
 
 /* Select a specifc graph page */
@@ -309,7 +332,9 @@ View.prototype.FooterGraph.prototype.create_graphs = function () {
   let self = this;
   self.graphs = [];
   // Creating divs for the graphs
-  let graphs_data = self.config.find(o => { return o.name === self.current_page }).graphs;
+  let graphs_config = self.config.find(o => { return o.name === self.current_page });
+  if(!graphs_config) return
+  let graphs_data = graphs_config.graphs;
   let element_width = Math.floor(12 / graphs_data.length);
   for (let graph_data of graphs_data) {
     let id = "graph_" + graph_data.name.replaceAll(' ', '_');

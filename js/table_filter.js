@@ -759,6 +759,7 @@ function set_filter() {
   }
   // Run inital display process
   set_initial_columns();
+
   // Applying filter with URL values
   apply_filter(view.initial_data.filter);
   return;
