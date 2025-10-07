@@ -682,7 +682,6 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
         // Call functions for the given page or reference
         self.page_functions.forEach(function (function_name) {
           if (window[function_name]) {
-            console.log(function_name)
               setTimeout(() => {
                 window[function_name](page,subpage);
               }, 0);
@@ -696,15 +695,6 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       if ((!pageChanged) && (!subpageChanged) && (self.footer_graph)) {
         // Adding handler (only on reload, as footer already exists and handler will not be added)
         self.footer_graph.add_event_handler();
-      }
-
-      // Resize view and reset autoresize
-      resize();
-      // Remove loading element
-      if (self.gridApi) {
-        self.gridApi.setGridOption('onGridReady', () => self.loading(false));
-      } else if (page != 'live') {
-        self.loading(false);
       }
 
       // Add button that shows more information about current page (when a description is given)
@@ -733,6 +723,18 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       // Change selected page and subpage to the new input page
       self.selected_page = page;
       self.selected_subpage = subpage;
+
+      // Defering functions
+      setTimeout(() => {
+        // Resize view and reset autoresize
+        resize();
+        // Remove loading element
+        if (self.gridApi) {
+          self.gridApi.setGridOption('onGridReady', () => self.loading(false));
+        } else if (page != 'live') {
+          self.loading(false);
+        }
+      }, 0);
 
       // Post-process function after selecting page
       if (postprocess) {
