@@ -1641,7 +1641,9 @@ View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
   if($("#main_content > table").length){
-    self.headers[self.clicked_page] = $("#main_content > table").find("thead tr:first th").toArray().map(function(i){ return i.innerText });
+    self.headers[self.clicked_page] = $("#main_content > table thead tr:first th").map(function() { 
+      return $(this).text();
+    }).get();
   } else if (self.gridApi) {
     let header;
     self.headers[self.clicked_page] = []
