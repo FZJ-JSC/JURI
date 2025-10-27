@@ -307,22 +307,23 @@ View.prototype.show = function () {
         }
 
         let initial_page = ""
-        let inital_subpage = ""
-        if (typeof (Storage) !== "undefined") {
-          // If browser support local storage, get the 'last_page' to set as initial page
-          initial_page = sessionStorage.getItem("last_page")
-          if (initial_page) {
-            [initial_page,inital_subpage] = initial_page.split(self.page_separator);
-          }
-        }
+        let initial_subpage = ""
         if (self.initial_data.page) {
-          // If initial_data is set, set initial_date (overwrite previous condition above)
-          [initial_page,inital_subpage] = self.initial_data.page.split(self.page_separator);
+          // If initial_data is set, set initial_date
+          const parts = self.initial_data.page.split(self.page_separator);
+          initial_page = parts[0];
+          initial_subpage = parts[1];
+        } else if (typeof (Storage) !== "undefined") {
+          // If browser support local storage, get the 'last_page' to set as initial page
+          let last_page = sessionStorage.getItem("last_page");
+          if (last_page) {
+            [initial_page,initial_subpage] = last_page.split(self.page_separator);
+          }
         }
         
         if (initial_page && self.all_page_sections.indexOf(initial_page) != -1) {
           // If initial_data is set and that page is present on the sections of the page, select it
-          self.selectPage([initial_page,inital_subpage], false);
+          self.selectPage([initial_page,initial_subpage], false);
         } else if (self.default_section) {
           // Otherwise, select default_section
           self.selectPage(self.default_section);
@@ -545,7 +546,6 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
   let self = this;
   let subpage = null;
   let page_data = {};
-  let tabs = false;
 
   // Updating map between jobid to day (can be used to check if job exists)
   self.mapjobid_to_day = await update_mapjobid_to_day();
@@ -849,18 +849,17 @@ View.prototype.update_status_info = function () {
         (($("#view_status_info").text().length > 0) ? "; " : "") +
         info_str);
       // Checking if update was long ago (>10min), and if so, mark as red
-      let result = info_str.match(/\d{2}\/\d{2}\/\d{2}-\d{2}:\d{2}:\d{2}/);
+      // info_str contains "Last update: 2023-11-06T10:30:00+01:00"
+      let result = info_str.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}/);
       if (result) {
-        // Fixing date format
-        result = new Date(`20${result[0]}`.replace(/-/g,"T").replace(/\//g,"-"));
-        let now = new Date();
+        const resultDate = new Date(result[0]);
+        const now = new Date();
+        const differenceInMinutes = (now.getTime() - resultDate.getTime()) / 60000;
 
-        // Considering the TimeZone of local client
-        let tz_client = now.getTimezoneOffset();
-        if ((now-result)/60000-(-120-tz_client) > 10.0) {
-          $("#view_status_info").css("color",'red')
+        if (differenceInMinutes > 10.0) {
+          $("#view_status_info").css("color", 'red');
         } else {
-          $("#view_status_info").css("color",'')
+          $("#view_status_info").css("color", '');
         }
       }
     }
