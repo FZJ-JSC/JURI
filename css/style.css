@@ -43,7 +43,7 @@ a {
   color: #ffffff; 
   border-bottom: 1px solid #fff;
   padding: 0;   
-  min-height: 37px;
+  height: 37px;
   flex-wrap: nowrap;
 }
 
@@ -403,6 +403,7 @@ nav {
   font-size: 0.9rem;
   flex-direction: column;
   flex-grow: 1;
+  height: 35px;
 }
 
 nav li:hover {
