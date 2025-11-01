@@ -138,7 +138,7 @@ View.prototype.show = function () {
           const toProcess = item.tabs // if there are tabs, get tab information, else, get the item itself
             ? item.tabs.map(tab => {
                 tab.parent_section = item.section;
-                tab.description    = item.description;
+                tab.description    = tab.description??item.description;
                 return tab;
               })
             : [item];
@@ -635,7 +635,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       // Storing page tabs to use later when creating the tabs (page_data is overwritten below)
       page_tabs = page_data.tabs;
       // Getting current tab for page_data
-      page_data =  page_data.tabs.find(element => element.name === subpage) || page_data.tabs[0];
+      page_data =  page_data.tabs.find(element => element.section === subpage) || page_data.tabs[0];
       // If the page was changed (or opened the first time),
       // tabs need to be created
       if (pageChanged) {
@@ -698,9 +698,9 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       }
 
       // Add button that shows more information about current page (when a description is given)
-      if(pageChanged) {
+      if(pageChanged||subpageChanged) {
         if (self.page_description) {
-          self.add_infobutton(self.page_description);
+          self.add_or_update_infobutton(self.page_description);
         } else {
           $("#information").empty()
         }
@@ -1304,10 +1304,17 @@ View.prototype.add_filter_options = function (filter,options) {
 /**
  * Add show-info button
  */
-View.prototype.add_infobutton = function (description) {
+View.prototype.add_or_update_infobutton = function (description) {
   let self = this;
   let text = `Click to ${self.initial_data.description?.showinfo ? "hide" : "show"} description of page`;
   let button = $('#information > button')
+  let text_paragraph = $('#infotext > p')
+  if (text_paragraph.length>0) {
+    // If info_text exist, just update text
+    text_paragraph.attr("aria-label",description)
+                  .html(description);
+    return                              
+  }
   if (!button.length) {
     button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text)
                                                                                .attr('data-toggle', "tooltip")
@@ -1317,8 +1324,9 @@ View.prototype.add_infobutton = function (description) {
                                                                                .addClass("fa-info");
     $('#information').append(button)
   }
-  let infotext = $('<div>',{id: "infotext"}).attr("aria-label",description)
-                                            .html(description)
+  text_paragraph = $('<p>').attr("aria-label",description)
+                               .html(description);
+  let infotext = $('<div>',{id: "infotext"}).append(text_paragraph)
                                             .hide();
 
   // If show info is active (from URL), activate it
@@ -1675,13 +1683,13 @@ View.prototype.loading = function (state,tabs) {
     $("html,body").css("cursor", "progress");
     if ($(".loading").length == 0) {
       loading = $("<div>").addClass("loading");
-      loading.css("top", $("#header").height()+(tabs?$("#tabs_scroll").outerHeight():0)+1);
+      loading.css("top", $("#header").height()+(tabs?$("#tabs_scroll").outerHeight():0)+(($("#infotext").length>0)?$("#infotext").outerHeight()+4:0)+1);
       loading.css("bottom", $("#footer_footer").height());
       loading.append($("<span>").text("LLview is loading. Please wait...").prepend("<br/>").prepend($("<span>").addClass("fa").addClass("fa-spinner").addClass("fa-spin")));
       $("body").append(loading);
     } else {
       loading = $(".loading");
-      loading.css("top", $("#header").height()+(tabs?$("#tabs_scroll").outerHeight():0)+1);
+      loading.css("top", $("#header").height()+(tabs?$("#tabs_scroll").outerHeight():0)+(($("#infotext").length>0)?$("#infotext").outerHeight()+4:0)+1);
       loading.css("bottom", $("#footer_footer").height());
     }
   } else {

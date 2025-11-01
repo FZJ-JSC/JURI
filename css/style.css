@@ -320,6 +320,9 @@ a {
   display: flex;
   flex-direction: column;
 }
+#infotext > p {
+  margin: 5px;
+}
 
 #optionstable {
   border: 1px solid black;
