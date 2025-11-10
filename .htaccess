@@ -51,6 +51,10 @@ Satisfy all
   Header set Pragma "no-cache"
   Header set Expires 0
 
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Allow-Headers "*"
+  Header set Access-Control-Allow-Methods "GET"
+
   RewriteEngine on
   # Serve gzip compressed HTML files if they exist
   RewriteCond "%{REQUEST_FILENAME}\.gz" -s

@@ -1973,6 +1973,15 @@ View.prototype.applyTemplates = function (templates, postprocess) {
     return;
   }
 
+  // Before fetching any resources, invalidate the cache for the dynamic
+  // context files that this run is going to use. This ensures that
+  // the auto-refresh will re-download the latest data.
+  templates.forEach(t => {
+    if (t.context_location) {
+      delete self._resourceCache[t.context_location];
+    }
+  });
+
   // Terminate all workers from a previous run. This is the primary, immediate
   // cancellation mechanism for the heavy computation part.
   self._activeWorkers.forEach(worker => worker.terminate());
