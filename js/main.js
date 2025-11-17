@@ -1501,10 +1501,10 @@ View.prototype.reloadPage = function () {
   let selected_jobid = null;
   if (self.selected_page != 'live') {
     // For pages different than the 'live view', try to store the current selected job
-    if($("#main_content > table").length){
+    if($("#main_content table").length){
       // Storing jobid that is selected before
       index = self.headers[self.clicked_page].indexOf('JobID');
-      selected_jobid = $("#main_content > table tbody tr.selected td").eq(index).text()??""
+      selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
     } else if (self.gridApi) {
       self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
       const selectedNodes = self.gridApi.getSelectedNodes();
@@ -1522,10 +1522,10 @@ View.prototype.reloadPage = function () {
         // If there was no selected job, return
         if (!selected_jobid) return;
 
-        if($("#main_content > table").length){
+        if($("#main_content table").length){
           index = self.headers[self.clicked_page].indexOf('JobID');
           // ...reselecting row with the same jobid (when present)
-          jobid_row = $(`#main_content > table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
+          jobid_row = $(`#main_content table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
           if (jobid_row) {
             jobid_row.click()
           }
@@ -1621,9 +1621,9 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
   let self = view_self;
   let graphtabs, timebetweentabs, count, randomjob;
   // Selecting a random job from the table
-  if ($('#main_content > table').length) {
-    let randomtd = Math.floor(Math.random() * $('#main_content > table > tbody tr:visible').length);
-    randomjob = $('#main_content > table > tbody tr:visible').eq(randomtd)[0];
+  if ($('#main_content table').length) {
+    let randomtd = Math.floor(Math.random() * $('#main_content table > tbody tr:visible').length);
+    randomjob = $('#main_content table > tbody tr:visible').eq(randomtd)[0];
     if (!randomjob) return
     // Scroll the job into view
     randomjob.scrollIntoView({
@@ -1670,8 +1670,8 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
 View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
-  if($("#main_content > table").length){
-    self.headers[self.clicked_page] = $("#main_content > table thead tr:first th").map(function() { 
+  if($("#main_content table").length){
+    self.headers[self.clicked_page] = $("#main_content table thead tr:first th").map(function() { 
       return $(this).text();
     }).get();
   } else if (self.gridApi) {
@@ -2233,7 +2233,6 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       // to the new one without flickering much.
       // For that, we place all new content into the DOM, but keep it transparent
       // using an invisible overlay
-      let firstload = false;
       templatesToRender.forEach(result => {
         const targetElement = $(result.element);
 
@@ -2263,7 +2262,6 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
         } else {
           // For an initial load, render the content and hide it with a class
           targetElement.html(result.html);
-          firstload = true;
         }
       });
 
@@ -2307,79 +2305,79 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       // using requestAnimationFrame to ensure this runs just before the next browser paint.
       // This gives AG Grid's synchronous setup code time to complete.
       // requestAnimationFrame(() => {
-        templatesToRender.forEach(result => {
-          const targetElement = $(result.element);
+      templatesToRender.forEach(result => {
+        const targetElement = $(result.element);
 
-          // If this was a refresh, perform the swap and then fade in the overlay
-          const overlay = targetElement.find('> .update-overlay');
-          if (overlay.length) {
-            // This is a REFRESH
+        // If this was a refresh, perform the swap and then fade in the overlay
+        const overlay = targetElement.find('> .update-overlay');
+        if (overlay.length) {
+          // This is a REFRESH
 
-            // Now, make the overlay visible by changing its opacity
-            overlay.css('opacity', 1);
+          // Now, make the overlay visible by changing its opacity
+          overlay.css('opacity', 1);
 
-            // Now that the overlay is fully visible, perform the cleanup.
+          // Now that the overlay is fully visible, perform the cleanup.
 
-            // Store old content
-            const oldContent = targetElement.children().not(overlay);
+          // Store old content
+          const oldContent = targetElement.children().not(overlay);
 
-            // Swap old content with new content
-            setTimeout(() => {
-              overlay.before(overlay.children());
-              overlay.append(oldContent);
+          // Swap old content with new content
+          setTimeout(() => {
+            overlay.before(overlay.children());
+            overlay.append(oldContent);
 
-              // Initialize new content
-              onFinalizationComplete();
-            }, 0); 
+            // Initialize new content
+            onFinalizationComplete();
+          }, 0); 
 
-            setTimeout(() => {
-              // Destroy the OLD grid API that we stored earlier
-              if (oldGridApi && typeof oldGridApi.destroy === 'function') {
-                try {
-                  oldGridApi.destroy();
-                } catch(e) {
-                  console.error('Error destroying old AG Grid API:', e);
-                }
+          setTimeout(() => {
+            // Destroy the OLD grid API that we stored earlier
+            if (oldGridApi && typeof oldGridApi.destroy === 'function') {
+              try {
+                oldGridApi.destroy();
+              } catch(e) {
+                console.error('Error destroying old AG Grid API:', e);
               }
+            }
+            
+            // Clean up old content
+            oldContent.each(function() {
+              const element = this;
               
-              // Clean up old content
-              oldContent.each(function() {
-                const element = this;
-                
-                // Remove all event listeners and data from descendants
-                $(element).find('*').addBack().each(function() {
-                  $(this).off().removeData();
-                  $.removeData(this);
-                  this.onclick = null;
-                  this.onchange = null;
-                });
-                
-                // Clear the element's contents
-                element.innerHTML = '';
-              });              
-              oldContent.remove();
-
-              // Clean up overlay
-              const overlayElement = overlay[0];
-              overlay.find('*').addBack().each(function() {
+              // Remove all event listeners and data from descendants
+              $(element).find('*').addBack().each(function() {
                 $(this).off().removeData();
                 $.removeData(this);
+                this.onclick = null;
+                this.onchange = null;
               });
-              overlay.off().removeData();
-              $.removeData(overlayElement);
-              overlayElement.innerHTML = '';
-              overlay.remove();
               
-              targetElement.css('position', '');
-            }, 500);
+              // Clear the element's contents
+              element.innerHTML = '';
+            });              
+            oldContent.remove();
 
-          } else {
-            // Initial load of the page
-            onFinalizationComplete();
-          }
-        });
+            // Clean up overlay
+            const overlayElement = overlay[0];
+            overlay.find('*').addBack().each(function() {
+              $(this).off().removeData();
+              $.removeData(this);
+            });
+            overlay.off().removeData();
+            $.removeData(overlayElement);
+            overlayElement.innerHTML = '';
+            overlay.remove();
+            
+            targetElement.css('position', '');
+          }, 1000);
 
-        self.empty = false;
+        } else {
+          // Initial load of the page
+          onFinalizationComplete();
+        }
+      });
+
+      self.empty = false;
     })
     .catch(err => {
       // If a newer applyTemplates run has started, this .catch() block belongs
