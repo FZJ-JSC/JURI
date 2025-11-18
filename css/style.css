@@ -965,3 +965,29 @@ footer.container-fluid {
   color: #ffffff;
   font-size: 0.7rem;
 }
+
+
+/* Thin scrollbars for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.3) white;
+}
+
+/* Custom thin scrollbars for Webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: white;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.5);
+}

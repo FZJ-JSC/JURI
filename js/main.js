@@ -1528,11 +1528,10 @@ View.prototype.reloadPage = function () {
               }
             });
           }, 0); 
-        } else if ($("#main_content > .update-overlay > table").length){
-          // This is done before swapping the new table with the old, 
-          // to make the refresh "transparent" so the new table is still on the overlay
+        } else if ($("#main_content > table").length){
+          // This is done after the new elements are created, so the old ones were already renamed
           // (and we have to click only on that one, otherwise the job is deselected on the old)
-          let table = $('#main_content > .update-overlay > table');
+          let table = $('#main_content > table');
           index = self.headers[self.clicked_page].indexOf('JobID');
           // ...reselecting row with the same jobid (when present)
           const jobid_row = table.find(`tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
@@ -2254,9 +2253,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
           targetElement.css('position', 'relative');
           
           overlay.html(result.html);
-          overlay.before(targetElement);
-          console.log('overlay should be added', overlay)
-          console.log('old targetElement', targetElement)
+          targetElement.before(overlay);
         } else {
           // For an initial load, render the content and hide it with a class
           targetElement.html(result.html);
@@ -2308,6 +2305,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
         const targetElement = $(`${result.element}_old_temp`);
         const targetParent = targetElement.parent();
 
+
         // If this was a refresh, show the new element and clean up the old one
         const overlay = targetParent.find('> .update-overlay');
         if (overlay.length) {
@@ -2325,7 +2323,6 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
 
           // Now that the overlay is fully visible and prepared, 
           // perform the cleanup.
-          console.log('before clean up')
           setTimeout(() => {
             // Destroy the OLD grid API that we stored earlier
             if (oldGridApi && typeof oldGridApi.destroy === 'function') {
@@ -2355,7 +2352,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
 
             // Clean up overlay/new targetElement
             overlay.removeClass('update-overlay')
-          }, 5000);
+          }, 500);
 
         } else {
           // Initial load of the page
