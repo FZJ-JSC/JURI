@@ -1647,7 +1647,7 @@ PlotlyGraph.prototype.parseToDate = function(input) {
   }
 
   // If neither, throw an error or return null/undefined
-  throw new Error("Invalid date or timestamp input");
+  throw new Error(`Invalid date or timestamp input: ${input}`);
 }
 
 

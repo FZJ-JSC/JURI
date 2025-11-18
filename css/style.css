@@ -505,6 +505,7 @@ table {
   /* IMPORTANT: collapse give problems on top row and the sticky of thead borders doens't work */
   border-collapse: separate;
   border-spacing: 0;
+  background-color: white;
 }
 
 /* Selected row */

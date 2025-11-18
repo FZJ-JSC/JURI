@@ -682,27 +682,19 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     }], 
     self.page_functions,
     function () {
-      // if (self.page_functions) {
-      //   // Call functions for the given page or reference
-      //   self.page_functions.forEach(function (function_name) {
-      //     if (window[function_name]) {
-      //         setTimeout(() => {
-      //           window[function_name](page,subpage);
-      //         }, 0);
-      //     }
-      //   });
-      // }
+      if ((!pageChanged) && (!subpageChanged)) {
+        // If page or subpage has not changed (i.e., refresh)
+        if (self.footer_graph) {
+          // Adding handler (only on reload, as footer already exists and handler will not be added)
+          self.footer_graph.add_event_handler();
+        }
+      } else {
+        // If page or subpage has changed
 
-      // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
-      // document.getElementById('main_content').scrollTo({top: 0});
+        // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
+        document.getElementById('main_content').scrollTo({top: 0});
 
-      if ((!pageChanged) && (!subpageChanged) && (self.footer_graph)) {
-        // Adding handler (only on reload, as footer already exists and handler will not be added)
-        self.footer_graph.add_event_handler();
-      }
-
-      // Add button that shows more information about current page (when a description is given)
-      if(pageChanged||subpageChanged) {
+        // Add button that shows more information about current page (when a description is given)
         if (self.page_description) {
           self.add_or_update_infobutton(self.page_description);
         } else {
@@ -1499,6 +1491,7 @@ View.prototype.add_autorefresh = function () {
 View.prototype.reloadPage = function () {
   let self = this;
   let selected_jobid = null;
+  let index;
   if (self.selected_page != 'live') {
     // For pages different than the 'live view', try to store the current selected job
     if($("#main_content table").length){
@@ -1522,14 +1515,7 @@ View.prototype.reloadPage = function () {
         // If there was no selected job, return
         if (!selected_jobid) return;
 
-        if($("#main_content table").length){
-          index = self.headers[self.clicked_page].indexOf('JobID');
-          // ...reselecting row with the same jobid (when present)
-          jobid_row = $(`#main_content table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
-          if (jobid_row) {
-            jobid_row.click()
-          }
-        } else if (self.gridApi) {
+        if (self.gridApi) {
           // Defering the selection, to avoid the possibility of selecting the old version of the grid
           setTimeout(() => {
             self.gridApi.forEachNode((node) => {
@@ -1542,11 +1528,18 @@ View.prototype.reloadPage = function () {
               }
             });
           }, 0); 
+        } else if ($("#main_content > .update-overlay > table").length){
+          // This is done before swapping the new table with the old, 
+          // to make the refresh "transparent" so the new table is still on the overlay
+          // (and we have to click only on that one, otherwise the job is deselected on the old)
+          let table = $('#main_content > .update-overlay > table');
+          index = self.headers[self.clicked_page].indexOf('JobID');
+          // ...reselecting row with the same jobid (when present)
+          const jobid_row = table.find(`tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
+          if (jobid_row) {
+            jobid_row.click()
+          }
         }
-        // Restore grid state
-        // if (self.gridState[self.selected_page]) {
-        //   self.gridApi.applyState({ state: self.gridState[self.selected_page] });
-        // }
       }
     );
   } else {
@@ -2249,12 +2242,14 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
           targetElement.css('position', 'relative');
           // Creating the overlay element, transparent
           const overlay = $('<div>').css({
-            position: 'absolute', top: 0, left: '15px', width: 'calc(100% - 30px)', height: '100%',
+            position: 'absolute', 
+            top: 0, 
+            left: '15px', 
+            width: 'calc(100% - 30px)', 
+            height: '100%',
             'pointer-events': 'none',
+            'z-index': -999,
             opacity: 0, 
-            // 'transition-delay': '0s', 
-            // 'transition-property': 'opacity',
-            // 'transition-duration': '0s'
           }).addClass('update-overlay');
           
           overlay.html(result.html);
@@ -2313,7 +2308,10 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
         if (overlay.length) {
           // This is a REFRESH
 
-          // Now, make the overlay visible by changing its opacity
+          // Making elements visible before swapping, as they may
+          // take some time to load. So we make the new elements visible here
+          // for the swap to happen without flickering
+          // (Transparent objects may still flicker)
           overlay.css('opacity', 1);
 
           // Now that the overlay is fully visible, perform the cleanup.
@@ -2321,13 +2319,16 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
           // Store old content
           const oldContent = targetElement.children().not(overlay);
 
-          // Swap old content with new content
-          setTimeout(() => {
-            overlay.before(overlay.children());
-            overlay.append(oldContent);
+          // Run post-processing functions on elements,
+          // so they are prepared on the background before swapping
+          onFinalizationComplete();
 
-            // Initialize new content
-            onFinalizationComplete();
+          // Swap old content with new content
+          // Must be deferred to avoid flickering
+          // (probably to give more time for the elements to be ready)
+          setTimeout(() => {
+            overlay.after(overlay.children());
+            overlay.append(oldContent);
           }, 0); 
 
           setTimeout(() => {
@@ -2367,9 +2368,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             $.removeData(overlayElement);
             overlayElement.innerHTML = '';
             overlay.remove();
-            
-            targetElement.css('position', '');
-          }, 1000);
+          }, 500);
 
         } else {
           // Initial load of the page

@@ -81,10 +81,10 @@ function filter(table) {
     }
     return;
   });
-  // Default bootstrap table striping does not work for filtered tables.
+  // Default bootstrap table striping (alternate row colors) does not work for filtered tables.
   // Reapply manual stripes.
   $(table).find("tbody tr:visible").each(function(index) {
-    $(this).css("background-color", !!(index & 1)? "rgba(0,0,0,.05)" : "rgba(0,0,0,0)");
+    $(this).css("background-color", !!(index & 1)? "var(--fzj-color-gray)" : "white");
     return;
   });
 
