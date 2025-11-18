@@ -2228,7 +2228,6 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       // using an invisible overlay
       templatesToRender.forEach(result => {
         const targetElement = $(result.element);
-        const targetParent = targetElement.parent();
         const tagName = targetElement.prop('tagName').toLowerCase();
 
         // If the element where the new templates are to be added is not empty,
@@ -2255,7 +2254,9 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
           targetElement.css('position', 'relative');
           
           overlay.html(result.html);
-          targetParent.prepend(overlay);
+          overlay.before(targetElement);
+          console.log('overlay should be added', overlay)
+          console.log('old targetElement', targetElement)
         } else {
           // For an initial load, render the content and hide it with a class
           targetElement.html(result.html);
@@ -2324,7 +2325,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
 
           // Now that the overlay is fully visible and prepared, 
           // perform the cleanup.
-
+          console.log('before clean up')
           setTimeout(() => {
             // Destroy the OLD grid API that we stored earlier
             if (oldGridApi && typeof oldGridApi.destroy === 'function') {
@@ -2354,7 +2355,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
 
             // Clean up overlay/new targetElement
             overlay.removeClass('update-overlay')
-          }, 500);
+          }, 5000);
 
         } else {
           // Initial load of the page

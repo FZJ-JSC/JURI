@@ -20,7 +20,7 @@
   --fzj-color-violet:  #af82b9;
   --fzj-color-orange:  #fab45a;
   /* Refresh button options: */
-  --time: 30s;
+  --time: 60s;
   --size: 32px;
   --ring-size: 6px;
 }
@@ -465,11 +465,13 @@ li > .dropdown-menu {
 
 main {
   display: grid;
+  grid-template-rows: auto 1fr; /* First row auto-sized for tabs, second row takes remaining space */
 }
 
 /* Main content layout */
 #main_content, #main_content_old_temp {
-  grid-area: 1 / 1;
+  grid-row: 2; /* Second row */
+  grid-column: 1;
   margin-top: 10px;
   padding-top: 0;
   font-size: 0.75rem;
@@ -874,14 +876,17 @@ footer.container-fluid {
 
 /* Element specific layout */
 #tabs_scroll {
+  grid-row: 1; /* First row */
   position: sticky;
+  top: 0;
+  z-index: 10;
   /* overflow-x:auto; */
   overflow-y: hidden;
   top: -10px;
   background-color: #fff;
   transform: rotateX(180deg); 
-  padding-right: 15px;
-  padding-left: 15px;
+  margin-right: 15px;
+  margin-left: 15px;
   padding-bottom: 10px; /* This padding is actually at the top, since it si flipped */
 }
 
