@@ -2228,32 +2228,34 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       // using an invisible overlay
       templatesToRender.forEach(result => {
         const targetElement = $(result.element);
+        const targetParent = targetElement.parent();
+        const tagName = targetElement.prop('tagName').toLowerCase();
 
         // If the element where the new templates are to be added is not empty,
         // this means this is a refresh. The previous element IDs must be renamed
         // to avoid conflicts
         if (!targetElement.is(':empty')) {
-          // Only rename IDs on the children of the target element to keep the container stable
-          targetElement.find('[id]').each(function() {
+
+          // Creating the overlay element, that is a clone of
+          // the target element, but transparent
+          // For elements in <main>, they are placed on the
+          // same grid cell
+          const overlay = $(`<${tagName}>`);
+          $.each(targetElement[0].attributes, function() {
+            overlay.attr(this.name, this.value);
+          });
+          overlay.addClass('update-overlay');
+
+          // Rename IDs on the children of the target element parent 
+          // (including target element) to keep the container stable
+          targetElement.find('[id]').addBack('[id]').each(function() {
             const currentId = $(this).attr('id');
             if (currentId) $(this).attr('id', currentId + '_old_temp');
-          });
-        
+          });          
           targetElement.css('position', 'relative');
-          // Creating the overlay element, transparent
-          const overlay = $('<div>').css({
-            position: 'absolute', 
-            top: 0, 
-            left: '15px', 
-            width: 'calc(100% - 30px)', 
-            height: '100%',
-            'pointer-events': 'none',
-            'z-index': -999,
-            opacity: 0, 
-          }).addClass('update-overlay');
           
           overlay.html(result.html);
-          targetElement.prepend(overlay);
+          targetParent.prepend(overlay);
         } else {
           // For an initial load, render the content and hide it with a class
           targetElement.html(result.html);
@@ -2277,7 +2279,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
           }
         });
       }
-      
+
       // A counter to track when all reveal operations are complete
       let finalizationCounter = templatesToRender.length;
       
@@ -2301,35 +2303,27 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       // This gives AG Grid's synchronous setup code time to complete.
       // requestAnimationFrame(() => {
       templatesToRender.forEach(result => {
-        const targetElement = $(result.element);
+        // Getting the old targetElement and its parent
+        const targetElement = $(`${result.element}_old_temp`);
+        const targetParent = targetElement.parent();
 
-        // If this was a refresh, perform the swap and then fade in the overlay
-        const overlay = targetElement.find('> .update-overlay');
+        // If this was a refresh, show the new element and clean up the old one
+        const overlay = targetParent.find('> .update-overlay');
         if (overlay.length) {
           // This is a REFRESH
 
-          // Making elements visible before swapping, as they may
+          // Making elements visible before cleaning up, as they may
           // take some time to load. So we make the new elements visible here
           // for the swap to happen without flickering
-          // (Transparent objects may still flicker)
+          // (Transparent objects may still look strange/flicker)
           overlay.css('opacity', 1);
-
-          // Now that the overlay is fully visible, perform the cleanup.
-
-          // Store old content
-          const oldContent = targetElement.children().not(overlay);
 
           // Run post-processing functions on elements,
           // so they are prepared on the background before swapping
           onFinalizationComplete();
 
-          // Swap old content with new content
-          // Must be deferred to avoid flickering
-          // (probably to give more time for the elements to be ready)
-          setTimeout(() => {
-            overlay.after(overlay.children());
-            overlay.append(oldContent);
-          }, 0); 
+          // Now that the overlay is fully visible and prepared, 
+          // perform the cleanup.
 
           setTimeout(() => {
             // Destroy the OLD grid API that we stored earlier
@@ -2341,8 +2335,8 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
               }
             }
             
-            // Clean up old content
-            oldContent.each(function() {
+            // Clean up old content from old targetElement
+            targetElement.each(function() {
               const element = this;
               
               // Remove all event listeners and data from descendants
@@ -2356,18 +2350,10 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
               // Clear the element's contents
               element.innerHTML = '';
             });              
-            oldContent.remove();
+            targetElement.remove();
 
-            // Clean up overlay
-            const overlayElement = overlay[0];
-            overlay.find('*').addBack().each(function() {
-              $(this).off().removeData();
-              $.removeData(this);
-            });
-            overlay.off().removeData();
-            $.removeData(overlayElement);
-            overlayElement.innerHTML = '';
-            overlay.remove();
+            // Clean up overlay/new targetElement
+            overlay.removeClass('update-overlay')
           }, 500);
 
         } else {

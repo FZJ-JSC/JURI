@@ -20,7 +20,7 @@
   --fzj-color-violet:  #af82b9;
   --fzj-color-orange:  #fab45a;
   /* Refresh button options: */
-  --time: 60s;
+  --time: 30s;
   --size: 32px;
   --ring-size: 6px;
 }
@@ -376,6 +376,15 @@ a {
   flex-grow: 1;
 }
 
+.update-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -99;
+  opacity: 0;
+}
+
 #header h2 img {
   height: 1.7em;
 }
@@ -454,8 +463,13 @@ li > .dropdown-menu {
   left: -1px;
 }
 
+main {
+  display: grid;
+}
+
 /* Main content layout */
-#main_content {
+#main_content, #main_content_old_temp {
+  grid-area: 1 / 1;
   margin-top: 10px;
   padding-top: 0;
   font-size: 0.75rem;
@@ -468,7 +482,8 @@ li > .dropdown-menu {
 
 /* if main contains a #tabs_scroll that comes before #main_content,
    remove the padding from #main_content (no extra top space needed) */
-main:has(> #tabs_scroll ~ #main_content) > #main_content {
+main:has(> #tabs_scroll ~ #main_content) > #main_content,
+main:has(> #tabs_scroll ~ #main_content_old_temp) > #main_content_old_temp {
   margin-top: 0;
 }
 
@@ -573,7 +588,8 @@ th input:not(:placeholder-shown) {
 }
 
 /* Table on Live view */
-#main_content table#jobs thead th {
+#main_content table#jobs thead th,
+#main_content_old_temp table#jobs thead th {
   top: 0px;
 }
 
