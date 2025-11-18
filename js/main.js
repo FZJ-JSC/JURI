@@ -2334,21 +2334,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             }
             
             // Clean up old content from old targetElement
-            targetElement.each(function() {
-              const element = this;
-              
-              // Remove all event listeners and data from descendants
-              $(element).find('*').addBack().each(function() {
-                $(this).off().removeData();
-                $.removeData(this);
-                this.onclick = null;
-                this.onchange = null;
-              });
-              
-              // Clear the element's contents
-              element.innerHTML = '';
-            });              
-            targetElement.remove();
+            targetElement.empty().remove();
 
             // Clean up overlay/new targetElement
             overlay.removeClass('update-overlay')
