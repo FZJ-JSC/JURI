@@ -156,7 +156,6 @@ function PlotlyGraph(graph_data) {
 PlotlyGraph.prototype.add_data_to_graph = function (params) {
   let self = this;
   // Cleaning up data, to replot with new values when clicking again (e.g., in auto-refresh)
-  self.data = {}
   clearTimeout(this.timeout);
   this.timeout = setTimeout(function(){self.key_add_data_to_graph(params);},300);
 }
@@ -172,6 +171,9 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
   }
   // Reset the pending requests array for this call.
   self._pendingRequests = [];
+
+  // Clearing data
+  self.data = {};
 
   let deferrer = [];  // Array to hold all asynchronous CSV loading tasks (jqXHR objects)
 
@@ -1257,7 +1259,7 @@ PlotlyGraph.prototype.plot = function (params) {
   /**************************************
    **         CREATING THE PLOT        **
    **************************************/
-  if (params) layout.datarevision = params.JobID
+  if (params) layout.datarevision = params.JobID + "?_=" + new Date().getTime()
   Plotly.react(self.id, traces, layout, self.config).then(_ => {
 
     // Fixing zoom when double clicking or clicking on the 'reset axis' modebar button
@@ -1645,7 +1647,7 @@ PlotlyGraph.prototype.parseToDate = function(input) {
   }
 
   // If neither, throw an error or return null/undefined
-  throw new Error("Invalid date or timestamp input");
+  throw new Error(`Invalid date or timestamp input: ${input}`);
 }
 
 

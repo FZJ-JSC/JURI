@@ -37,8 +37,9 @@ function View(parameters) {
   this.counter = 0;
   // Store selected page and subpage
   this.clicked_page = null;     // Page to be shown (after clicking)
+  this.clicked_subpage = null;  // Subpage to be shown (after clicking)
   this.selected_page = null;    // Shown page (before clicking)
-  this.selected_subpage = null;
+  this.selected_subpage = null; // Shown subpage (before clicking)
   this.page_separator = '.';    // Which character to use to separate page from subpage in URL
   this.page_data = null;
   this.page_template = null;
@@ -209,7 +210,8 @@ View.prototype.show = function () {
         // "element": "#header",
         // "template": "header",
         "context": self.navdata
-      }, 
+      },
+      [], // initializers
       // Post-processing function after the navigation is ready
       function () {
         if (false) {
@@ -561,6 +563,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
 
   // Updating clicked page
   self.clicked_page = page
+  self.clicked_subpage = subpage
 
   if ( !reload && (!pageChanged) && (!subpage || (!subpageChanged))) {
     // Same page and subpage, nothing to do
@@ -677,28 +680,21 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       // (Only the event_handler, that is added in post-processing below)
       "template": (pageChanged||subpageChanged)?page_data.footer_template:null
     }], 
+    self.page_functions,
     function () {
-      if (self.page_functions) {
-        // Call functions for the given page or reference
-        self.page_functions.forEach(function (function_name) {
-          if (window[function_name]) {
-              setTimeout(() => {
-                window[function_name](page,subpage);
-              }, 0);
-          }
-        });
-      }
+      if ((!pageChanged) && (!subpageChanged)) {
+        // If page or subpage has not changed (i.e., refresh)
+        if (self.footer_graph) {
+          // Adding handler (only on reload, as footer already exists and handler will not be added)
+          self.footer_graph.add_event_handler();
+        }
+      } else {
+        // If page or subpage has changed
 
-      // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
-      document.getElementById('main_content').scrollTo({top: 0});
+        // Scrolling back to the top after changing page (otherwise, it keeps scrolling position)
+        document.getElementById('main_content').scrollTo({top: 0});
 
-      if ((!pageChanged) && (!subpageChanged) && (self.footer_graph)) {
-        // Adding handler (only on reload, as footer already exists and handler will not be added)
-        self.footer_graph.add_event_handler();
-      }
-
-      // Add button that shows more information about current page (when a description is given)
-      if(pageChanged||subpageChanged) {
+        // Add button that shows more information about current page (when a description is given)
         if (self.page_description) {
           self.add_or_update_infobutton(self.page_description);
         } else {
@@ -729,17 +725,16 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
         // Resize view and reset autoresize
         resize();
         // Remove loading element
-        if (self.gridApi) {
-          self.gridApi.setGridOption('onGridReady', () => self.loading(false));
-        } else if (page != 'live') {
+        // if (self.gridApi) {
+        //   self.gridApi.setGridOption('onGridReady', () => self.loading(false));
+        // } else 
+        if (page != 'live') {
           self.loading(false);
         }
-      }, 0);
 
-      // Post-process function after selecting page
-      if (postprocess) {
-        postprocess()
-      }
+        // Post-process function after selecting page
+        if (typeof postprocess === "function") postprocess();
+      }, 0);
 
       return;
     });
@@ -1381,6 +1376,9 @@ View.prototype.add_autorefresh = function () {
   let self = this;
   let text = `Auto-refresh is ${self.initial_data.refresh.disablerefresh ? "OFF" : "ON"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-refresh");
+  // Getting refresh time from property --time on :root
+  const refresh_time = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--time'))
+
   // If disable refresh is not active (from URL), activate it
   if (! self.initial_data.refresh.disablerefresh) {
     button.addClass('active');
@@ -1388,12 +1386,12 @@ View.prototype.add_autorefresh = function () {
           .attr("aria-label","Auto-refresh is ON")
           .removeClass("fa")
           .removeClass("fa-refresh");
-    let seconds = 60;
+    let seconds = refresh_time;
     self.refreshinterval = setInterval(function () {
       button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
       seconds = seconds - 1;
       if (seconds === 0) {
-        seconds = 60;
+        seconds = refresh_time;
         self.reloadPage();
       }
     }, 1000);
@@ -1422,12 +1420,12 @@ View.prototype.add_autorefresh = function () {
             .removeClass("fa")
             .removeClass("fa-refresh");
       self.setHash();
-      let seconds = 60;
+      let seconds = refresh_time;
       self.refreshinterval = setInterval(function () {
         button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
         seconds = seconds - 1;
         if (seconds === 0) {
-          seconds = 60;
+          seconds = refresh_time;
           self.reloadPage();
         }
       }, 1000);
@@ -1492,40 +1490,57 @@ View.prototype.add_autorefresh = function () {
 /* Force reload page */
 View.prototype.reloadPage = function () {
   let self = this;
+  let selected_jobid = null;
+  let index;
   if (self.selected_page != 'live') {
     // For pages different than the 'live view', try to store the current selected job
-    if($("#main_content > table").length){
+    if($("#main_content table").length){
       // Storing jobid that is selected before
       index = self.headers[self.clicked_page].indexOf('JobID');
-      selected_jobid = $("#main_content > table tbody tr.selected td").eq(index).text()??""
+      selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
     } else if (self.gridApi) {
       self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
-      selected_jobid = self.gridApi.getSelectedNodes(); // Get selected job
+      const selectedNodes = self.gridApi.getSelectedNodes();
+      if (selectedNodes.length > 0) {
+        selected_jobid = selectedNodes[0].data.jobid; // Just save the ID string
+      }
     }
 
     // Re-select current page and subpage and re-select the job, if possible
-    self.selectPage([self.selected_page,self.selected_subpage],false,true, function () {
-      // When there is a selected job...
-      if ((typeof selected_jobid !== 'undefined')&&(selected_jobid?.length)) {
-        if($("#main_content > table").length){
+    self.selectPage(
+      [self.selected_page,self.selected_subpage],
+      false,
+      true,
+      function() {
+        // If there was no selected job, return
+        if (!selected_jobid) return;
+
+        if (self.gridApi) {
+          // Defering the selection, to avoid the possibility of selecting the old version of the grid
+          setTimeout(() => {
+            self.gridApi.forEachNode((node) => {
+              // Find the node by the saved job ID
+              if (node.data.jobid == selected_jobid && node.displayed) {
+                // Selecting it
+                node.setSelected(true);
+                // Making it visible
+                self.gridApi.ensureIndexVisible(node.rowIndex, 'middle');
+              }
+            });
+          }, 0); 
+        } else if ($("#main_content > table").length){
+          // This is done after the new elements are created, so the old ones were already renamed
+          // (and we have to click only on that one, otherwise the job is deselected on the old)
+          let table = $('#main_content > table');
           index = self.headers[self.clicked_page].indexOf('JobID');
           // ...reselecting row with the same jobid (when present)
-          jobid_row = $(`#main_content > table tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
+          const jobid_row = table.find(`tbody td:nth-child(${index+1}):contains('${selected_jobid}')`).parent()[0];
           if (jobid_row) {
             jobid_row.click()
           }
-        } else if (self.gridApi) {
-          self.gridApi.forEachNode((node) => {
-            if (node.id == selected_jobid[0].id && node.displayed) {
-              // Making it visible
-              self.gridApi.ensureIndexVisible(node.rowIndex,'middle');
-              // Selecting it
-              node.setSelected(true);
-            }
-          });
         }
       }
-    });
+    );
   } else {
     // Reload svg on live view and update status info text
     load_svg();
@@ -1598,9 +1613,9 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
   let self = view_self;
   let graphtabs, timebetweentabs, count, randomjob;
   // Selecting a random job from the table
-  if ($('#main_content > table').length) {
-    let randomtd = Math.floor(Math.random() * $('#main_content > table > tbody tr:visible').length);
-    randomjob = $('#main_content > table > tbody tr:visible').eq(randomtd)[0];
+  if ($('#main_content table').length) {
+    let randomtd = Math.floor(Math.random() * $('#main_content table > tbody tr:visible').length);
+    randomjob = $('#main_content table > tbody tr:visible').eq(randomtd)[0];
     if (!randomjob) return
     // Scroll the job into view
     randomjob.scrollIntoView({
@@ -1647,8 +1662,8 @@ View.prototype.loopFooterTabs = function (view_self,timebetweenjobs) {
 View.prototype.getHeaders = function () {
   let self = this;
   // Getting headers of the main table of this page (if it exists) as an Array
-  if($("#main_content > table").length){
-    self.headers[self.clicked_page] = $("#main_content > table thead tr:first th").map(function() { 
+  if($("#main_content table").length){
+    self.headers[self.clicked_page] = $("#main_content table thead tr:first th").map(function() { 
       return $(this).text();
     }).get();
   } else if (self.gridApi) {
@@ -1964,11 +1979,18 @@ View.prototype.add_dropmenu_hover = function () {
  * @param {function} [postprocess]
  * @returns {void}
  */
-View.prototype.applyTemplates = function (templates, postprocess) {
+View.prototype.applyTemplates = function (templates, initializers, postprocess) {
   const self = this;
   // normalize input
   templates = Array.isArray(templates) ? templates : [templates];
   if (!templates.length) {
+    if (initializers && Array.isArray(initializers)) {
+      initializers.forEach(function_name => {
+        if (typeof window[function_name] === 'function') {
+          window[function_name](self.clicked_page, self.clicked_subpage);
+        }
+      });
+    }
     if (typeof postprocess === "function") postprocess();
     return;
   }
@@ -1979,6 +2001,7 @@ View.prototype.applyTemplates = function (templates, postprocess) {
   templates.forEach(t => {
     if (t.context_location) {
       delete self._resourceCache[t.context_location];
+      delete self.contexts[t.context_location];
     }
   });
 
@@ -2179,23 +2202,151 @@ View.prototype.applyTemplates = function (templates, postprocess) {
       return Promise.all(allRenderPromises);
     })
     .then(renderedTemplates => {
-      // This .then() only runs after every single worker has finished.
+      // This .then() only runs after every single worker has finished
       if (localApplyId !== self._applyTemplatesId) return;
 
-      // The run was successful, the workers are terminated, clear the array.
+      // The run was successful, clear the active workers array
       self._activeWorkers = [];
 
-      // Now, perform the final, fast DOM insertions.
-      renderedTemplates.forEach(result => {
-        // The check for `result` handles the non-worker templates that resolved to `null`.
-        if (result && result.element) {
-          $(result.element).html(result.html);
+      const templatesToRender = renderedTemplates.filter(r => r && r.element && typeof r.html === 'string');
+      
+      // If there's nothing to render, run scripts on the existing DOM and exit
+      if (templatesToRender.length === 0) {
+        if (Array.isArray(initializers)) {
+          initializers.forEach(name => {
+            if (typeof window[name] === 'function') window[name](self.clicked_page, self.clicked_subpage);
+          });
+        }
+        if (typeof postprocess === "function") postprocess();
+        return;
+      }
+
+      // If this is an auto-refresh, we want the page to update from the old version
+      // to the new one without flickering much.
+      // For that, we place all new content into the DOM, but keep it transparent
+      // using an invisible overlay
+      templatesToRender.forEach(result => {
+        const targetElement = $(result.element);
+        const tagName = targetElement.prop('tagName').toLowerCase();
+
+        // If the element where the new templates are to be added is not empty,
+        // this means this is a refresh. The previous element IDs must be renamed
+        // to avoid conflicts
+        if (!targetElement.is(':empty')) {
+
+          // Creating the overlay element, that is a clone of
+          // the target element, but transparent
+          // For elements in <main>, they are placed on the
+          // same grid cell
+          const overlay = $(`<${tagName}>`);
+          $.each(targetElement[0].attributes, function() {
+            overlay.attr(this.name, this.value);
+          });
+          overlay.addClass('update-overlay');
+
+          // Rename IDs on the children of the target element parent 
+          // (including target element) to keep the container stable
+          targetElement.find('[id]').addBack('[id]').each(function() {
+            const currentId = $(this).attr('id');
+            if (currentId) $(this).attr('id', currentId + '_old_temp');
+          });          
+          targetElement.css('position', 'relative');
+          
+          overlay.html(result.html);
+          targetElement.before(overlay);
+        } else {
+          // For an initial load, render the content and hide it with a class
+          targetElement.html(result.html);
         }
       });
+
+      // Store old grid to be able to destroy it later and avoid a memory leak
+      const oldGridApi = self.gridApi;
+
+      // Run all scripts on the prepared DOM
+      // The content is now in place but transparent. 
+      // (e.g., AG Grid should initialize here)
+      if (Array.isArray(initializers)) {
+        initializers.forEach(name => {
+          if (typeof window[name] === 'function') {
+            try {
+              window[name](self.clicked_page, self.clicked_subpage);
+            } catch (e) { 
+              console.error(`Error in initializer '${name}':`, e); 
+            }
+          }
+        });
+      }
+
+      // A counter to track when all reveal operations are complete
+      let finalizationCounter = templatesToRender.length;
       
-      // All done, proceed with post-processing.
+      const onFinalizationComplete = () => {
+        finalizationCounter--;
+        // When the last operation is done, call postprocess
+        if (finalizationCounter === 0) {
+          self.empty = false;
+          if (typeof postprocess === "function") {
+            try {
+              postprocess();
+            } catch (e) {
+              console.error("Error in postprocess:", e);
+            }
+          }
+        }
+      };
+
+      // Make the fully initialized content visible
+      // using requestAnimationFrame to ensure this runs just before the next browser paint.
+      // This gives AG Grid's synchronous setup code time to complete.
+      // requestAnimationFrame(() => {
+      templatesToRender.forEach(result => {
+        // Getting the old targetElement and its parent
+        const targetElement = $(`${result.element}_old_temp`);
+        const targetParent = targetElement.parent();
+
+
+        // If this was a refresh, show the new element and clean up the old one
+        const overlay = targetParent.find('> .update-overlay');
+        if (overlay.length) {
+          // This is a REFRESH
+
+          // Making elements visible before cleaning up, as they may
+          // take some time to load. So we make the new elements visible here
+          // for the swap to happen without flickering
+          // (Transparent objects may still look strange/flicker)
+          overlay.css('opacity', 1);
+
+          // Run post-processing functions on elements,
+          // so they are prepared on the background before swapping
+          onFinalizationComplete();
+
+          // Now that the overlay is fully visible and prepared, 
+          // perform the cleanup.
+          setTimeout(() => {
+            // Destroy the OLD grid API that we stored earlier
+            if (oldGridApi && typeof oldGridApi.destroy === 'function') {
+              try {
+                oldGridApi.destroy();
+              } catch(e) {
+                console.error('Error destroying old AG Grid API:', e);
+              }
+            }
+            
+            // Clean up old content from old targetElement
+            targetElement.empty().remove();
+
+            // Clean up overlay/new targetElement
+            overlay.removeClass('update-overlay')
+          }, 500);
+
+        } else {
+          // Initial load of the page
+          onFinalizationComplete();
+        }
+      });
+
       self.empty = false;
-      if (typeof postprocess === "function") postprocess();
     })
     .catch(err => {
       // If a newer applyTemplates run has started, this .catch() block belongs
@@ -2222,6 +2373,13 @@ View.prototype.applyTemplates = function (templates, postprocess) {
       }
       // cleanup and still call postprocess (if applicable) so callers can finalize UI state
       self._templateRequests.length = 0;
+      if (initializers && Array.isArray(initializers)) {
+        initializers.forEach(function_name => {
+          if (typeof window[function_name] === 'function') {
+            window[function_name](self.clicked_page, self.clicked_subpage);
+          }
+        });
+      }
       if (typeof postprocess === "function") postprocess();
     });
 };

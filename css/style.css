@@ -376,6 +376,15 @@ a {
   flex-grow: 1;
 }
 
+.update-overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -99;
+  opacity: 0;
+}
+
 #header h2 img {
   height: 1.7em;
 }
@@ -454,8 +463,15 @@ li > .dropdown-menu {
   left: -1px;
 }
 
+main {
+  display: grid;
+  grid-template-rows: auto 1fr; /* First row auto-sized for tabs, second row takes remaining space */
+}
+
 /* Main content layout */
-#main_content {
+#main_content, #main_content_old_temp {
+  grid-row: 2; /* Second row */
+  grid-column: 1;
   margin-top: 10px;
   padding-top: 0;
   font-size: 0.75rem;
@@ -468,7 +484,8 @@ li > .dropdown-menu {
 
 /* if main contains a #tabs_scroll that comes before #main_content,
    remove the padding from #main_content (no extra top space needed) */
-main:has(> #tabs_scroll ~ #main_content) > #main_content {
+main:has(> #tabs_scroll ~ #main_content) > #main_content,
+main:has(> #tabs_scroll ~ #main_content_old_temp) > #main_content_old_temp {
   margin-top: 0;
 }
 
@@ -505,6 +522,7 @@ table {
   /* IMPORTANT: collapse give problems on top row and the sticky of thead borders doens't work */
   border-collapse: separate;
   border-spacing: 0;
+  background-color: white;
 }
 
 /* Selected row */
@@ -572,7 +590,8 @@ th input:not(:placeholder-shown) {
 }
 
 /* Table on Live view */
-#main_content table#jobs thead th {
+#main_content table#jobs thead th,
+#main_content_old_temp table#jobs thead th {
   top: 0px;
 }
 
@@ -857,14 +876,17 @@ footer.container-fluid {
 
 /* Element specific layout */
 #tabs_scroll {
+  grid-row: 1; /* First row */
   position: sticky;
+  top: 0;
+  z-index: 10;
   /* overflow-x:auto; */
   overflow-y: hidden;
   top: -10px;
   background-color: #fff;
   transform: rotateX(180deg); 
-  padding-right: 15px;
-  padding-left: 15px;
+  margin-right: 15px;
+  margin-left: 15px;
   padding-bottom: 10px; /* This padding is actually at the top, since it si flipped */
 }
 
@@ -942,4 +964,30 @@ footer.container-fluid {
   background-color: var(--fzj-color-blue);
   color: #ffffff;
   font-size: 0.7rem;
+}
+
+
+/* Thin scrollbars for Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.3) white;
+}
+
+/* Custom thin scrollbars for Webkit */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: white;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.5);
 }
