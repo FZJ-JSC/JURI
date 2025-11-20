@@ -19,7 +19,7 @@
     {{else}}
         <li id="{{{section}}}_button" class="nav-item">
             {{#if href}}
-                <a class="nav-link h-100" href="{{{href}}}"> {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>
+                <a class="nav-link h-100" href="{{{replaceDataPlaceholder href}}}"> {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>
             {{else}}
                 <a class="nav-link h-100" onclick="view.selectPage('{{{section}}}'); return false;"> {{#if icon}} <span
                     class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}</a>

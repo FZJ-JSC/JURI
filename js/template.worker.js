@@ -1,6 +1,7 @@
 // Importing necessary scripts for handlebars
 importScripts('ext/handlebars.min.js');
 importScripts('ext/d3.min.js');
+importScripts('functions.js');   // For the helper functions applied using Handlebars on tables
 importScripts('helpers.worker.js');   // For the helper functions applied using Handlebars on tables
 importScripts('helper_functions.js'); // For the helper functions applied using Handlebars on datatables
 
