@@ -139,7 +139,6 @@ label, input {
     var main = document.querySelector( '#main_content' );
     var footer = document.querySelector( 'footer' );
     var footer_footer = document.querySelector( '#footer_footer' ); // Has fixed posision
-    console.log(footer_footer,footer_footer.offsetHeight)
     main.style.height = `${window.innerHeight - header.offsetHeight - footer.offsetHeight - footer_footer.offsetHeight - 10}px`; // 10 from the main_content margin
   }
 

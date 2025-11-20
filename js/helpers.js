@@ -11,6 +11,11 @@
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
 */
 
+Handlebars.registerHelper('replaceDataPlaceholder', function(link) {
+  let result = replaceDataPlaceholder(link,view.url_data);
+  return new Handlebars.SafeString(result);
+});
+
 Handlebars.registerHelper('gen_project_user_link', function(config,project,user) {
 //    console.log("gen_project_user_link: "+config+" "+project+" "+user);
   let result = "";
