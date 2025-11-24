@@ -230,53 +230,9 @@ View.prototype.show = function () {
           // ***********************************
         }
 
-        // To open the page in a new tab correctly, the URL must be built
-        // with all its parts on the link. This part updates the clicked link
-        // with the queries and fragments of the current URL
-        $('#navigation').on('mousedown', 'a.nav-select-page', function(event) {
-          // Get the base part of the URL (everything before the hash)
-          const baseUrl = window.location.href.split('#')[0];
-          
-          // Get the target page section from the data attribute
-          const section = $(this).data('section');
-
-          // Parse the existing hash into a URLSearchParams object for easy manipulation
-          // using window.location.hash.substring(1) to get the string after the '#'
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          
-          // Update the 'page' parameter with the new section name
-          hashParams.set('page', section);
-          
-          // Rebuild the hash string from the modified parameters
-          const newHash = '#' + hashParams.toString();
-          
-          // Instantly update the link's href attribute with the complete URL
-          $(this).attr('href', baseUrl + newHash);
-        });
-
-
-        // When the page is opened in-place (no modifier keys clicked),
-        // the javascript function to selectPage is applied
-        // This solution without using <a onclick=(...)> is necessary
-        // to preserve the option of opening in a new tab using modifier keys
-        $('#navigation').on('click', 'a.nav-select-page', function(event) {
-          if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) {
-            // If a modifier key was used, the browser will open the link built above
-            // in a new tab/window. Nothing to be done here.
-            return;
-          }
-          
-          // Otherwise, this was a normal left-click
-          
-          // Prevent the browser from reloading the page by following the href
-          event.preventDefault();
-          
-          // Get the section and call the selectPage with the given section
-          const section = $(this).data('section');
-          if (section) {
-            view.selectPage(section);
-          }
-        });
+        // Initializing handlers for the links on navbar and tabs
+        // to allow modifier keys
+        self.initGlobalEventHandlers();
 
         // Title from configuration (including eventual logo)
 
@@ -385,6 +341,111 @@ View.prototype.show = function () {
     return;
   });
 }
+
+
+/**
+ * Function to initialize events for modifier keys on navbar and tabs
+ */
+View.prototype.initGlobalEventHandlers = function () {
+  const self = this;
+
+  /**
+   * To open the page in a new tab correctly, the URL must be built
+   * with all its parts on the link. This part updates the clicked link
+   * with the queries and fragments of the current URL
+   * @param {HTMLElement} linkElement - The clicked <a> element.
+   * @param {string} paramToUpdate - The name of the hash parameter to set (e.g., 'page', 'subpage').
+   */
+  const buildDynamicUrl = function(linkElement, paramToUpdate) {
+    const section = $(linkElement).data('section');
+    if (!section) return;
+
+    // Get the base part of the URL (everything before the hash)
+    const baseUrl = window.location.href.split('#')[0];
+    // Parse the existing hash into a URLSearchParams object for easy manipulation
+    // using window.location.hash.substring(1) to get the string after the '#'
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+    // Logic to update the parameters based on the type
+    if (paramToUpdate === 'subpage') {
+      // Special handling for tabs: Append subpage with the chosen separator (e.g., page.subpage)
+      let currentPage = hashParams.get('page') || '';
+      
+      // If the current page already has a subpage (has a separator), strip it off first
+      if (currentPage.includes(self.page_separator)) {
+        currentPage = currentPage.substring(0, currentPage.lastIndexOf(self.page_separator));
+      }
+      
+      // Set the 'page' parameter to "MainPage.SubPage"
+      hashParams.set('page', currentPage + self.page_separator + section);
+      // Remove any explicit 'subpage' parameter to keep the URL clean
+      hashParams.delete('subpage');
+    } else {
+      // Standard handling (Navbar): Directly replace the parameter value
+      hashParams.set(paramToUpdate, section);
+    }
+
+    // Rebuild the hash string from the modified parameters
+    const newHash = '#' + hashParams.toString();
+    // Instantly update the link's href attribute with the complete URL
+    $(linkElement).attr('href', baseUrl + newHash);
+  };
+  
+  /**
+   * When the page is opened in-place (no modifier keys clicked),
+   * the javascript function to selectPage is applied
+   * This solution without using <a onclick=(...)> is necessary
+   * to preserve the option of opening in a new tab using modifier keys
+   * @param {Event} event - The jQuery click event object.
+   * @param {function} getPageInfo - A function that returns the necessary info for selectPage.
+   */
+  const handleAjaxNavigation = function(event, getPageInfo) {
+    // Check for modifier keys or middle-mouse-button click
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) {
+      // If a modifier key was used, the browser will open the link built above
+      // in a new tab/window. Nothing to be done here.
+      return; 
+    }
+
+    // Otherwise, this was a normal left-click
+
+    // Prevent the browser from reloading the page by following the href
+    event.preventDefault();
+    
+    // Get the section and subsection and call the selectPage with the respective info
+    const pageInfo = getPageInfo(event.currentTarget);
+    if (pageInfo) {
+      self.selectPage(pageInfo);
+    }
+  };
+
+  // ---- Adding Navigation Bar Handlers ----
+  $('#navigation').on('mousedown', 'a.nav-select-page', function() {
+    buildDynamicUrl(this, 'page'); // The navbar updates the 'page' hash parameter
+  });
+  
+  $('#navigation').on('click', 'a.nav-select-page', function(event) {
+    handleAjaxNavigation(event, (element) => {
+      // For the navbar, selectPage just needs the section name
+      return $(element).data('section'); 
+    });
+  });
+
+  // ---- Adding Tabs Handlers ----
+  const staticParent = 'body';
+
+  $(staticParent).on('mousedown', '#tabs a', function() {
+    buildDynamicUrl(this, 'subpage'); // Tabs update the 'subpage' hash parameter
+  });
+  
+  $(staticParent).on('click', '#tabs a', function(event) {
+    handleAjaxNavigation(event, (element) => {
+      // For tabs, selectPage needs both the main page and the subpage (section)
+      const section = $(element).data('section');
+      return [self.clicked_page, section];
+    });
+  });
+};
 
 /**
  * Reads the status of the system when a status file is given
@@ -679,7 +740,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     $("nav li").removeClass("active");
     $("#" + activeId).addClass("active");
 
-    // Check if tabs are to be selected:
+    // Check if tabs are to be added
     let tabs = false;
     if (page_data.tabs?.length) {
       // Storing page tabs to use later when creating the tabs (page_data is overwritten below)
@@ -689,7 +750,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       // If the page was changed (or opened the first time),
       // tabs need to be created
       if (pageChanged) {
-        self.addTabs(page_tabs,page,subpage);
+        self.addTabs(page_tabs,page);
       }
       tabs = true;
     } else if ((index = page_data.functions.indexOf('init_dates')) > -1) {
@@ -699,6 +760,9 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       self.initDates(page,subpage)
       tabs = true;
     }
+    // Selecting tab, if that is the case
+    self.setActiveTab(subpage);
+
     // Updating loading screen
     self.loading(true,tabs)
 
@@ -807,49 +871,64 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
 /**
  * Creates tabs on content page (main_content)
  */
-View.prototype.addTabs = function (page_tabs, page, subpage) {
-  let self = this;
-
+View.prototype.addTabs = function (page_tabs, page) {
+  // Failsafe to not create tabs in case they are already there
+  if ($("#tabs").length > 0) {
+    return;
+  }
+  
+  // Create the container
   let tabs = $("<div id='tabs'></div>");
-  let foundActive = false;
 
-  // Preparing tabs
+  // Prepare the links
   page_tabs.forEach(tab => {
-    let link = $("<a href='#'></a>").text(tab.name);
-
-    if (tab.section === subpage) {
-      link.addClass("active");
-      foundActive = true;
-    }
-
-    // Attach click handler with closure capturing section
-    link.on("click", function (e) {
-      e.preventDefault();
-
-      // Switch active class
-      $(this).siblings().removeClass("active");
-      $(this).addClass("active");
-
-      // Call the class method with [selected_page, section]
-      self.selectPage([page,tab.section]);
-    });
+    // Construct the href for opening the links with modifier keys
+    // It needs the 'data-section' so the event listener knows which subpage to load.
+    let link = $(`<a href="#page=${page}&subpage=${tab.section}"></a>`)
+      .attr("data-section", tab.section)
+      .text(tab.name);
 
     tabs.append(link);
   });
 
-  // If no tab was marked active, activate the first one
-  if (!foundActive && tabs.children().length > 0) {
-    tabs.children().first().addClass("active");
-    self.initial_data.page = `${page}${self.page_separator}${page_tabs[0].section}`
-    self.setHash();
-  }
-
   let tabs_scroll = $("<div id='tabs_scroll'></div>").append(tabs);
 
-  // Add tabs before the main content
+  // Add tabs to the DOM before the main content
   let main = $("#main_content");
   tabs_scroll.insertBefore(main);
 }
+
+
+/**
+ * Set the respective tab as active
+ * @param {string} subpage The section name of the tab to activate
+ */
+View.prototype.setActiveTab = function (subpage) {
+  const tabsContainer = $('#tabs');
+  
+  // If there are no tabs, nothing to do
+  if (!tabsContainer.length) return;
+
+  // Otherwise, remove 'active' class from whatever is currently active
+  tabsContainer.find('a.active').removeClass('active');
+
+  // Try to find the specific tab requested
+  let targetTab = null;
+  if (subpage) {
+    targetTab = tabsContainer.find(`a[data-section="${subpage}"]`);
+  }
+
+  // If no subpage was given ot if the given subpage doesn't exist in the list,
+  // select the first tab available.
+  if (!targetTab || !targetTab.length) {
+    targetTab = tabsContainer.find('a').first();
+  }
+
+  // Otherise, select given subpage
+  if (targetTab.length) {
+    targetTab.addClass('active');
+  }
+};
 
 /**
  * Updates the status info text on the footer_footer bar

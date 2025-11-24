@@ -41,7 +41,8 @@ View.prototype.initDates = function(page,subpage) {
   }
 
   // create tabs using existing addTabs (uses this.selected_page as page)
-  self.addTabs(page_tabs, page, String(a));
+  self.addTabs(page_tabs, page);
+  self.setActiveTab(subpage);
 
   // Insert the "Jobs ended on:" label to the left of the tabs.
   $("#tabs").prepend($("<span class='tabs-label'>").text("Jobs ended on:"));
