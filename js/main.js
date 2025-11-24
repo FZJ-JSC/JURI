@@ -230,6 +230,54 @@ View.prototype.show = function () {
           // ***********************************
         }
 
+        // To open the page in a new tab correctly, the URL must be built
+        // with all its parts on the link. This part updates the clicked link
+        // with the queries and fragments of the current URL
+        $('#navigation').on('mousedown', 'a.nav-select-page', function(event) {
+          // Get the base part of the URL (everything before the hash)
+          const baseUrl = window.location.href.split('#')[0];
+          
+          // Get the target page section from the data attribute
+          const section = $(this).data('section');
+
+          // Parse the existing hash into a URLSearchParams object for easy manipulation
+          // using window.location.hash.substring(1) to get the string after the '#'
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          
+          // Update the 'page' parameter with the new section name
+          hashParams.set('page', section);
+          
+          // Rebuild the hash string from the modified parameters
+          const newHash = '#' + hashParams.toString();
+          
+          // Instantly update the link's href attribute with the complete URL
+          $(this).attr('href', baseUrl + newHash);
+        });
+
+
+        // When the page is opened in-place (no modifier keys clicked),
+        // the javascript function to selectPage is applied
+        // This solution without using <a onclick=(...)> is necessary
+        // to preserve the option of opening in a new tab using modifier keys
+        $('#navigation').on('click', 'a.nav-select-page', function(event) {
+          if (event.ctrlKey || event.metaKey || event.shiftKey || event.button === 1) {
+            // If a modifier key was used, the browser will open the link built above
+            // in a new tab/window. Nothing to be done here.
+            return;
+          }
+          
+          // Otherwise, this was a normal left-click
+          
+          // Prevent the browser from reloading the page by following the href
+          event.preventDefault();
+          
+          // Get the section and call the selectPage with the given section
+          const section = $(this).data('section');
+          if (section) {
+            view.selectPage(section);
+          }
+        });
+
         // Title from configuration (including eventual logo)
 
         // System name or list
@@ -632,7 +680,6 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     $("#" + activeId).addClass("active");
 
     // Check if tabs are to be selected:
-    let index; 
     let tabs = false;
     if (page_data.tabs?.length) {
       // Storing page tabs to use later when creating the tabs (page_data is overwritten below)
