@@ -29,7 +29,7 @@
       <li id="{{{section}}}_button" class="nav-item">
         {{#if href}}
           {{!-- An external href is provided. Use it directly. This link did not have an ID originally. --}}
-          <a class="nav-link h-100" href="{{{href}}}">
+          <a class="nav-link h-100" href="{{{replaceDataPlaceholder href}}}">
             {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
           </a>
         {{else}}
