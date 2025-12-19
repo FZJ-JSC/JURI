@@ -1,43 +1,45 @@
-<ul id="navigation" class="navbar-nav mr-auto">
+<div class="nav-scroller" id="nav_scroller">
+  <ul id="navigation" class="navbar-nav mr-auto">
     {{#each pages}}
     {{#if pages}}
-        {{!-- This is a dropdown menu --}}
-        <li id="{{{section}}}_dropdown_button" class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
-            </a>
-            <div class="dropdown-menu" aria-labelledby="{{{section}}}_dropdown_button">
-                {{#each pages}}
-                    {{#if href}}
-                        {{!-- CASE 1: An external href is provided. Use it directly and include the original ID. --}}
-                        <a class="dropdown-item" href="{{{href}}}" id="{{{section}}}_dropdown_item">
-                            {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
-                        </a>
-                    {{else}}
-                        {{!-- CASE 2: No external href. This is an internal, JS-driven page. --}}
-                        {{!-- We add the class, data-section attribute, and the original ID. --}}
-                        <a class="dropdown-item nav-select-page" href="?page={{{section}}}" data-section="{{{section}}}" id="{{{section}}}_dropdown_item">
-                            {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
-                        </a>
-                    {{/if}}
-                {{/each}}
-            </div>
-        </li>
-    {{else}}
-        {{!-- This is a single navigation item --}}
-        <li id="{{{section}}}_button" class="nav-item">
+      {{!-- This is a dropdown menu --}}
+      <li id="{{{section}}}_dropdown_button" class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" data-toggle="dropdown" data-boundary="viewport" aria-haspopup="true" aria-expanded="false">
+          {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
+        </a>
+        <div class="dropdown-menu" aria-labelledby="{{{section}}}_dropdown_button">
+          {{#each pages}}
             {{#if href}}
-                {{!-- An external href is provided. Use it directly. This link did not have an ID originally. --}}
-                <a class="nav-link h-100" href="{{{href}}}">
-                    {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
-                </a>
+              {{!-- CASE 1: An external href is provided. Use it directly and include the original ID. --}}
+              <a class="dropdown-item" href="{{{href}}}" id="{{{section}}}_dropdown_item">
+                {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
+              </a>
             {{else}}
-                {{!-- No external href. This is an internal, JS-driven page. This link did not have an ID originally. --}}
-                <a class="nav-link h-100 nav-select-page" href="?page={{{section}}}" data-section="{{{section}}}">
-                    {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
-                </a>
+              {{!-- CASE 2: No external href. This is an internal, JS-driven page. --}}
+              {{!-- We add the class, data-section attribute, and the original ID. --}}
+              <a class="dropdown-item nav-select-page" href="?page={{{section}}}" data-section="{{{section}}}" id="{{{section}}}_dropdown_item">
+                {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
+              </a>
             {{/if}}
-        </li>
+          {{/each}}
+        </div>
+      </li>
+    {{else}}
+      {{!-- This is a single navigation item --}}
+      <li id="{{{section}}}_button" class="nav-item">
+        {{#if href}}
+          {{!-- An external href is provided. Use it directly. This link did not have an ID originally. --}}
+          <a class="nav-link h-100" href="{{{href}}}">
+            {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
+          </a>
+        {{else}}
+          {{!-- No external href. This is an internal, JS-driven page. This link did not have an ID originally. --}}
+          <a class="nav-link h-100 nav-select-page" href="?page={{{section}}}" data-section="{{{section}}}">
+            {{#if icon}} <span class="fa fa-{{{icon}}}"></span> {{/if}} {{{name}}}
+          </a>
+        {{/if}}
+      </li>
     {{/if}}
     {{/each}}
-</ul>
+  </ul>
+</div>

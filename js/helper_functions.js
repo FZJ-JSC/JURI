@@ -53,7 +53,21 @@ function hhmm_short(number) {
 
 
 function cell_color(params,column) {
-  return { 'color': params.data[column], 'font-weight': 'bold' };
+  let color_obj;
+  if (column) {
+    color_obj = { 'color': params.data[column], 'font-weight': 'bold' }
+  } else {
+    if ((params.value == "SUCCESSFUL")||(params.value == "COMPLETED")) {
+      color_obj = { 'color': '#008000', 'font-weight': 'bold' }
+    } else if (params.value == "FAILED") {
+      color_obj = { 'color': 'red', 'font-weight': 'bold' }
+    } else if (params.value == "RUNNING") {
+      color_obj = { 'color': 'blue', 'font-weight': 'bold' }
+    } else {
+      color_obj = { 'color': '#daa621', 'font-weight': 'bold' }
+    }
+  }
+  return color_obj;
 }
   
   

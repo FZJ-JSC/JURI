@@ -767,10 +767,14 @@ PlotlyGraph.prototype.plot = function (params) {
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
-              return { min: null, y: +val[0] * factor, max: null };
+              // If empty, return null. Otherwise, convert to number (+val[0]) and multiply.
+              // Here we check for empty string explicitly, otherwise it's transformed to 0 and plotly
+              // will put a point there - and most of the times (always?) we don't want to show this artificial point
+              return { min: null, y: val[0] === "" ? null : +val[0] * factor, max: null };
             }
           })
           trace.y = values.map(function (y) { return y.y });
+
           self.minmax = (values.length > 0 && typeof values[0].min === 'number') ? true : false; // if first value of min is a number, all the others (and also max values) should be
           if (self.minmax) {
             trace.min = values.map(function (y) { return y.min });
@@ -1256,9 +1260,9 @@ PlotlyGraph.prototype.plot = function (params) {
     }
   }
 
-  /**************************************
-   **         CREATING THE PLOT        **
-   **************************************/
+  /****************************************************************************
+   **                            CREATING THE PLOT                           **
+   ****************************************************************************/
   if (params) layout.datarevision = params.JobID + "?_=" + new Date().getTime()
   Plotly.react(self.id, traces, layout, self.config).then(_ => {
 

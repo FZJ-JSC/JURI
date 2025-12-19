@@ -116,19 +116,6 @@ View.prototype.show = function () {
     // Restarting deferrer as the current ones are done
     self.deferrer.length = 0;
 
-    // info_str to be written on the "footer_infoline" (above the bottom graphs, when they are present)
-    // (such as project / user name from URL)
-    let info_str = "";
-
-    for (let key in self.url_data) {
-      if (key != "config") {
-        // Escape expressions to be safe to add to HTML
-        info_str += Handlebars.escapeExpression(key.capitalize()) + ": <strong>" + Handlebars.escapeExpression(self.url_data[key]) + "</strong>; ";
-      }
-    }
-    // Remove last 2 characters "; "
-    $("#view_data_info").html(info_str.substring(0, info_str.length - 2));
-
     // Processing configuration
     if (self.navdata.pages) {
       self.navdata.pages.forEach(function (elem) {
@@ -229,6 +216,9 @@ View.prototype.show = function () {
           }
           // ***********************************
         }
+
+        // Initializing scrollbars for navbar:
+        self.initScrollableMenu()
 
         // Initializing handlers for the links on navbar and tabs
         // to allow modifier keys
@@ -446,6 +436,78 @@ View.prototype.initGlobalEventHandlers = function () {
     });
   });
 };
+
+/**
+ * Initialize scroll bar on navbar
+ */
+View.prototype.initScrollableMenu = function() {
+  const wrapper = $('#title_wrapper');
+  const scroller = $('#nav_scroller');
+  const list = $('#navigation');
+
+  if (!wrapper.length || !scroller.length) return;
+
+  // 1. Inject Arrows
+  if (wrapper.find('.scroll-arrow').length === 0) {
+    const leftArrow = $('<button class="scroll-arrow left"><span class="fa fa-chevron-left"></span></button>');
+    const rightArrow = $('<button class="scroll-arrow right"><span class="fa fa-chevron-right"></span></button>');
+    
+    wrapper.prepend(leftArrow);
+    wrapper.append(rightArrow);
+
+    const scrollAmount = 200;
+    leftArrow.on('click', function(e) {
+      e.preventDefault();
+      scroller[0].scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+    });
+    rightArrow.on('click', function(e) {
+      e.preventDefault();
+      scroller[0].scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    });
+  }
+
+  // 2. Inject Sentinels
+  // Note: We add them *inside* the UL so they flow with the items
+  if (list.find('.scroll-sentinel').length === 0) {
+    list.prepend('<li class="scroll-sentinel sentinel-start"></li>');
+    list.append('<li class="scroll-sentinel sentinel-end"></li>');
+  }
+
+  // 3. Observer
+  const observerOptions = {
+    root: scroller[0],
+    threshold: 0.1 // Trigger as soon as even 1 pixel is visible
+  };
+
+  const observer = new IntersectionObserver(function(entries) {
+    entries.forEach(entry => {
+      if (entry.target.classList.contains('sentinel-start')) {
+        // If START is visible -> Hide Left Arrow
+        if (entry.isIntersecting) {
+          wrapper.removeClass('can-scroll-left');
+        } else {
+          wrapper.addClass('can-scroll-left');
+        }
+      }
+      
+      if (entry.target.classList.contains('sentinel-end')) {
+        // If END is visible -> Hide Right Arrow
+        if (entry.isIntersecting) {
+          wrapper.removeClass('can-scroll-right');
+        } else {
+          wrapper.addClass('can-scroll-right');
+        }
+      }
+    });
+  }, observerOptions);
+
+  const startSentinel = list.find('.sentinel-start')[0];
+  const endSentinel = list.find('.sentinel-end')[0];
+
+  if (startSentinel) observer.observe(startSentinel);
+  if (endSentinel) observer.observe(endSentinel);
+};
+
 
 /**
  * Reads the status of the system when a status file is given
@@ -813,6 +875,9 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
         }
       }
 
+      // Update text in footer_infoline with the url data and page data info
+      self.update_view_data_info();
+
       // Set title overlay/tooltip handling
       self.apply_tooltip($('[title]'));
       // Show menus on mouse hover
@@ -865,6 +930,67 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
   self.update_status_info()
 
   return;
+}
+
+
+/**
+ * Update the text in #view_data_info with url_data and page_data, when they exist
+ */
+View.prototype.update_view_data_info = function() {
+  let self = this;
+  // info_str to be written on the "footer_infoline" (above the bottom graphs, when they are present)
+  // (such as project / user name from URL)
+  // This is done here because the text in view_data_info may be updated with 
+  // the page.data.info contents, so the text must be rewritten for every page
+  // to make sure it is correct
+  let info_str = "";
+
+  // Process data from the URL stored in self.url_data 
+  for (let key in self.url_data) {
+    if (key != "config") {
+      info_str += Handlebars.escapeExpression(key.capitalize()) + ": <strong>" + Handlebars.escapeExpression(self.url_data[key]) + "</strong>; ";
+    }
+  }
+
+  // Now process self.page_data.info, which may contain per-page info
+  if (self.page_data.info) {
+    let infoData = self.page_data.info;
+
+    // Helper function to append the info
+    const appendInfo = (k, v) => {
+      info_str += Handlebars.escapeExpression(k) + ": <strong>" + Handlebars.escapeExpression(v) + "</strong>; ";
+    };
+
+    if (Array.isArray(infoData)) {
+      // Case: info is a list like [{Benchmark: "Name"}]
+      infoData.forEach(item => {
+        if (typeof item === 'object') {
+          for (let k in item) {
+            appendInfo(k, item[k]);
+          }
+        } else {
+          // Case: info is a list of strings ["Benchmark: Name"]
+          info_str += Handlebars.escapeExpression(item) + "; ";
+        }
+      });
+    } else if (typeof infoData === 'object') {
+      // Case: info is a single object {Benchmark: "Name"}
+      for (let k in infoData) {
+        appendInfo(k, infoData[k]);
+      }
+    } else {
+      // Case: info is just a string "Benchmark: Name"
+      info_str += Handlebars.escapeExpression(infoData) + "; ";
+    }
+  }
+
+  // Cleanup trailing "; " and update DOM
+  // We check if the string has length to avoid errors on empty strings
+  if (info_str.length > 2) {
+    info_str = info_str.substring(0, info_str.length - 2);
+  }
+
+  $("#view_data_info").html(info_str);
 }
 
 

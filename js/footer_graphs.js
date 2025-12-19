@@ -267,11 +267,12 @@ View.prototype.FooterGraph.prototype.apply_data = function (params) {
           };
         };
       };
+      let id = "page_" + page.name.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '');
       if (match_pattern) {  // If the patterns are matched
-        $("#page_" + page.name.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '')).show(); // Show the page
+        $(`[id="${id}"]`).show(); // Show the page
         return ;
       } else {
-        $("#page_" + page.name.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '')).hide();
+        $(`[id="${id}"]`).hide();
         if (self.current_page == page.name) { // If the selected page is the hidden one
           return self.select_page($("#graph_selection ul li").first().text()); // Select first available page by default
         };
@@ -304,7 +305,8 @@ View.prototype.FooterGraph.prototype.apply_config = function () {
 View.prototype.FooterGraph.prototype.select_page = function (page) {
   let self = this;
   $("#graph_selection ul li").removeClass("active");
-  $("#page_" + page.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '')).addClass("active");
+  let id = "page_" + page.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '');
+  $(`[id="${id}"]`).addClass("active");
   $(self).parent().addClass("active");
   self.current_page = page;
   self.clear();
