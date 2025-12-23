@@ -721,7 +721,10 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
   let page_data = {};
 
   // Updating map between jobid to day (can be used to check if job exists)
-  self.mapjobid_to_day = await update_mapjobid_to_day();
+  // (Only done if search_field is used)
+  if ( self.navdata.search_field && self.navdata.search_field.length > 0) {
+    self.mapjobid_to_day = await update_mapjobid_to_day();
+  }
 
   if (Array.isArray(page)) {
     /* Adding the possibility of changing to a subpage when selectPage is called */
