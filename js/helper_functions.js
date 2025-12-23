@@ -201,10 +201,6 @@ function gen_mentor_link(params,config) {
 function gen_benchmark_link(params) {
   //    console.log("gen_benchmark_link: "+config+" "+params.value);
   let result = "";
-  if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
-    result = `<a href="javascript:void(0);" onclick="view.selectPage('cb_${params.value}'); return false;">${params.value}</a>`;
-  } else {
-    result = params.value;
-  }
+  result = `<a href="javascript:void(0);" onclick="view.selectPage('cb_${params.value}'); return false;">${params.value}</a>`;
   return result;
 };
