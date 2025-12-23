@@ -150,16 +150,21 @@ function search_jobs(search) {
 // and returns it in an object with jobid as key and "day" as value
 function update_mapjobid_to_day() {
   // Getting map jobid to day
-  let mapjobid_to_day_file = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "_queued/mapjobid_to_day.csv")
+  let mapjobid_to_day_file = replaceDataPlaceholder("data/" + ((view.navdata.data.demo || view.url_data.demo) ? "DEMO/" : "") + "_queued/mapjobid_to_day.csv");
+
   let mapjobid_to_day = d3.csv(mapjobid_to_day_file)
-  .then((data) => {
-    let obj = {};
-    data.forEach(function (d) {
-      obj[d.jobid] = d.day;
-      return;
+    .then((data) => {
+      let obj = {};
+      data.forEach(function(d) {
+        obj[d.jobid] = d.day;
+      });
+      return obj;
+    })
+    .catch((error) => {
+      // If the file is missing (404) or unreadable
+      console.warn("Warning: Could not load mapjobid_to_day file (returning null):", mapjobid_to_day_file);
+      return null;
     });
-    return obj;
-  }, () => { console.log("Error reading ", mapjobid_to_day_file); return; });
 
   return mapjobid_to_day;
 }
