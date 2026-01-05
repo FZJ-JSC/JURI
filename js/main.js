@@ -956,7 +956,7 @@ View.prototype.update_view_data_info = function() {
   }
 
   // Now process self.page_data.info, which may contain per-page info
-  if (self.page_data.info) {
+  if ((self.page_data)&&(self.page_data.info)) {
     let infoData = self.page_data.info;
 
     // Helper function to append the info
