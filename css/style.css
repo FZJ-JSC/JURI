@@ -41,7 +41,7 @@ a {
   flex-wrap: nowrap !important; /* Never wrap to next line */
   align-items: center;
   justify-content: space-between;
-  overflow: hidden; /* Prevent page-wide scroll */
+  overflow: visible !important;
   position: relative;
   border: none;
   background-color: var(--fzj-color-blue);
@@ -67,6 +67,8 @@ a {
   position: relative;    /* Context for absolute arrows */
   display: flex;
   align-items: center;
+  height: 100%;       /* Match parent height */
+  max-height: 100%;   /* Stop it from growing larger than parent */
 }
 
 #title {
