@@ -126,19 +126,21 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
 }
 
 
-/* Add mouse drag to resize footer */
-/* Adapted from: https://stackoverflow.com/a/53220241/3142385 */
 View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
   let self = this;
+  
+  // Initialize footer height
   if (view.footersize) {
     $("footer").height(view.footersize);
   } else {
-    // Default height for footer
     $("footer").height(280);
   }
 
-  let drag = $('<div>').attr('id','dragger');
-  $('#footer_infoline').prepend(drag)
+  // Create the dragger element
+  let drag = $('<div>').attr('id', 'dragger');
+  $('#footer_infoline').prepend(drag);
+  
+  // Add the SVG Icon
   drag.append('            <svg version="1.1" id="dragger_grip" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 512 512" xml:space="preserve">\
   <g>\
   <path d="M0,170.67c0.02,31.43,25.46,56.87,56.89,56.89c31.43-0.02,56.87-25.46,56.89-56.89c-0.02-31.43-25.46-56.87-56.89-56.89\
@@ -163,49 +165,102 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
       z"/>\
       </g>\
       </svg>');
+  
   drag.height($("#footer_infoline").outerHeight());
   const BORDER_SIZE = drag.height();
 
   let m_pos;
-  function resize_footer(e){
+
+  // Helper: Get Y coordinate from Mouse OR Touch event
+  function getClientY(e) {
+    if (e.changedTouches) {
+      return e.changedTouches[0].clientY; // For touch events
+    }
+    return e.clientY; // For mouse events
+  }
+
+  function resize_footer(e) {
+    // Prevent scrolling on mobile while dragging
+    if (e.cancelable) e.preventDefault(); 
+
+    const currentY = getClientY(e);
     const footer = $("footer");
-    const dy = m_pos - e.y;
-    m_pos = e.y;
+    const dy = m_pos - currentY;
+    
+    m_pos = currentY;
     footer.height(footer.height() + dy);
-    if (footer.height() < $("#footer_footer").height()+$("#footer_infoline").height()+105) {
+
+    // Minimum height calculation
+    if (footer.height() < $("#footer_footer").height() + $("#footer_infoline").height() + 105) {
       $("#footer_content").hide();
     } else {
       $("#footer_content").show();
     }
-    self.resize_graph()
-    return;
+    self.resize_graph();
   }
-  function on_mouse_up() {
+
+  function stop_drag() {
+    // 1. Clean up Mouse Listeners
     document.removeEventListener("mousemove", resize_footer, false);
-    document.removeEventListener("mouseup", on_mouse_up, false);
+    document.removeEventListener("mouseup", stop_drag, false);
+    
+    // 2. Clean up Touch Listeners
+    document.removeEventListener("touchmove", resize_footer, false);
+    document.removeEventListener("touchend", stop_drag, false);
+    document.removeEventListener("touchcancel", stop_drag, false);
+
+    // 3. Clean up Window focus listener (Fixes the "Stuck" issue)
+    window.removeEventListener("blur", stop_drag, false);
+
     const footer = $("footer");
-    // If footer is too small, hide it
-    if (footer.height() < $("#footer_footer").height()+$("#footer_infoline").height()+105) {
-      footer.height($("#footer_footer").height()+$("#footer_infoline").height());
+    // If footer is too small, snap to minimum
+    if (footer.height() < $("#footer_footer").height() + $("#footer_infoline").height() + 105) {
+      footer.height($("#footer_footer").height() + $("#footer_infoline").height());
       $("#footer_content").hide();
-      // Fixing table size
-      self.resize_graph()
+      self.resize_graph();
     }
     view.footersize = footer.height();
-    return;
   }
-  drag.on('mousedown', function(e){
-    e.preventDefault() // This is added to avoid selecting text or scrolling the table while dragging
-    if(e.offsetY < BORDER_SIZE) {
-      document.addEventListener("mouseup", on_mouse_up, false);
+
+  // Combined Start Drag Handler
+  function start_drag(e) {
+    // We only care if clicked within the border size area
+    let currentY = getClientY(e);
+    let offsetY;
     
-      m_pos = e.y;
-      document.addEventListener("mousemove", resize_footer, false);
+    // OffsetY calculation is different for Touch vs Mouse
+    if (e.type === 'touchstart') {
+        let rect = e.target.getBoundingClientRect();
+        offsetY = currentY - rect.top;
+    } else {
+        offsetY = e.offsetY;
     }
-    return;
-  });
+
+    if (offsetY < BORDER_SIZE) {
+      // Important: preventDefault avoids text selection on desktop and scrolling on mobile
+      if(e.cancelable) e.preventDefault(); 
+
+      m_pos = currentY;
+
+      // Add Mouse Listeners
+      document.addEventListener("mousemove", resize_footer, false);
+      document.addEventListener("mouseup", stop_drag, false);
+      
+      // Add Touch Listeners ({passive: false} is required for preventDefault to work on Chrome/iOS)
+      document.addEventListener("touchmove", resize_footer, { passive: false });
+      document.addEventListener("touchend", stop_drag, false);
+      document.addEventListener("touchcancel", stop_drag, false);
+
+      // Add Blur Listener: Failsafe if user Alt-Tabs or leaves window
+      window.addEventListener("blur", stop_drag, false);
+    }
+  }
+
+  // Bind to both Mouse and Touch start events
+  drag.on('mousedown touchstart', start_drag);
+
   return;
-}
+};
 
 
 /* Function to apply x-range relayout to all the elements to sync graphs */

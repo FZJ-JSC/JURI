@@ -447,7 +447,7 @@ View.prototype.initScrollableMenu = function() {
 
   if (!wrapper.length || !scroller.length) return;
 
-  // 1. Inject Arrows
+  // Inject Arrows
   if (wrapper.find('.scroll-arrow').length === 0) {
     const leftArrow = $('<button class="scroll-arrow left"><span class="fa fa-chevron-left"></span></button>');
     const rightArrow = $('<button class="scroll-arrow right"><span class="fa fa-chevron-right"></span></button>');
@@ -466,14 +466,14 @@ View.prototype.initScrollableMenu = function() {
     });
   }
 
-  // 2. Inject Sentinels
+  // Inject Sentinels
   // Note: We add them *inside* the UL so they flow with the items
   if (list.find('.scroll-sentinel').length === 0) {
     list.prepend('<li class="scroll-sentinel sentinel-start"></li>');
     list.append('<li class="scroll-sentinel sentinel-end"></li>');
   }
 
-  // 3. Observer
+  // Observer
   const observerOptions = {
     root: scroller[0],
     threshold: 0.1 // Trigger as soon as even 1 pixel is visible
@@ -506,6 +506,41 @@ View.prototype.initScrollableMenu = function() {
 
   if (startSentinel) observer.observe(startSentinel);
   if (endSentinel) observer.observe(endSentinel);
+
+  // Fix Dropdown Positioning
+  // Since CSS forces position: fixed (to escape overflow clipping), we must
+  // manually calculate coordinates relative to the viewport.
+  // We use 'shown.bs.dropdown' which fires after Bootstrap tries to position it.
+  wrapper.on('shown.bs.dropdown', function (e) {
+    const dropdownMenu = $(e.target).find('.dropdown-menu');
+    const button = $(e.relatedTarget); // The clicked toggle link
+
+    // Get the button's exact position on screen
+    const rect = button[0].getBoundingClientRect();
+
+    // Force the menu to align with the button
+    dropdownMenu.css({
+      top: rect.bottom + 'px', // Just below the button
+      left: rect.left + 'px',  // Aligned with left edge
+      right: 'auto',
+      transform: 'none'        // Disable Popper.js transforms to avoid conflicts
+    });
+  });
+
+  // Close dropdowns on scroll
+  // Required because fixed menus won't move with the scrolling content
+  scroller.on('scroll', function() {
+    // If a dropdown is currently open (has class 'show'), close it.
+    const openMenus = scroller.find('.dropdown-menu.show');
+    if (openMenus.length > 0) {
+      // Trigger the click on the toggle to close it gracefully via Bootstrap's API
+      openMenus.parent().find('.dropdown-toggle').dropdown('toggle');
+      
+      // Fallback: force remove the class if the above doesn't catch it
+      openMenus.removeClass('show');
+      openMenus.parent().removeClass('show');
+    }
+  });
 };
 
 

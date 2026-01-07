@@ -23,6 +23,7 @@ function PlotlyGraph(graph_data) {
   this.mousePressed = false; // Stores the state of the primary mouse button
   /* Default values */
   this.GRIDLINES = 4;
+  this.WEBGL_THRESHOLD = 5000; // Above this number of points, use scattergl instead of scatter
   this.layout = {
     modebar: {
       bgcolor: 'rgba(0,0,0,0)',
@@ -293,7 +294,13 @@ function checkPattern(object,params) {
   return match_pattern
 }
 
-/* (Re-)draw the graph */
+/**
+ * Main rendering function for the PlotlyGraph class.
+ * This method processes raw data into Plotly traces, manages different plot types
+ * (Heatmap, Bar, Scatter), calculates axis ranges, initializes slider animations,
+ * and attaches high-performance event listeners for interactivity.
+ * @param {Object} params - Contextual parameters used for data filtering and annotation substitution.
+ */
 PlotlyGraph.prototype.plot = function (params) {
   let self = this;
   // Getting div where plot is going to be added
@@ -318,6 +325,7 @@ PlotlyGraph.prototype.plot = function (params) {
   let numsteps;
   let xmin;
   let xmax;
+  let yaxis2 = false;
   // ymin and ymax must be a hash as there may be two y axis
   let ymin = {};
   let ymax = {};
@@ -325,6 +333,7 @@ PlotlyGraph.prototype.plot = function (params) {
     /* Check if there are annotations to be filled (keywords between #) */
     let matches = {}
     let new_annotation = {}
+    let backgroundTraces = []; // Temp storage for min/max filled areas
     if (layout.annotations) {
 
       layout.annotations = layout.annotations.filter(annotation => checkPattern(annotation,params));
@@ -390,16 +399,16 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Getting x values and testing if it is 'date' or not (in which case, it's considered Int)
           if (trace_data.xcol == 'date'){
-            trace.x = data.map(function (x)  { return new Date(Date.parse(x[trace_data.xcol])) });
+            trace.x = data.map(function (x)  { return self.parseToTimestamp(x[trace_data.xcol]) });
+            layout.xaxis.type = 'date';
           } else {
             trace.x = data.map(function (x)  { return parseInt(x[trace_data.xcol]) }); 
             layout.xaxis.tickmode =  "array";
             layout.xaxis.tickvals =  Array.from(new Set(trace.x)).sort(function(a, b) { return parseInt(a) - parseInt(b); });
           }
           // Removing duplicates and sorting
-          trace.x = Object.values(
-            trace.x.reduce((a, c) => (a[c.toString()] = c, a), {})
-          ).sort(function(a, b) { return a - b; });
+          trace.x = Array.from(new Set(trace.x)).sort(function(a, b) { return a - b; });
+          
           // Getting values of y as Integers, removing duplicates (with a Set), transforming back to array and sorting as integers
           trace.y = Array.from(new Set(data.map(function (y) { return y[trace_data.ycol] }))).sort(function(a, b) { return parseInt(a) - parseInt(b); });
           
@@ -429,7 +438,8 @@ PlotlyGraph.prototype.plot = function (params) {
           if ( trace_data.xcol != 'date' && (self.graph_data.xcol && self.graph_data.xcol != 'date') ) {
             trace.x = data.map(function (x)  { return parseFloat(x[trace_data.xcol??self.graph_data.xcol]) });
           } else {
-            trace.x = data.map(function (x)  { return new Date(Date.parse(x['date'])) });
+            trace.x = data.map(function (x)  { return self.parseToTimestamp(x['date']) });
+            layout.xaxis.type = 'date';
           }
 
           // Parsing values and min/max when present
@@ -464,7 +474,8 @@ PlotlyGraph.prototype.plot = function (params) {
             }
           }
           if (trace_data.basecol) {
-            trace.base = data.map(function (d)  { return parseFloat(d[trace_data.basecol]) });
+            trace.base = data.map(function (d)  { return self.parseToTimestamp(d[trace_data.basecol]) });
+            layout.xaxis.type = 'date';
           }
           trace.orientation = trace_data.orientation ?? 'v';
           trace.marker = trace_data.marker ?? {};
@@ -653,7 +664,8 @@ PlotlyGraph.prototype.plot = function (params) {
                   if ((layout.xaxis.type !== 'date')&&( self.graph_data.xcol && self.graph_data.xcol != 'date' )) {
                     steptrace.x.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
                   } else {
-                    steptrace.x.push(self.parseToDate(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
+                    steptrace.x.push(self.parseToTimestamp(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
+                    layout.xaxis.type = 'date';
                   }
                   steptrace.y.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][trace_data.ycol]));
                   steptrace.color.push(i===0?grouped_data[grouped_data_keys[index - i]][jobid]['color']:'gray');
@@ -758,8 +770,8 @@ PlotlyGraph.prototype.plot = function (params) {
           if ((layout.xaxis.type !== 'date')&&( self.graph_data.xcol && self.graph_data.xcol != 'date' )) {
             trace.x = data.map(function (x)  { return parseFloat(x[self.graph_data.xcol]) });
           } else {
-            trace.x = data.map(function (x)  { return self.parseToDate(x[self.graph_data.xcol]) });
-            // trace.x = data.map(function (x)  { return new Date(Date.parse(x[self.graph_data.xcol])) });
+            trace.x = data.map(function (x)  { return self.parseToTimestamp(x[self.graph_data.xcol]) });
+            layout.xaxis.type = 'date';
           }
           // Parsing values and min/max when present
           values = data.map(function (y) {
@@ -816,31 +828,32 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Adding traces for min/max filled area when values are present
           for (const [key, value] of Object.entries(minmax)) {
-            // for (let i = 0; i < minmax.length; i++) {
-            traces.unshift({
-              x: trace.x, // x-values for min/max should be the same as the avg
-              y: value.min,
-              line: { width: 1, shape: 'hvh', color: value.color + "44" },
-              name: "Min " + value.name,
-              legendgroup: value.name,
-              yaxis: value.yaxis,
-              hoverinfo: 'skip',
-              // fillcolor: 'white',
-              mode: 'lines',
-              fill: 'tonexty',
-              showlegend: false,
-            })
-            traces.unshift({
-              x: trace.x, // x-values for min/max should be the same as the avg
+            // Push Max trace first (it becomes the 'previous' trace for the fill)
+            backgroundTraces.push({
+              x: trace.x,
               y: value.max,
               line: { width: 1, shape: 'hvh', color: value.color + "44" },
               name: "Max " + value.name,
               legendgroup: value.name,
               yaxis: value.yaxis,
               hoverinfo: 'skip',
-              fillcolor: value.color + "44",
               mode: 'lines',
               showlegend: false
+            })
+            
+            // Push Min trace second (it fills the area back to the Max trace)
+            backgroundTraces.push({
+              x: trace.x,
+              y: value.min,
+              line: { width: 1, shape: 'hvh', color: value.color + "44" },
+              name: "Min " + value.name,
+              legendgroup: value.name,
+              yaxis: value.yaxis,
+              hoverinfo: 'skip',
+              fillcolor: value.color + "44", // Shading color
+              mode: 'lines',
+              fill: 'tonexty', // Fills to the trace immediately before (Max)
+              showlegend: false,
             })
           }
         } // End of scatter plots configurations
@@ -872,6 +885,9 @@ PlotlyGraph.prototype.plot = function (params) {
       }
     }
 
+    // Prepends all min/max background areas so they are drawn behind the main lines
+    traces = [...backgroundTraces, ...traces];
+
     // Getting traces to be plotted on slider (for each step and the default one)
     if (self.graph_data.slider) {
       // Transforming object that stored all traces for each timestamp into an array of arrays
@@ -885,21 +901,32 @@ PlotlyGraph.prototype.plot = function (params) {
       }
     }
 
-    // Getting min and max values of x for each x axis to adjust ranges below
+    // Consolidated loop to determine axis requirements, performance mode, and ranges
     for (let trace of traces) {
-      if (trace.x) {
-        // Getting x range to fix range below
-        if (trace.x[0] instanceof Date) {
-          xmin = new Date(Math.min(xmin ?? new Date("2101/01/01"),...trace.x))
-          xmax = new Date(Math.max(xmax ?? new Date("2001/01/01"),...trace.x))
-        } else {
-          xmin = Math.min(xmin ?? Infinity,...trace.base??trace.x)
-          xmax = Math.max(xmax ?? -Infinity,...trace.base?trace.base.map((a, i) => a + trace.x[i]):trace.x)
+      // Check if secondary y-axis is required
+      if (trace.yaxis === "y2") yaxis2 = true;
+
+      // Performance Check: Switch to WebGL (scattergl)
+      const isScatter = !trace.type || trace.type === 'scatter';
+      const pointCount = (trace.x && trace.x.length) || 0;
+      if (isScatter && pointCount > self.WEBGL_THRESHOLD) {
+        trace.type = 'scattergl';
+        if (trace.line) trace.line.simplify = true;
+      }
+
+      // Range Calculation
+      if (trace.x && trace.x.length > 0) {
+        for (let i = 0; i < trace.x.length; i++) {
+          let startVal = trace.base ? trace.base[i] : trace.x[i];
+          let endVal = trace.base ? (trace.base[i] + trace.x[i]) : trace.x[i];
+
+          if (xmin === undefined || startVal < xmin) xmin = startVal;
+          if (xmax === undefined || endVal > xmax) xmax = endVal;
         }
-        // Fixing xmin where the vertical dashed line is located (when vertical_line = true)
-        // Note: this only works because there's only this shape given
-        if (self.graph_data.vertical_line) {
-          xmin = layout.shapes[0].x0
+
+        if (self.graph_data.vertical_line && layout.shapes && layout.shapes[0]) {
+          let shapeX = self.parseToTimestamp(layout.shapes[0].x0);
+          if (shapeX !== null && shapeX < xmin) xmin = shapeX;
         }
       }
     }
@@ -913,21 +940,27 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 
   // Fixing xaxis, that has white spaces on the edges when using markers
-  if (!layout.xaxis.autorange && xmin && xmax) {
-    range = (layout.xaxis.type=="log") ? [Math.log10(xmin),Math.log10(xmax)] : [xmin,xmax]
-    layout.xaxis.range = layout.xaxis.range ?? range
+  if (!layout.xaxis.autorange && xmin !== undefined && xmax !== undefined) {
+    let range;
+    if (layout.xaxis.type === 'log') {
+      range = [Math.log10(xmin), Math.log10(xmax)];
+    } else if (layout.xaxis.type === 'date') {
+      // Use the local helper to match Plotly's local axis rendering
+      range = [self.toLocalISO(xmin), self.toLocalISO(xmax)];
+    } else {
+      range = [xmin, xmax];
+    }
+
+    // Force the range and disable autorange to prevent the 1970/1-hour jump
+    layout.xaxis.range = layout.xaxis.range ?? range;
+    layout.xaxis.autorange = false;
+
     if (layout.xaxis.rangeslider) {
-      layout.xaxis.rangeslider.range = range
+      layout.xaxis.rangeslider.range = range;
+      layout.xaxis.rangeslider.autorange = false;
     }  
   }
 
-  // checking if yaxis2 is used
-  let yaxis2 = false;
-  traces.forEach( (trace) => {
-    if (trace.yaxis == "y2") {
-      yaxis2 = true;
-    }
-  })
   if (!layout.grid){
     // If yaxis is used in traces
     if (yaxis2) {
@@ -1404,6 +1437,10 @@ PlotlyGraph.prototype.plot = function (params) {
       // Plotly does not have events for mousedown and mouseup
       // so we have to catch all the bars and set the events "by hand"
       console.log("Adding events for mouse")
+      // Remove existing global listeners to prevent stacking
+      document.removeEventListener("mousedown", self.setPrimaryButtonState);
+      document.removeEventListener("mousemove", self.setPrimaryButtonState);
+      document.removeEventListener("mouseup", self.setPrimaryButtonState);
       // Adding listeners to to mouse events to keep track of the state of the primary mouse button
       document.addEventListener("mousedown", self.setPrimaryButtonState);
       document.addEventListener("mousemove", self.setPrimaryButtonState);
@@ -1653,6 +1690,52 @@ PlotlyGraph.prototype.parseToDate = function(input) {
   // If neither, throw an error or return null/undefined
   throw new Error(`Invalid date or timestamp input: ${input}`);
 }
+
+
+/**
+ * Converts a timestamp or string date into a Unix Millisecond Number
+ * @param {str|num} input either timestamp or date in a string
+ * @returns {number} Unix milliseconds
+ */
+PlotlyGraph.prototype.parseToTimestamp = function(input) {
+  if (input === null || input === undefined) return null;
+  
+  // If it's already a number
+  if (typeof input === 'number') {
+    return input.toString().split('.')[0].length === 10 ? input * 1000 : input;
+  }
+
+  const strInput = input.toString();
+
+  // If it's a string containing a number (like "1767713662644.49")
+  if (/^[0-9.]+$/.test(strInput)) {
+    const num = parseFloat(strInput);
+    // Check length of the integer part to decide if it is seconds or ms
+    return strInput.split('.')[0].length === 10 ? num * 1000 : num;
+  }
+
+  // Parse as date string
+  const ts = Date.parse(strInput);
+  return isNaN(ts) ? null : ts;
+}
+
+
+/**
+ * Converts a Unix timestamp into a local date-time string (YYYY-MM-DD HH:mm:ss.sss)
+ * This format ensures Plotly.js axis ranges match the user's local timezone,
+ * preventing UTC/timezone shifts (like the 1-hour jump).
+ * @param {number} ts Unix timestamp in milliseconds
+ * @returns {string} Formatted local date-time string
+ */
+PlotlyGraph.prototype.toLocalISO = function(ts) {
+  if (isNaN(ts) || ts === null) return null;
+  const date = new Date(ts);
+  const pad = (n) => n.toString().padStart(2, '0');
+  const ms = date.getMilliseconds().toString().padStart(3, '0');
+  
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
+         `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${ms}`;
+};
 
 
 /**

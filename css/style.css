@@ -480,8 +480,6 @@ nav li:hover {
 /* Break dropdowns out of the scroll container context */
 #nav_scroller .dropdown-menu {
   position: fixed !important; /* Relative to viewport, ignoring scroll container */
-  top: auto !important;       /* Let Popper.js calculate top */
-  left: auto !important;      /* Let Popper.js calculate left */
   z-index: 2000 !important;   /* On top of everything */
   width: auto;                /* Don't stretch */
   margin-top: 0;
