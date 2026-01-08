@@ -69,7 +69,60 @@ function cell_color(params,column) {
   }
   return color_obj;
 }
+
+
+function cell_status(params) {
+  if (!params.value) return '';
+
+  const colors = {
+    'S': { main: '#108548', bg: '#ecf3ec', title: 'Passed' },
+    'F': { main: '#dd2b0e', bg: '#fdf2f0', title: 'Failed' },
+    'W': { main: '#c05600', bg: '#fff8eb', title: 'Warning' }
+  };
+
+  const paths = {
+    'S': 'M6.278 7.697L5.045 6.464a.296.296 0 0 0-.42-.002l-.613.614a.298.298 0 0 0 .002.42l1.91 1.909a.5.5 0 0 0 .703.005l.265-.265L9.997 6.04a.291.291 0 0 0-.009-.408l-.614-.614a.29.29 0 0 0-.408-.009L6.278 7.697z',
+    'F': 'M7 8.025L4.841 10.183a.35.35 0 0 1-.495 0l-.53-.53a.35.35 0 0 1 0-.495L5.975 7 3.817 4.841a.35.35 0 0 1 0-.495l.53-.53a.35.35 0 0 1 .495 0L7 5.975 9.159 3.817a.35.35 0 0 1 .495 0l.53.53a.35.35 0 0 1 0 .495L8.025 7l2.158 2.159a.35.35 0 0 1 0 .495l-.53.53a.35.35 0 0 1-.495 0L7 8.025z',
+    'W': 'M7.002 9.45a.75.75 0 1 1-.004 1.5.75.75 0 0 1 .004-1.5zM7 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z'
+  };
+
+  const statusArray = params.value.split('');
   
+  // gap: 0px ensures items touch
+  let html = '<div style="display: flex; align-items: center; gap: 0px; vertical-align: middle;">';
+
+  statusArray.forEach((char) => {
+    if (char === '-') {
+      /**
+       * We use a div instead of a character dash to eliminate font-spacing.
+       * width: 6px makes it a short bridge, height: 2px is the line thickness.
+       */
+      html += '<div style="width: 6px; height: 2px; background-color: #bfbfbf; flex-shrink: 0; margin: 0;"></div>';
+    } else if (colors[char]) {
+      const c = colors[char];
+      const p = paths[char];
+      
+      /**
+       * width/height 16px. 
+       * The path starts at 0 on a 14-unit viewBox, 
+       * so it will touch the neighbors perfectly at 0px gap.
+       */
+      html += `
+        <div title="${c.title}" style="display: flex; flex-shrink: 0; width: 16px; height: 16px; margin: 0; padding: 0;">
+          <svg width="16" height="16" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+            <g fill-rule="evenodd">
+              <path d="M0 7a7 7 0 1 1 14 0A7 7 0 0 1 0 7z" fill="${c.main}" />
+              <path d="M13 7A6 6 0 1 0 1 7a6 6 0 0 0 12 0z" fill="${c.bg}" />
+              <path d="${p}" fill="${c.main}" />
+            </g>
+          </svg>
+        </div>`;
+    }
+  });
+
+  html += '</div>';
+  return html;
+}
   
 function cell_background_color(params,colorcol,defscale) {
   let value = params.data[colorcol]
