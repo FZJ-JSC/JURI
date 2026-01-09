@@ -908,8 +908,13 @@ PlotlyGraph.prototype.plot = function (params) {
 
       // Performance Check: Switch to WebGL (scattergl)
       const isScatter = !trace.type || trace.type === 'scatter';
+      const isStacked = !!trace.stackgroup; // Check if the trace belongs to a stackgroup
       const pointCount = (trace.x && trace.x.length) || 0;
-      if (isScatter && pointCount > self.WEBGL_THRESHOLD) {
+      if (isScatter && isStacked && pointCount > self.WEBGL_THRESHOLD) {
+        // We can't use scattergl, but we can force simplification
+        trace.line = trace.line || {};
+        trace.line.simplify = true; 
+      } else if (isScatter && pointCount > self.WEBGL_THRESHOLD) {
         trace.type = 'scattergl';
         if (trace.line) trace.line.simplify = true;
       }
