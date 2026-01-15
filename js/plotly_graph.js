@@ -435,13 +435,19 @@ PlotlyGraph.prototype.plot = function (params) {
         } else if (trace.type == 'bar') {              // BARPLOT
 
           // Getting x values
-          if ( trace_data.xcol != 'date' && (self.graph_data.xcol && self.graph_data.xcol != 'date') ) {
-            trace.x = data.map(function (x)  { return parseFloat(x[trace_data.xcol??self.graph_data.xcol]) });
+          let xColKey = trace_data.xcol ?? self.graph_data.xcol;
+          if (layout.xaxis.type === 'category') {
+            // If the x-axis values are strings, we have to set the layout.xaxis.type === 'category'
+            trace.x = data.map(function (x) { return x[xColKey].toString() });
+          } else if (trace_data.xcol != 'date' && (self.graph_data.xcol && self.graph_data.xcol != 'date')) {
+            // This is the regular non-category (strings), non-date case, so we parse it as a float.
+            trace.x = data.map(function (x) { return parseFloat(x[xColKey]) });
           } else {
-            trace.x = data.map(function (x)  { return self.parseToTimestamp(x['date']) });
+            // This is the date case. We use timestamps that are more efficient, so we need to set the type to 'date'
+            trace.x = data.map(function (x) { return self.parseToTimestamp(x[xColKey]) });
             layout.xaxis.type = 'date';
           }
-
+          
           // Parsing values and min/max when present
           values = data.map(function (y) {
             let val = typeof y[trace_data.ycol] == 'string'? y[trace_data.ycol].split(";") : [ y[trace_data.ycol] ];
@@ -767,10 +773,16 @@ PlotlyGraph.prototype.plot = function (params) {
           trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
 
           // Getting x values
-          if ((layout.xaxis.type !== 'date')&&( self.graph_data.xcol && self.graph_data.xcol != 'date' )) {
-            trace.x = data.map(function (x)  { return parseFloat(x[self.graph_data.xcol]) });
+          if (layout.xaxis.type === 'category') {
+            // If the x-axis values are strings, we have to set the layout.xaxis.type === 'category'
+            trace.x = data.map(function (x) { return x[self.graph_data.xcol].toString() });
+            layout.xaxis.autorange = true;
+          } else if ((layout.xaxis.type !== 'date') && (self.graph_data.xcol && self.graph_data.xcol != 'date')) {
+            // This is the regular non-category (strings), non-date case, so we parse it as a float.
+            trace.x = data.map(function (x) { return parseFloat(x[self.graph_data.xcol]) });
           } else {
-            trace.x = data.map(function (x)  { return self.parseToTimestamp(x[self.graph_data.xcol]) });
+            // This is the date case. We use timestamps that are more efficient, so we need to set the type to 'date'
+            trace.x = data.map(function (x) { return self.parseToTimestamp(x[self.graph_data.xcol]) });
             layout.xaxis.type = 'date';
           }
           // Parsing values and min/max when present
@@ -920,7 +932,7 @@ PlotlyGraph.prototype.plot = function (params) {
       }
 
       // Range Calculation
-      if (trace.x && trace.x.length > 0) {
+      if (layout.xaxis.type !== 'category' && trace.x && trace.x.length > 0) {
         for (let i = 0; i < trace.x.length; i++) {
           let startVal = trace.base ? trace.base[i] : trace.x[i];
           let endVal = trace.base ? (trace.base[i] + trace.x[i]) : trace.x[i];
@@ -945,7 +957,7 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 
   // Fixing xaxis, that has white spaces on the edges when using markers
-  if (!layout.xaxis.autorange && xmin !== undefined && xmax !== undefined) {
+  if (layout.xaxis.type !== 'category' && !layout.xaxis.autorange && xmin !== undefined && xmax !== undefined) {
     let range;
     if (layout.xaxis.type === 'log') {
       range = [Math.log10(xmin), Math.log10(xmax)];

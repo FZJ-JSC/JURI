@@ -7,8 +7,9 @@
 * Contributions must follow the Contributor License Agreement. More information see the CONTRIBUTING.md file at the top level.
 *
 * Contributors:
-*    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
+*    Sebastian Lührs  (Forschungszentrum Juelich GmbH) 
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*    Nabil Abubaker   (Forschungszentrum Juelich GmbH)   
 */
 
 // Global variable to store the view of the page
@@ -28,9 +29,9 @@ function View(parameters) {
   this.initial_data = parameters.inital;
   // Store all the scripts and styles required for the pages
   this.addons = { 
-                  scripts: new Set(),
-                  styles: new Set(),
-                }
+    scripts: new Set(),
+    styles: new Set(),
+  }
   // Deferrer array to store items to be waited
   this.deferrer = [];
   // Deferrer counter
@@ -125,10 +126,10 @@ View.prototype.show = function () {
           // Normalize: collect what is to be processed: either the tabs (enriched with parent info) or the item (page/subpage) itself
           const toProcess = item.tabs // if there are tabs, get tab information, else, get the item itself
             ? item.tabs.map(tab => {
-                tab.parent_section = item.section;
-                tab.description    = tab.description??item.description;
-                return tab;
-              })
+              tab.parent_section = item.section;
+              tab.description    = tab.description??item.description;
+              return tab;
+            })
             : [item];
 
           toProcess.forEach(function (pageOrTab) {
@@ -191,142 +192,142 @@ View.prototype.show = function () {
     $.when.apply($, local_deferrer).done(function () {
       // force async continuation if you need to avoid reentrancy
       setTimeout(() => self.applyTemplates(
-      {
-        "element": "#navbarSupportedContent",
-        "template": "navigation",
-        // "element": "#header",
-        // "template": "header",
-        "context": self.navdata
-      },
-      [], // initializers
-      // Post-processing function after the navigation is ready
-      function () {
-        if (false) {
-          // ****** Close button on alert ******
-          $("body").prepend("<div class='alert'><span class='closebtn'>&times;</span> Unfortunately, after the power outage on 08.03.2023, we lost one of our hard drives that contained monitoring information of JUSUF and DEEP. We are setting up a new server to restart monitoring, which will be ready on the next days. Sorry for the inconvenience.</div>");
-          var close = document.getElementsByClassName("closebtn");
-          var i;
-          
-          for (i = 0; i < close.length; i++) {
-            close[i].onclick = function(){
-              var div = this.parentElement;
-              div.style.opacity = "0";
-              setTimeout(function(){ div.style.display = "none"; }, 600);
+        {
+          "element": "#navbarSupportedContent",
+          "template": "navigation",
+          // "element": "#header",
+          // "template": "header",
+          "context": self.navdata
+        },
+        [], // initializers
+        // Post-processing function after the navigation is ready
+        function () {
+          if (false) {
+            // ****** Close button on alert ******
+            $("body").prepend("<div class='alert'><span class='closebtn'>&times;</span> Unfortunately, after the power outage on 08.03.2023, we lost one of our hard drives that contained monitoring information of JUSUF and DEEP. We are setting up a new server to restart monitoring, which will be ready on the next days. Sorry for the inconvenience.</div>");
+            var close = document.getElementsByClassName("closebtn");
+            var i;
+
+            for (i = 0; i < close.length; i++) {
+              close[i].onclick = function(){
+                var div = this.parentElement;
+                div.style.opacity = "0";
+                setTimeout(function(){ div.style.display = "none"; }, 600);
+              }
             }
+            // ***********************************
           }
-          // ***********************************
-        }
 
-        // Initializing scrollbars for navbar:
-        self.initScrollableMenu()
+          // Initializing scrollbars for navbar:
+          self.initScrollableMenu()
 
-        // Initializing handlers for the links on navbar and tabs
-        // to allow modifier keys
-        self.initGlobalEventHandlers();
+          // Initializing handlers for the links on navbar and tabs
+          // to allow modifier keys
+          self.initGlobalEventHandlers();
 
-        // Title from configuration (including eventual logo)
+          // Title from configuration (including eventual logo)
 
-        // System name or list
-        let systemname_menu = self.build_system_menu(self.navdata)
-        $("#title").append(systemname_menu)
+          // System name or list
+          let systemname_menu = self.build_system_menu(self.navdata)
+          $("#title").append(systemname_menu)
 
-        // Adding view
-        $("#title").append($('<div>').text(`${self.navdata.data.permission.capitalize()} view`));
-        // Adding document title
-        $(document).attr("title", `${self.navdata.data.system.replace('_', ' ')}: ${self.navdata.data.permission.capitalize()} view`);
+          // Adding view
+          $("#title").append($('<div>').text(`${self.navdata.data.permission.capitalize()} view`));
+          // Adding document title
+          $(document).attr("title", `${self.navdata.data.system.replace('_', ' ')}: ${self.navdata.data.permission.capitalize()} view`);
 
-        // Add Home button to go to login page
-        let button = $('<button>',{type: "button", class: 'inner-circle', title: 'Go to login page'}).attr("aria-label",'Go to login page').addClass("fa").addClass("fa-home");
-        $('#home').prepend(button)
-        button.on('mousedown', (e) => {
-          let handlerin,handlerout, doc = $(document);
-          e.preventDefault();
-          button.addClass('active');
-          button.on('mouseenter', handlerin = () => {button.addClass('active');})
-                .on('mouseleave', handlerout = () => {button.removeClass('active');})
-          doc.on('mouseup', (e) => {
-            button.removeClass('active');
-            button.off('mouseenter', handlerin)
-            button.off('mouseleave', handlerout)
+          // Add Home button to go to login page
+          let button = $('<button>',{type: "button", class: 'inner-circle', title: 'Go to login page'}).attr("aria-label",'Go to login page').addClass("fa").addClass("fa-home");
+          $('#home').prepend(button)
+          button.on('mousedown', (e) => {
+            let handlerin,handlerout, doc = $(document);
+            e.preventDefault();
+            button.addClass('active');
+            button.on('mouseenter', handlerin = () => {button.addClass('active');})
+              .on('mouseleave', handlerout = () => {button.removeClass('active');})
+            doc.on('mouseup', (e) => {
+              button.removeClass('active');
+              button.off('mouseenter', handlerin)
+              button.off('mouseleave', handlerout)
+            })
           })
-        })
-        button.on('click',(e) => {
-          e.preventDefault();
-          // Clicking with control or metakey opens a new tab/window
-          if (e.ctrlKey || e.metaKey) {
-            window.open(self.navdata.home,'_blank')
-          } else {
-            window.location.href = self.navdata.home;  
-          }
-          return;
-        });
-        // Clicking with middle mouse button opens a new tab/window
-        button.on('auxclick',(e) => {
-          if (e.button == 1) {
-            window.open(self.navdata.home,'_blank')
-          }
-          return;
-        });
-
-        // Add system image to go to login page
-        // if (self.navdata.image) {
-        //   $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
-        //   if (self.navdata.home) {
-        //     $("#system_picture").click(function () {
-        //       window.location.href = self.navdata.home;
-        //       return;
-        //     });
-        //     $("#system_picture").addClass("clickable");
-        //   }
-        // }
-
-        // If logo is set on configuration (currently only on LLview and not on KontView)
-        if (self.navdata.logo) {
-          // Change favicon
-          $("#favicon").attr("href","data:image/svg+xml,%3Csvg height='100%25' stroke-miterlimit='10' style='fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;' version='1.1' viewBox='0 0 32 32' width='100%25' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'%3E%3Cpath d='M8.02154 13.6133L8.03331 23.6475L10.2411 23.6597L12.4489 23.6718L12.4489 25.7506L12.4489 27.8294L18.7334 27.8294L25.018 27.8294L25.018 26.6379L25.018 25.4464L20.0885 25.4464L15.1589 25.4464L15.1589 24.5587L15.1589 23.6709L17.869 23.6709L20.5791 23.6709L20.5791 22.456L20.5791 21.2412L17.869 21.2412L15.1589 21.2412L15.1589 14.4894L15.1589 7.73754L13.8039 7.73754L12.4489 7.73754L12.4489 14.4894L12.4489 21.2412L11.5844 21.2412L10.72 21.2412L10.72 12.4101L10.72 3.57898L9.36489 3.57898L8.00972 3.57898L8.02154 13.6133' fill='%23023d6b' fill-rule='evenodd' opacity='1' stroke='none'/%3E%3Cpath d='M15.0868 0.0309399C9.2877 0.347224 4.09586 3.83135 1.56139 9.10753C-0.520462 13.4413-0.520462 18.5745 1.56139 22.9083C5.1584 30.3963 13.8239 33.894 21.607 30.9994C25.9088 29.3995 29.3916 25.9168 30.9915 21.615C32.5077 17.538 32.307 12.997 30.4386 9.10753C28.097 4.233 23.5169 0.89078 18.1603 0.147847C17.6781 0.080936 16.1368-0.0254576 15.8598-0.0109727C15.7956-0.0076085 15.4477 0.0112218 15.0868 0.0309399M8.02154 13.6133L8.03331 23.6475L10.2411 23.6597L12.4489 23.6718L12.4489 25.7506L12.4489 27.8294L18.7334 27.8294L25.018 27.8294L25.018 26.6379L25.018 25.4464L20.0885 25.4464L15.1589 25.4464L15.1589 24.5587L15.1589 23.6709L17.869 23.6709L20.5791 23.6709L20.5791 22.456L20.5791 21.2412L17.869 21.2412L15.1589 21.2412L15.1589 14.4894L15.1589 7.73754L13.8039 7.73754L12.4489 7.73754L12.4489 14.4894L12.4489 21.2412L11.5844 21.2412L10.72 21.2412L10.72 12.4101L10.72 3.57898L9.36489 3.57898L8.00972 3.57898L8.02154 13.6133' fill='%23ffffff' fill-rule='evenodd' opacity='1' stroke='none'/%3E%3C/svg%3E");
-
-          // Add auto-refresh button when logo is present
-          self.add_autorefresh();
-
-          // Add presentation mode button when logo is present
-          if (self.navdata.data.permission == "support") {
-            self.add_presentation();
-          }
-
-          // Add logo
-          $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5, width: 72}))
-          $("#logo").click(function () {
-            window.location.href = "https://llview.fz-juelich.de/";
+          button.on('click',(e) => {
+            e.preventDefault();
+            // Clicking with control or metakey opens a new tab/window
+            if (e.ctrlKey || e.metaKey) {
+              window.open(self.navdata.home,'_blank')
+            } else {
+              window.location.href = self.navdata.home;  
+            }
             return;
           });
-          $("#logo").addClass("clickable");
-        }
+          // Clicking with middle mouse button opens a new tab/window
+          button.on('auxclick',(e) => {
+            if (e.button == 1) {
+              window.open(self.navdata.home,'_blank')
+            }
+            return;
+          });
 
-        let initial_page = ""
-        let initial_subpage = ""
-        if (self.initial_data.page) {
-          // If initial_data is set, set initial_date
-          const parts = self.initial_data.page.split(self.page_separator);
-          initial_page = parts[0];
-          initial_subpage = parts[1];
-        } else if (typeof (Storage) !== "undefined") {
-          // If browser support local storage, get the 'last_page' to set as initial page
-          let last_page = sessionStorage.getItem("last_page");
-          if (last_page) {
-            [initial_page,initial_subpage] = last_page.split(self.page_separator);
+          // Add system image to go to login page
+          // if (self.navdata.image) {
+          //   $('#system_picture').prepend($('<img>',{src: self.navdata.image.toLowerCase(), alt:"System picture", height: $("#header").height()-5, width: 50, css: {"object-fit": "contain"}}))
+          //   if (self.navdata.home) {
+          //     $("#system_picture").click(function () {
+          //       window.location.href = self.navdata.home;
+          //       return;
+          //     });
+          //     $("#system_picture").addClass("clickable");
+          //   }
+          // }
+
+          // If logo is set on configuration (currently only on LLview and not on KontView)
+          if (self.navdata.logo) {
+            // Change favicon
+            $("#favicon").attr("href","data:image/svg+xml,%3Csvg height='100%25' stroke-miterlimit='10' style='fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;' version='1.1' viewBox='0 0 32 32' width='100%25' xml:space='preserve' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink'%3E%3Cpath d='M8.02154 13.6133L8.03331 23.6475L10.2411 23.6597L12.4489 23.6718L12.4489 25.7506L12.4489 27.8294L18.7334 27.8294L25.018 27.8294L25.018 26.6379L25.018 25.4464L20.0885 25.4464L15.1589 25.4464L15.1589 24.5587L15.1589 23.6709L17.869 23.6709L20.5791 23.6709L20.5791 22.456L20.5791 21.2412L17.869 21.2412L15.1589 21.2412L15.1589 14.4894L15.1589 7.73754L13.8039 7.73754L12.4489 7.73754L12.4489 14.4894L12.4489 21.2412L11.5844 21.2412L10.72 21.2412L10.72 12.4101L10.72 3.57898L9.36489 3.57898L8.00972 3.57898L8.02154 13.6133' fill='%23023d6b' fill-rule='evenodd' opacity='1' stroke='none'/%3E%3Cpath d='M15.0868 0.0309399C9.2877 0.347224 4.09586 3.83135 1.56139 9.10753C-0.520462 13.4413-0.520462 18.5745 1.56139 22.9083C5.1584 30.3963 13.8239 33.894 21.607 30.9994C25.9088 29.3995 29.3916 25.9168 30.9915 21.615C32.5077 17.538 32.307 12.997 30.4386 9.10753C28.097 4.233 23.5169 0.89078 18.1603 0.147847C17.6781 0.080936 16.1368-0.0254576 15.8598-0.0109727C15.7956-0.0076085 15.4477 0.0112218 15.0868 0.0309399M8.02154 13.6133L8.03331 23.6475L10.2411 23.6597L12.4489 23.6718L12.4489 25.7506L12.4489 27.8294L18.7334 27.8294L25.018 27.8294L25.018 26.6379L25.018 25.4464L20.0885 25.4464L15.1589 25.4464L15.1589 24.5587L15.1589 23.6709L17.869 23.6709L20.5791 23.6709L20.5791 22.456L20.5791 21.2412L17.869 21.2412L15.1589 21.2412L15.1589 14.4894L15.1589 7.73754L13.8039 7.73754L12.4489 7.73754L12.4489 14.4894L12.4489 21.2412L11.5844 21.2412L10.72 21.2412L10.72 12.4101L10.72 3.57898L9.36489 3.57898L8.00972 3.57898L8.02154 13.6133' fill='%23ffffff' fill-rule='evenodd' opacity='1' stroke='none'/%3E%3C/svg%3E");
+
+            // Add auto-refresh button when logo is present
+            self.add_autorefresh();
+
+            // Add presentation mode button when logo is present
+            if (self.navdata.data.permission == "support") {
+              self.add_presentation();
+            }
+
+            // Add logo
+            $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5, width: 72}))
+            $("#logo").click(function () {
+              window.location.href = "https://llview.fz-juelich.de/";
+              return;
+            });
+            $("#logo").addClass("clickable");
           }
+
+          let initial_page = ""
+          let initial_subpage = ""
+          if (self.initial_data.page) {
+            // If initial_data is set, set initial_date
+            const parts = self.initial_data.page.split(self.page_separator);
+            initial_page = parts[0];
+            initial_subpage = parts[1];
+          } else if (typeof (Storage) !== "undefined") {
+            // If browser support local storage, get the 'last_page' to set as initial page
+            let last_page = sessionStorage.getItem("last_page");
+            if (last_page) {
+              [initial_page,initial_subpage] = last_page.split(self.page_separator);
+            }
+          }
+
+          if (initial_page && self.all_page_sections.indexOf(initial_page) != -1) {
+            // If initial_data is set and that page is present on the sections of the page, select it
+            self.selectPage([initial_page,initial_subpage], false);
+          } else if (self.default_section) {
+            // Otherwise, select default_section
+            self.selectPage(self.default_section);
+          }
+          return;
         }
-        
-        if (initial_page && self.all_page_sections.indexOf(initial_page) != -1) {
-          // If initial_data is set and that page is present on the sections of the page, select it
-          self.selectPage([initial_page,initial_subpage], false);
-        } else if (self.default_section) {
-          // Otherwise, select default_section
-          self.selectPage(self.default_section);
-        }
-        return;
-      }
-    ) , 0); // end of setTimeout for applyTemplates
+      ) , 0); // end of setTimeout for applyTemplates
     });
     return;
   });
@@ -360,12 +361,12 @@ View.prototype.initGlobalEventHandlers = function () {
     if (paramToUpdate === 'subpage') {
       // Special handling for tabs: Append subpage with the chosen separator (e.g., page.subpage)
       let currentPage = hashParams.get('page') || '';
-      
+
       // If the current page already has a subpage (has a separator), strip it off first
       if (currentPage.includes(self.page_separator)) {
         currentPage = currentPage.substring(0, currentPage.lastIndexOf(self.page_separator));
       }
-      
+
       // Set the 'page' parameter to "MainPage.SubPage"
       hashParams.set('page', currentPage + self.page_separator + section);
       // Remove any explicit 'subpage' parameter to keep the URL clean
@@ -380,7 +381,7 @@ View.prototype.initGlobalEventHandlers = function () {
     // Instantly update the link's href attribute with the complete URL
     $(linkElement).attr('href', baseUrl + newHash);
   };
-  
+
   /**
    * When the page is opened in-place (no modifier keys clicked),
    * the javascript function to selectPage is applied
@@ -401,7 +402,7 @@ View.prototype.initGlobalEventHandlers = function () {
 
     // Prevent the browser from reloading the page by following the href
     event.preventDefault();
-    
+
     // Get the section and subsection and call the selectPage with the respective info
     const pageInfo = getPageInfo(event.currentTarget);
     if (pageInfo) {
@@ -413,7 +414,7 @@ View.prototype.initGlobalEventHandlers = function () {
   $('#navigation').on('mousedown', 'a.nav-select-page', function() {
     buildDynamicUrl(this, 'page'); // The navbar updates the 'page' hash parameter
   });
-  
+
   $('#navigation').on('click', 'a.nav-select-page', function(event) {
     handleAjaxNavigation(event, (element) => {
       // For the navbar, selectPage just needs the section name
@@ -427,7 +428,7 @@ View.prototype.initGlobalEventHandlers = function () {
   $(staticParent).on('mousedown', '#tabs a', function() {
     buildDynamicUrl(this, 'subpage'); // Tabs update the 'subpage' hash parameter
   });
-  
+
   $(staticParent).on('click', '#tabs a', function(event) {
     handleAjaxNavigation(event, (element) => {
       // For tabs, selectPage needs both the main page and the subpage (section)
@@ -451,7 +452,7 @@ View.prototype.initScrollableMenu = function() {
   if (wrapper.find('.scroll-arrow').length === 0) {
     const leftArrow = $('<button class="scroll-arrow left"><span class="fa fa-chevron-left"></span></button>');
     const rightArrow = $('<button class="scroll-arrow right"><span class="fa fa-chevron-right"></span></button>');
-    
+
     wrapper.prepend(leftArrow);
     wrapper.append(rightArrow);
 
@@ -489,7 +490,7 @@ View.prototype.initScrollableMenu = function() {
           wrapper.addClass('can-scroll-left');
         }
       }
-      
+
       if (entry.target.classList.contains('sentinel-end')) {
         // If END is visible -> Hide Right Arrow
         if (entry.isIntersecting) {
@@ -535,7 +536,7 @@ View.prototype.initScrollableMenu = function() {
     if (openMenus.length > 0) {
       // Trigger the click on the toggle to close it gracefully via Bootstrap's API
       openMenus.parent().find('.dropdown-toggle').dropdown('toggle');
-      
+
       // Fallback: force remove the class if the above doesn't catch it
       openMenus.removeClass('show');
       openMenus.parent().removeClass('show');
@@ -564,9 +565,9 @@ View.prototype.get_system_status = async function (statusfile,systemname) {
   let health = null;
   let id = null;
   await fetch(statusfile).then(r => {
-      lastMod = new Date(r.headers.get('Last-Modified'));
-      let now = new Date();
-      return (now-lastMod)/1000 > 600 ? "" : r.json();
+    lastMod = new Date(r.headers.get('Last-Modified'));
+    let now = new Date();
+    return (now-lastMod)/1000 > 600 ? "" : r.json();
   }).then((data) => {
     if (!data.length) { return; }
     if (typeof data === 'object') {
@@ -639,19 +640,19 @@ View.prototype.build_system_menu = function (navdata) {
     // Preparing the link at the title bar
     var systemname_dropdown = $("<div>")
     systemname_dropdown.addClass("dropdown-menu")
-                       .attr("aria-labelledby","systemname_dropdown_button")
+      .attr("aria-labelledby","systemname_dropdown_button")
     var systemname_link = $('<a>').text(current_system_name+(navdata.demo ? " DEMO" : ""))
-                                  .addClass('dropdown-toggle')
-                                  .attr("data-toggle","dropdown")
-                                  .attr("aria-haspopup","true")
-                                  .attr("aria-expanded","false")
+      .addClass('dropdown-toggle')
+      .attr("data-toggle","dropdown")
+      .attr("aria-haspopup","true")
+      .attr("aria-expanded","false")
     // For each system on the list navdata.systems
     Object.entries(navdata.systems).sort().forEach(([system, folder]) => {
       let this_system_name = system.toUpperCase()
       // Creating link for the current system
       let current_link = $("<a>").addClass("dropdown-item")
-                                 .attr("onclick",`view.changeSystem('${folder}')`)
-                                 .append($('<span>').text(this_system_name))
+        .attr("onclick",`view.changeSystem('${folder}')`)
+        .append($('<span>').text(this_system_name))
       // Get current system status (if present) and then add to dropdown menu
       self.get_system_status(navdata.status?navdata.status.file:null,this_system_name.replace(" DEMO","")).then((health_id) => {
         if (!health_id) { return; }
@@ -662,17 +663,17 @@ View.prototype.build_system_menu = function (navdata) {
           let status_verbose = getVerboseHealth(health);
           let text = `${this_system_name.replace(" DEMO","")} is currently ${status_verbose}`;
           let status_img = $('<img>').attr('src', `img/Maintenance-Server-JSC-v3_${status}.svg`)
-                                    .attr('alt', text)
-                                    .attr("title",text)
-                                    .attr('data-toggle', "tooltip")
-                                    .on( "mouseover", function(event) {
-                                          systemname_menu.tooltip('hide')
-                                          event.stopPropagation() // Prevent tooltip on parent from showing
-                                        });
+            .attr('alt', text)
+            .attr("title",text)
+            .attr('data-toggle', "tooltip")
+            .on( "mouseover", function(event) {
+              systemname_menu.tooltip('hide')
+              event.stopPropagation() // Prevent tooltip on parent from showing
+            });
           current_link.prepend(status_img)
         }
       });
-      
+
       // Checking current system name to select it
       if (this_system_name == current_system_name+(navdata.demo ? " DEMO" : "")) {
         current_link.addClass("selected");
@@ -683,15 +684,15 @@ View.prototype.build_system_menu = function (navdata) {
       return;
     });
     systemname_dropdown.on( "mouseover", function(event) {
-                              systemname_menu.tooltip('hide')
-                              event.stopPropagation() // Prevent tooltip on parent from showing
-                            });
+      systemname_menu.tooltip('hide')
+      event.stopPropagation() // Prevent tooltip on parent from showing
+    });
     systemname_menu.append(systemname_link)
-                   .append(systemname_dropdown)
+      .append(systemname_dropdown)
     systemname_menu.attr("title","Click to open system list")
-                   .attr('data-toggle', "tooltip")
-                   .attr('data-html', "true")
-                   .attr('data-placement', "bottom")
+      .attr('data-toggle', "tooltip")
+      .attr('data-html', "true")
+      .attr('data-placement', "bottom")
   } else {
     // When the menu is not added, add system status directly on title
 
@@ -706,19 +707,19 @@ View.prototype.build_system_menu = function (navdata) {
         let status_verbose = getVerboseHealth(health);
         let text = `${current_system_name} is currently ${status_verbose}${navdata.status.link?'. Click to see more details.':''}`;
         let status_img = $('<img>').attr('src', `img/Maintenance-Server-JSC-v3_${status}.svg`)
-                                   .attr('alt', text)
+          .attr('alt', text)
         let status_page = navdata.status.link?navdata.status.link.replace('@@id@@',id):"javascript:void(0);";
         let status_link = $('<a>').attr('href', status_page)
-                                  // .attr('target', "_blank")
-                                  .attr('aria-label', text)
-                                  .attr('title', text)
-                                  .attr('data-toggle', "tooltip")
-                                  .attr('data-html', "true")
-                                  .attr('data-placement', "bottom")
-                                  .html(current_system_name+(navdata.demo ? " DEMO" : ""))
-                                  .prepend(status_img);
+        // .attr('target', "_blank")
+          .attr('aria-label', text)
+          .attr('title', text)
+          .attr('data-toggle', "tooltip")
+          .attr('data-html', "true")
+          .attr('data-placement', "bottom")
+          .html(current_system_name+(navdata.demo ? " DEMO" : ""))
+          .prepend(status_img);
         let status_button = $("<button>").attr('type','button')
-                                         .prepend(status_link)
+          .prepend(status_link)
         systemname_menu.prepend(navdata.status.link?status_button:status_link);
       } else {
         // If health was not obtained, add only the name
@@ -739,9 +740,9 @@ View.prototype.build_system_menu = function (navdata) {
 View.prototype.changeSystem = function (system) { 
   const current = new URL(window.location); 
   current.pathname = current.pathname.replace(/^\/(.*?)\//, `/${system}/`); 
-  window.location.href = current.href ; 
-  return; 
-}
+    window.location.href = current.href ; 
+    return; 
+  }
 
 /**
  * Select a page (outer or inner element)
@@ -853,7 +854,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
         self.addTabs(page_tabs,page);
       }
       tabs = true;
-    } else if ((index = page_data.functions.indexOf('init_dates')) > -1) {
+    } else if (page_data.functions && Array.isArray(page_data.functions) && (index = page_data.functions.indexOf('init_dates')) > -1) {
       // If this is a history page, with init_dates to be called,
       // call it here to generate the tabs
       // Creating history tabs
@@ -961,7 +962,7 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     self.initial_data = {};
   }
   self.initial_data.page = subpage ? `${page}${self.page_separator}${subpage}` : page;
-  
+
   // Setting Hash on URL
   self.setHash(true);
   // Update info in footer_footer
@@ -1040,7 +1041,7 @@ View.prototype.addTabs = function (page_tabs, page) {
   if ($("#tabs").length > 0) {
     return;
   }
-  
+
   // Create the container
   let tabs = $("<div id='tabs'></div>");
 
@@ -1069,7 +1070,7 @@ View.prototype.addTabs = function (page_tabs, page) {
  */
 View.prototype.setActiveTab = function (subpage) {
   const tabsContainer = $('#tabs');
-  
+
   // If there are no tabs, nothing to do
   if (!tabsContainer.length) return;
 
@@ -1165,9 +1166,9 @@ View.prototype.add_colorscale_controls = function () {
   if (! $("#colorscale_selection").length) {
     // Create selector id colorscale_selection
     let colorscale_selection = $("<div>").addClass("dropup clickable")
-                                          .attr("id","colorscale_selection")
-                                          .attr("title","Select colorscale")
-                                          .attr("data-placement","left")
+      .attr("id","colorscale_selection")
+      .attr("title","Select colorscale")
+      .attr("data-placement","left")
     let dropup_menu = $("<div>").addClass("dropdown-menu");
     let svg = null;
     let selected = null;
@@ -1189,12 +1190,12 @@ View.prototype.add_colorscale_controls = function () {
       self.colorscale.forEach(function(colorscale) {
         // Create the definition of this given colorscale
         let lineargradient = $("<linearGradient>").attr("id",`gradient-${colorscale}`)
-                              .attr("x1", "0%").attr("y1", "0%")
-                              .attr("x2", "100%").attr("y2", "0%")
+          .attr("x1", "0%").attr("y1", "0%")
+          .attr("x2", "100%").attr("y2", "0%")
         // And the svg rectangle where it is used
         let rect = $("<rect>").css("fill",`url("#gradient-${colorscale}")`)
-                    .attr("width", width)
-                    .attr("height", height)
+          .attr("width", width)
+          .attr("height", height)
 
         let color_wheel;
         // Getting colors (and if reversed or not)
@@ -1213,21 +1214,21 @@ View.prototype.add_colorscale_controls = function () {
         svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${lineargradient.prop('outerHTML')}</defs><g>${rect.prop('outerHTML')}</g></svg>`
         // Creating div for this given colorscale
         current_div = $("<div>")
-            .addClass("dropdown-item")
-            .addClass("colorscale")
-            .attr("title", colorscale) // Turns on tooltip for each colorscale name
-            .attr("data-placement", "left") // Position tooltip to the left, otherwise it is incompatible with mouse hover
-            .append(svg)
-            .on("click",function(){
-              self.initial_data.colors = { 'colorscale': colorscale };
-              self.setHash();
-              self.reloadPage();
-              $(".colorscale").removeClass("selected");
-              $(this).addClass("selected");
-              $("#colorscale_selection > a").children("svg").replaceWith(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${lineargradient.prop('outerHTML')}</defs><g>${rect.prop('outerHTML')}</g></svg>`);
-              // $("#colorscale_selection > a").children("svg").replaceWith(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${lineargradient.prop('outerHTML')}</defs><g>${rect.prop('outerHTML')}</g></svg>`);
-              return;
-              })
+          .addClass("dropdown-item")
+          .addClass("colorscale")
+          .attr("title", colorscale) // Turns on tooltip for each colorscale name
+          .attr("data-placement", "left") // Position tooltip to the left, otherwise it is incompatible with mouse hover
+          .append(svg)
+          .on("click",function(){
+            self.initial_data.colors = { 'colorscale': colorscale };
+            self.setHash();
+            self.reloadPage();
+            $(".colorscale").removeClass("selected");
+            $(this).addClass("selected");
+            $("#colorscale_selection > a").children("svg").replaceWith(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${lineargradient.prop('outerHTML')}</defs><g>${rect.prop('outerHTML')}</g></svg>`);
+            // $("#colorscale_selection > a").children("svg").replaceWith(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${lineargradient.prop('outerHTML')}</defs><g>${rect.prop('outerHTML')}</g></svg>`);
+            return;
+          })
         // Saving selected svg to add to colorscale_selection
         // and adding selected class
         if (colorscale == selected) {
@@ -1240,10 +1241,10 @@ View.prototype.add_colorscale_controls = function () {
       });
       // Append the selected SVG to the colorscale_selector
       colorscale_selection.append($("<a>")
-                .attr("aria-label","Select colorscale")
-                .addClass("dropdown-toggle")
-                .attr("data-toggle","dropdown")    
-                .append(selected_svg));
+        .attr("aria-label","Select colorscale")
+        .addClass("dropdown-toggle")
+        .attr("data-toggle","dropdown")    
+        .append(selected_svg));
       // Appending menu
       colorscale_selection.append(dropup_menu);
       // Adding to footer infoline
@@ -1355,7 +1356,7 @@ View.prototype.add_filter_options = function (filter,options) {
   let optionsdiv = $('<div>',{id: "optionsdiv"}).hide()
   let optionstable = $('<table>',{id: "optionstable",width: 100+200*Object.keys(options).length});
   let optionsrow = $('<tr>').append($('<th>',{"aria-label":desc})
-                            .text(desc))
+    .text(desc))
 
   // Looping over the different options according to their order on the columns
   for (let [key, values] of Object.entries(options).sort(([a], [b]) => sortByKeyOrder(a, b, self.gridApi.getColumns().map((col)=>col.colDef.headerName)))) {
@@ -1368,9 +1369,9 @@ View.prototype.add_filter_options = function (filter,options) {
       let inputid = `${id}_${optname.replace(/(\s)/g, '_')}`;
       let option_input = $('<input>',{type: 'checkbox',id: inputid, name: id, value: optname})
       let option_label = $('<label>',{for: inputid}).append($('<span>').text(optname).css("vertical-align", "middle"))
-                                                    .prepend(option_input)
+        .prepend(option_input)
       this_option.append(option_label)
-                 .append(`<br>`);
+        .append(`<br>`);
       // Adding filter when input checkbox is clicked
       $('main').on('change', `#optionsdiv #${inputid}`, (e) => {
         let delimiter="||";
@@ -1380,7 +1381,7 @@ View.prototype.add_filter_options = function (filter,options) {
           self.remove_filter(filter_entry,delimiter=delimiter);
         }
       })
-          
+
     }
     optionsrow.append(this_option)
   }
@@ -1390,8 +1391,8 @@ View.prototype.add_filter_options = function (filter,options) {
 
   // Create the container for the toggle buttons
   let filterToggle = $('<div>')
-      .addClass('filter-toggle')
-      .attr('id', 'status-filter-toggle')
+    .addClass('filter-toggle')
+    .attr('id', 'status-filter-toggle')
 
   // Define the buttons with their respective colors
   const buttons = [
@@ -1448,7 +1449,7 @@ View.prototype.add_filter_options = function (filter,options) {
         if (self.initial_data.options?.showoptions) {
           // If "aria-label"is already showing up when clicking the filteroptions, then turn it off
           filteroptions.attr("data-original-title","Click to show the options to filter the table")
-                        .attr("aria-label","Click to show the options to filter the table")
+            .attr("aria-label","Click to show the options to filter the table")
           delete self.initial_data.options.showoptions;
           $('#optionsdiv').slideUp(function() {
             $(this).remove();
@@ -1458,7 +1459,7 @@ View.prototype.add_filter_options = function (filter,options) {
         } else {
           // If "aria-label" does not exist when clicking the filteroptions, then turn it on
           filteroptions.attr("data-original-title","Click to hide the options to filter the table")
-                        .attr("aria-label","Click to hide the options to filter the table")
+            .attr("aria-label","Click to hide the options to filter the table")
           self.initial_data.options = { 'showoptions': 'true' };
           self.setHash();
           $('main').prepend(optionsdiv);
@@ -1486,12 +1487,12 @@ View.prototype.add_filter_options = function (filter,options) {
       .attr('data-html', "true")
       .attr('data-placement', "bottom")
       .css({
-            color: button.color,
-          })
+        color: button.color,
+      })
       .off('click') // Turning off first, to avoid adding multiple events
       .on('click', function () {
-          $(this).toggleClass('active');
-          button.function();
+        $(this).toggleClass('active');
+        button.function();
       });
 
     // Add the button to the container
@@ -1506,7 +1507,7 @@ View.prototype.add_filter_options = function (filter,options) {
   if (self.initial_data.options?.showoptions) {
     filteroptions.addClass('active');
     filteroptions.attr("data-original-title","Click to hide the options to filter the table")
-                 .attr("aria-label","Click to hide the options to filter the table")
+      .attr("aria-label","Click to hide the options to filter the table")
     $('main').prepend(optionsdiv);
     // Checking which options should be already selected
     self.check_filteroptions(self.initial_data.filter);
@@ -1530,28 +1531,28 @@ View.prototype.add_or_update_infobutton = function (description) {
   if (text_paragraph.length>0) {
     // If info_text exist, just update text
     text_paragraph.attr("aria-label",description)
-                  .html(description);
+      .html(description);
     return                              
   }
   if (!button.length) {
     button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text)
-                                                                               .attr('data-toggle', "tooltip")
-                                                                               .attr('data-html', "true")
-                                                                               .attr('data-placement', "bottom")
-                                                                               .addClass("fa")
-                                                                               .addClass("fa-info");
+      .attr('data-toggle', "tooltip")
+      .attr('data-html', "true")
+      .attr('data-placement', "bottom")
+      .addClass("fa")
+      .addClass("fa-info");
     $('#information').append(button)
   }
   text_paragraph = $('<p>').attr("aria-label",description)
-                               .html(description);
+    .html(description);
   let infotext = $('<div>',{id: "infotext"}).append(text_paragraph)
-                                            .hide();
+    .hide();
 
   // If show info is active (from URL), activate it
   if (self.initial_data.description?.showinfo) {
     button.addClass('active');
     button.attr("data-original-title","Click to hide description of page")
-          .attr("aria-label","Click to hide description of page")
+      .attr("aria-label","Click to hide description of page")
     // Removing previous text before adding new one
     $('#infotext').remove();
     $('main').prepend(infotext);
@@ -1559,7 +1560,7 @@ View.prototype.add_or_update_infobutton = function (description) {
       resize()
     });
   }
-  
+
   // On show-info button click:
   button.off('click'); // Turning off first, to avoid adding multiple events
   button.on('click',() => {
@@ -1569,7 +1570,7 @@ View.prototype.add_or_update_infobutton = function (description) {
     if (self.initial_data.description?.showinfo) {
       // If it show-info exists when clicking the button, then turn it off
       button.attr("data-original-title","Click to show description of page")
-            .attr("aria-label","Click to show description of page");
+        .attr("aria-label","Click to show description of page");
       delete self.initial_data.description.showinfo;
       $('#infotext').slideUp(function() {
         $(this).remove();
@@ -1579,7 +1580,7 @@ View.prototype.add_or_update_infobutton = function (description) {
     } else {
       // If it presentation mode does not exist when clicking the button, then turn it on
       button.attr("data-original-title","Click to hide description of page")
-            .attr("aria-label","Click to hide description of page");
+        .attr("aria-label","Click to hide description of page");
       self.initial_data.description = { 'showinfo': 'true' };
       self.setHash();
       $('main').prepend(infotext);
@@ -1606,9 +1607,9 @@ View.prototype.add_autorefresh = function () {
   if (! self.initial_data.refresh.disablerefresh) {
     button.addClass('active');
     button.attr("data-original-title","Auto-refresh is ON")
-          .attr("aria-label","Auto-refresh is ON")
-          .removeClass("fa")
-          .removeClass("fa-refresh");
+      .attr("aria-label","Auto-refresh is ON")
+      .removeClass("fa")
+      .removeClass("fa-refresh");
     let seconds = refresh_time;
     self.refreshinterval = setInterval(function () {
       button.text(seconds).attr("aria-label",`Auto-refresh in ${seconds} seconds`);
@@ -1629,9 +1630,9 @@ View.prototype.add_autorefresh = function () {
       // If it exists when clicking the button, then turn it off
       button.text('');
       button.attr("data-original-title","Auto-refresh is OFF")
-            .attr("aria-label","Auto-refresh is OFF")
-            .addClass("fa")
-            .addClass("fa-refresh");
+        .attr("aria-label","Auto-refresh is OFF")
+        .addClass("fa")
+        .addClass("fa-refresh");
       self.initial_data.refresh = { 'disablerefresh': 'true' };
       self.setHash();
       // Remove Intervals
@@ -1639,9 +1640,9 @@ View.prototype.add_autorefresh = function () {
     } else {
       delete self.initial_data.refresh.disablerefresh;
       button.attr("data-original-title","Auto-refresh is ON")
-            .attr("aria-label","Auto-refresh is ON")
-            .removeClass("fa")
-            .removeClass("fa-refresh");
+        .attr("aria-label","Auto-refresh is ON")
+        .removeClass("fa")
+        .removeClass("fa-refresh");
       self.setHash();
       let seconds = refresh_time;
       self.refreshinterval = setInterval(function () {
@@ -1780,7 +1781,7 @@ View.prototype.add_presentation = function () {
   let self = this;
   // Button should have been deleted before being added
   $('#presentation').empty();
-  
+
   // Creating presentation mode button
   let text = `Presentation Mode is ${self.initial_data.presentation?.present ? "ON" : "OFF"}`;
   let button = $('<button>',{type: "button", class: 'inner-circle', title: text}).attr("aria-label",text).addClass("fa").addClass("fa-play");
@@ -1790,9 +1791,9 @@ View.prototype.add_presentation = function () {
   if (self.initial_data.presentation?.present) {
     button.addClass('active');
     button.attr("data-original-title","Presentation Mode is ON")
-          .attr("aria-label","Presentation Mode is ON")
-          .toggleClass("fa-play")
-          .toggleClass("fa-pause");
+      .attr("aria-label","Presentation Mode is ON")
+      .toggleClass("fa-play")
+      .toggleClass("fa-pause");
     self.loopFooterTabs(self,timebetweenjobs)
     self.presentationjobinterval = setInterval(self.loopFooterTabs, timebetweenjobs, self, timebetweenjobs);
   }
@@ -1806,7 +1807,7 @@ View.prototype.add_presentation = function () {
     if (self.initial_data.presentation?.present) {
       // If it presentation mode exists when clicking the button, then turn it off
       button.attr("data-original-title","Presentation Mode is OFF")
-            .attr("aria-label","Presentation Mode is OFF");
+        .attr("aria-label","Presentation Mode is OFF");
       delete self.initial_data.presentation.present;
       self.setHash();
       // Remove Intervals
@@ -1815,7 +1816,7 @@ View.prototype.add_presentation = function () {
     } else {
       // If it presentation mode does not exist when clicking the button, then turn it on
       button.attr("data-original-title","Presentation Mode is ON")
-            .attr("aria-label","Presentation Mode is ON");
+        .attr("aria-label","Presentation Mode is ON");
       self.initial_data.presentation = { 'present': 'true' };
       self.setHash();
       self.loopFooterTabs(self,timebetweenjobs)
@@ -2162,12 +2163,12 @@ View.prototype.add_dropmenu_hover = function () {
       $('.dropdown-toggle', this).trigger('click').blur();
     }
   },
-  function() {
-    // When hovering out and the menu is open, click on it and remove focus
-    if($(this).hasClass('show')) { 
-      $('.dropdown-toggle', this).trigger('click').blur();
-    }
-  });
+    function() {
+      // When hovering out and the menu is open, click on it and remove focus
+      if($(this).hasClass('show')) { 
+        $('.dropdown-toggle', this).trigger('click').blur();
+      }
+    });
 
   // Select all dropup and add hover
   $('.dropup').hover(function() {
@@ -2176,12 +2177,12 @@ View.prototype.add_dropmenu_hover = function () {
       $('.dropdown-toggle', this).trigger('click').blur();
     }
   },
-  function() {
-    // When hovering out and the menu is open, click on it and remove focus
-    if($(this).hasClass('show')) { 
-      $('.dropdown-toggle', this).trigger('click').blur();
-    }
-  });
+    function() {
+      // When hovering out and the menu is open, click on it and remove focus
+      if($(this).hasClass('show')) { 
+        $('.dropdown-toggle', this).trigger('click').blur();
+      }
+    });
 }
 
 
@@ -2365,13 +2366,13 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
                 // Resolve with an object containing the HTML and its target element.
                 resolve({ html, element: templateEntry.element });
                 break;
-              
+
               case 'cache_colorscale':
                 // The worker computed a new colorscale, that should be 
                 // updated on the main thread's 'used_colorscales'.
                 self.used_colorscales[name] = scale;
                 break;
-              
+
               case 'add_controls':
                 // The worker finished rendering and there are columns with colors. 
                 // The main thread should call add_colorscale_controls.
@@ -2381,7 +2382,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
                   addControlsCalledThisRun = true;
                 }
                 break;
-              
+
               case 'error':
                 // The worker encountered an error during its work.
                 worker.terminate();
@@ -2433,7 +2434,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       self._activeWorkers = [];
 
       const templatesToRender = renderedTemplates.filter(r => r && r.element && typeof r.html === 'string');
-      
+
       // If there's nothing to render, run scripts on the existing DOM and exit
       if (templatesToRender.length === 0) {
         if (Array.isArray(initializers)) {
@@ -2475,7 +2476,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             if (currentId) $(this).attr('id', currentId + '_old_temp');
           });          
           targetElement.css('position', 'relative');
-          
+
           overlay.html(result.html);
           targetElement.before(overlay);
         } else {
@@ -2504,7 +2505,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
 
       // A counter to track when all reveal operations are complete
       let finalizationCounter = templatesToRender.length;
-      
+
       const onFinalizationComplete = () => {
         finalizationCounter--;
         // When the last operation is done, call postprocess
@@ -2556,7 +2557,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
                 console.error('Error destroying old AG Grid API:', e);
               }
             }
-            
+
             // Clean up old content from old targetElement
             targetElement.empty().remove();
 
@@ -2581,7 +2582,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
       }
       // If we are here, this is the currently active run, and it has failed.
       // Now we can safely perform cleanup.
-      
+
       // Clear the active workers array to reset the state.
       // (The individual workers should have already been terminated by their
       // own onerror handlers, but this ensures the main array is clean).
