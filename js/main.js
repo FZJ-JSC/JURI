@@ -1532,6 +1532,9 @@ View.prototype.add_or_update_infobutton = function (description) {
     // If info_text exist, just update text
     text_paragraph.attr("aria-label",description)
       .html(description);
+    
+    // Apply KaTeX after updating existing text
+    self.renderLaTeX('infotext');
     return                              
   }
   if (!button.length) {
@@ -1556,6 +1559,10 @@ View.prototype.add_or_update_infobutton = function (description) {
     // Removing previous text before adding new one
     $('#infotext').remove();
     $('main').prepend(infotext);
+
+    // Apply KaTeX for the initial page load
+    self.renderLaTeX('infotext');
+
     infotext.slideDown(function() {
       resize()
     });
@@ -1584,6 +1591,10 @@ View.prototype.add_or_update_infobutton = function (description) {
       self.initial_data.description = { 'showinfo': 'true' };
       self.setHash();
       $('main').prepend(infotext);
+
+      // Apply KaTeX after the user clicks to show info
+      self.renderLaTeX('infotext');
+
       infotext.slideDown(function() {
         resize()
       });
@@ -1592,6 +1603,24 @@ View.prototype.add_or_update_infobutton = function (description) {
   });
   return;
 }
+
+/**
+ * Applies KaTeX rendering to a specific element
+ */
+View.prototype.renderLaTeX = function (elementId) {
+  let el = document.getElementById(elementId);
+  if (el && typeof renderMathInElement === 'function') {
+    renderMathInElement(el, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false},
+        {left: '\\[', right: '\\]', display: true}
+      ],
+      throwOnError: false
+    });
+  }
+};
 
 /**
  * Add auto-refresh button

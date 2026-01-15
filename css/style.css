@@ -617,7 +617,7 @@ main:has(> #tabs_scroll ~ #main_content_old_temp) > #main_content_old_temp {
   bottom: 0;
   background-color: #fff;
   color: var(--fzj-color-blue);
-  z-index: 2000;
+  z-index: 1900;
   text-align: center;
   font-size: 1.2rem;
   vertical-align: middle;
