@@ -252,8 +252,17 @@ function gen_mentor_link(params,config) {
 };
 
 function gen_benchmark_link(params) {
-  //    console.log("gen_benchmark_link: "+config+" "+params.value);
-  let result = "";
-  result = `<a href="javascript:void(0);" onclick="view.selectPage('cb_${params.value}'); return false;">${params.value}</a>`;
-  return result;
+  // console.log("gen_benchmark_link: "+config+" "+params.value);
+
+  let targetId = 'cb_' + params.value.replace(/ /g, "_");
+
+  // Start with the current window's location to preserve base path and query params
+  let currentUrl = new URL(window.location.href);
+  
+  let hashParams = new URLSearchParams(currentUrl.hash.substring(1)); // Remove leading '#'
+  hashParams.set('page', targetId); // Set or Update 'page'
+  currentUrl.hash = hashParams.toString(); 
+
+  let finalUrl = currentUrl.href;
+  return `<a href="${finalUrl}" onclick="if (event.metaKey || event.ctrlKey || event.shiftKey) return; view.selectPage('${targetId}'); return false;">${params.value}</a>`;
 };
