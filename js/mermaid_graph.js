@@ -40,7 +40,7 @@ MermaidGraph.prototype.key_add_data_to_graph = function (params) {
   self.controller.abort();
   // Footer plots
   footer_plot: if (self.graph_data.datapath) {
-    self.filepath = replaceDataPlaceholder(self.graph_data.datapath, params);
+    self.filepath = replaceDataPlaceholder(self.graph_data.datapath, params, true);
     if (self.filepath in self.data) break footer_plot // If file was already read, skip it (to avoid having data multiple times)
     self.data[self.filepath] = Array()
     /* Download the graph data to be plotted */

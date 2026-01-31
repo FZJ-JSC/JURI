@@ -190,7 +190,7 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
   // Footer plots: Check if there's a data path for the main graph data.
   if (self.graph_data.datapath) {
     // Replace placeholders in the datapath with the provided parameters.
-    localFilepath = replaceDataPlaceholder(self.graph_data.datapath, params);
+    localFilepath = replaceDataPlaceholder(self.graph_data.datapath, params, true);
     
     // If the file has already been read, skip downloading to avoid duplicate data.
     if (!(localFilepath in self.data)) {
@@ -222,7 +222,7 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
   for (let trace of self.graph_data.traces) {
     if (trace.datapath) {
       // Replace placeholders in the trace datapath with parameters.
-      let localTracePath = replaceDataPlaceholder(trace.datapath, params);
+      let localTracePath = replaceDataPlaceholder(trace.datapath, params, true);
       
       // If the file has already been read, skip to avoid duplicate data.
       if (localTracePath in self.data) continue;
@@ -407,6 +407,7 @@ PlotlyGraph.prototype.plot = function (params) {
             layout.xaxis.tickvals =  Array.from(new Set(trace.x)).sort(function(a, b) { return parseInt(a) - parseInt(b); });
           }
           // Removing duplicates and sorting
+          // (Works for both Numbers and Date objects due to JS coercion)
           trace.x = Array.from(new Set(trace.x)).sort(function(a, b) { return a - b; });
           
           // Getting values of y as Integers, removing duplicates (with a Set), transforming back to array and sorting as integers
@@ -420,14 +421,41 @@ PlotlyGraph.prototype.plot = function (params) {
               trace.z[i][j] = trace_data.fill ?? null;
             }
           }
+
+          // Creating lookup map for x-axis indices
+          let xIndexMap = new Map();
+          trace.x.forEach((val, idx) => {
+            let key = (val instanceof Date) ? val.getTime() : val;
+            xIndexMap.set(key, idx);
+          });
+
           // looping over values in data and filling array of z component (i.e., values that are represented by colors)
           for (let d = 0; d < data.length; d++) {
             let line = data[d];
-            let xval = trace_data.xcol == 'date' ? new Date(Date.parse(line[trace_data.xcol])) : parseInt(line[trace_data.xcol])
-            let j = trace.x.map(Number).indexOf(+xval)
-            let i = trace.y.indexOf(line[trace_data.ycol])
-            trace.z[i][j] = line[trace_data.zcol];
+            
+            // Resolve the x-value to match the key format used in the map
+            let lookupKey;
+            if (trace_data.xcol == 'date') {
+              // Parse the raw string from CSV to a Date, then get numeric Time for lookup
+              let dateObj = self.parseToTimestamp(line[trace_data.xcol]);
+              lookupKey = dateObj ? dateObj.getTime() : null;
+            } else {
+              lookupKey = parseInt(line[trace_data.xcol]);
+            }
+
+            // Perform fast O(1) lookup
+            // (Replaces the slow: trace.x.map(Number).indexOf(+xval))
+            let j = xIndexMap.get(lookupKey);
+
+            // Find y index
+            let i = trace.y.indexOf(line[trace_data.ycol]);
+            
+            // Only assign if valid indices found
+            if (j !== undefined && i !== -1) {
+              trace.z[i][j] = line[trace_data.zcol];
+            }
           }
+          
           // Fixing layout for heatmaps
           delete layout.yaxis.range;
           layout.yaxis.tickmode =  "array";
@@ -771,6 +799,10 @@ PlotlyGraph.prototype.plot = function (params) {
           trace.mode = trace_data.mode ?? 'lines';
           trace.showlegend = trace_data.showlegend ?? true;
           trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
+
+          // Sorting data in-place before processing
+          let xcol = self.graph_data.xcol;
+          self.sortDataByX(data, xcol, layout.xaxis.type);
 
           // Getting x values
           if (layout.xaxis.type === 'category') {
@@ -1292,7 +1324,7 @@ PlotlyGraph.prototype.plot = function (params) {
       text: layout.yaxis.title
     }
   }
-  if ((typeof layout?.yaxis?.title !== 'undefined')&&(typeof layout?.yaxis?.title?.font === 'undefined')) {
+  if ((layout?.yaxis?.title)&&(typeof layout?.yaxis?.title?.font === 'undefined')) {
     layout.yaxis.title.font = { 
       family: 'sans-serif',
       size: 12,
@@ -1303,7 +1335,7 @@ PlotlyGraph.prototype.plot = function (params) {
       text: layout.xaxis.title
     }
   }
-  if ((typeof layout?.xaxis?.title !== 'undefined')&&(typeof layout?.xaxis?.title?.font === 'undefined')) {
+  if ((layout?.xaxis?.title)&&(typeof layout?.xaxis?.title?.font === 'undefined')) {
     layout.xaxis.title.font = { 
       family: 'sans-serif',
       size: 12,
@@ -1556,6 +1588,57 @@ PlotlyGraph.prototype.plot = function (params) {
 
   })
 }
+
+/**
+ * Helper to sort the raw data array in-place based on the X-axis column.
+ * Handles different sorting strategies for Categories (String), Dates, and Numbers.
+ * This ensures that line charts connect points sequentially instead of scribbling back and forth.
+ * 
+ * @param {Array<Object>} data - The array of data objects to sort.
+ * @param {string} xcol - The key in the data objects representing the X-axis value.
+ * @param {string} layoutXType - The Plotly layout type for the X-axis ('category', 'date', or undefined).
+ */
+PlotlyGraph.prototype.sortDataByX = function(data, xcol, layoutXType) {
+  // If no data or no x-column, nothing to sort
+  if (!data || data.length < 2 || !xcol) return;
+
+  // String/Category Sort
+  if (layoutXType === 'category') {
+    data.sort((a, b) => {
+      let va = a[xcol] ? a[xcol].toString() : "";
+      let vb = b[xcol] ? b[xcol].toString() : "";
+      return va.localeCompare(vb);
+    });
+    return;
+  }
+
+  // Date Sort (Standard 'date' or implicit 'ts')
+  if (layoutXType === 'date' || xcol === 'date') {
+    data.sort((a, b) => {
+      // String comparison works correctly for ISO-8601 dates (standard JSON format)
+      // and avoids the overhead of parsing timestamps repeatedly.
+      let va = a[xcol];
+      let vb = b[xcol];
+      if (va < vb) return -1;
+      if (va > vb) return 1;
+      return 0;
+    });
+    return;
+  }
+
+  // Numeric Sort (Default for scaling plots)
+  data.sort((a, b) => {
+    // Parse floats to ensure "2" < "10" (numeric) instead of "10" < "2" (string)
+    let va = parseFloat(a[xcol]);
+    let vb = parseFloat(b[xcol]);
+    
+    // Handle NaNs (push them to end)
+    if (isNaN(va)) return 1;
+    if (isNaN(vb)) return -1;
+    
+    return va - vb;
+  });
+};
 
 /**
  * Function to check and store the primary mouse button state

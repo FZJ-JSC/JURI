@@ -220,39 +220,79 @@ function getHash() {
 /**
  * Substitutes "value" from url_data[key]=value or navdata.data[key]=value 
  * (and optionally additional_parameter[key]=value)
- * into placeholder #key# in string 'text'
- * @param {string} text 
- * @param {object} additional_parameter 
+ * into placeholder #key# in string 'text'.
+ * 
+ * @param {string} text - The template string
+ * @param {object} additional_parameter - Optional object with extra key/values
+ * @param {boolean} [isPath=false] - If true, replaces '/' with '%252F' (double encoded) for file lookups
  * @returns {string} modified string with placeholders substituted
  */
-function replaceDataPlaceholder(text, additional_parameter) {
-  if (text) {
-    if (additional_parameter) {
-      for (let key in additional_parameter) {
-        text = text.replace("#" + key + "#", additional_parameter[key]);
-      }
+function replaceDataPlaceholder(text, additional_parameter, isPath) {
+  if (!text) return text;
+
+  // Helper to safely process the value:
+  // - Converts numbers to strings.
+  // - Applies path encoding or Handlebars escaping based on context.
+  const processValue = (val, useHandlebars) => {
+    if (val === null || val === undefined) return "";
+    
+    // Convert numbers to string to avoid errors on .replace methods
+    let strVal = String(val); 
+
+    if (isPath) {
+      return strVal.replace(/\//g, '%252F');
+    } 
+    
+    // Only apply Handlebars escaping if we are NOT in path mode
+    if (useHandlebars && typeof Handlebars !== 'undefined') {
+      return Handlebars.escapeExpression(strVal);
     }
-    if (typeof view !== 'undefined') {
-      for (let key in view.url_data) {
-        if (key.toLowerCase() == "demo") {
-          text = text.replace("#demo#", (view.url_data[key]) ? "DEMO/" : "");
-        } else {
-          text = text.replace("#" + key + "#", Handlebars.escapeExpression(view.url_data[key]));
-        }
-      }
-      if (view.navdata.data) {
-        for (let key in view.navdata.data) {
-          if (key.toLowerCase() == "demo") {
-            text = text.replace("#demo#", (view.navdata.data[key]) ? "DEMO/" : "");
-          } else {
-            text = text.replace("#" + key + "#", view.navdata.data[key]);
-          }
-        }
-      }
+    
+    return strVal;
+  };
+
+  // Check additional_parameter
+  if (additional_parameter) {
+    for (let key in additional_parameter) {
+      let val = processValue(additional_parameter[key], false);
+      // split/join (faster way to replace ALL occurrences without Regex)
+      text = text.split("#" + key + "#").join(val);
     }
-    // Clean up any remaining "#demo#" as it might not be set at all
-    text = text.replace("#demo#", "");
   }
+
+  // Check global view object
+  if (typeof view !== 'undefined') {
+    
+    // url_data
+    if (view.url_data) {
+      for (let key in view.url_data) {
+        if (key.toLowerCase() === "demo") {
+          // #demo# special handling (directory prefix)
+          text = text.split("#demo#").join(view.url_data[key] ? "DEMO/" : "");
+        } else {
+          // Apply Handlebars escaping here if not a path
+          let val = processValue(view.url_data[key], !isPath);
+          text = text.split("#" + key + "#").join(val);
+        }
+      }
+    }
+
+    // navdata
+    if (view.navdata && view.navdata.data) {
+      for (let key in view.navdata.data) {
+        if (key.toLowerCase() === "demo") {
+          text = text.split("#demo#").join(view.navdata.data[key] ? "DEMO/" : "");
+        } else {
+          let val = processValue(view.navdata.data[key], false);
+          text = text.split("#" + key + "#").join(val);
+        }
+      }
+    }
+  }
+
+  // Clean up any remaining "#demo#" as it might not be set at all
+  text = text.split("#demo#").join("");
+
   return text;
 }
 
