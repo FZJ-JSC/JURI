@@ -18,84 +18,154 @@ Handlebars.registerHelper('replaceDataPlaceholder', function(link) {
 
 Handlebars.registerHelper('gen_project_user_link', function(config,project,user) {
 //    console.log("gen_project_user_link: "+config+" "+project+" "+user);
-  let result = "";
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&project='+project+'&user='+user;
-  if (self.helperContext.permission && ["observer","support","project"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="'+url+'">'+user+'</a>';
+  // Check permission
+  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+    
+    // Start fresh with the base URL (no query, no hash)
+    let newUrl = new URL(window.location.origin + window.location.pathname);
+
+    // Set only the parameters we explicitly want
+    newUrl.searchParams.set('config', config);
+    newUrl.searchParams.set('project', params.data[project]);
+    newUrl.searchParams.set('user', params.value);
+
+    // Copy the hash (fragment) from the current window to preserve page/view state
+    newUrl.hash = window.location.hash;
+
+    result = `<a href="${newUrl.href}">${params.value}</a>`;
   } else {
-    result = user;
+    result = params.value;
   }
+
   return new Handlebars.SafeString(result);
 });
 
-Handlebars.registerHelper('gen_user_projects_link', function(config,user,projects) {
+Handlebars.registerHelper('gen_user_projects_link', function(config, user, projects) {
   let result = "";
-  if (!Array.isArray(projects)){
+  if (!Array.isArray(projects)) {
     projects = [projects];
   }
   projects.forEach(function(project) {
-//	console.log("gen_user_projects_link: "+config+" "+user+" "+project);
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&project='+project+'&user='+user;
-  if (self.helperContext.permission && ["observer","support"].indexOf(self.helperContext.permission) != -1) {
-    if (result.length > 0) {
-      result += ", ";
+    // Check permission
+    if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+      
+      // Start fresh with base URL
+      let newUrl = new URL(window.location.origin + window.location.pathname);
+      
+      // Set parameters
+      newUrl.searchParams.set('config', config);
+      if (view.navdata.data.demo || view.url_data.demo) {
+        newUrl.searchParams.set('demo', ''); // Sets &demo= (value-less param)
+      }
+      newUrl.searchParams.set('project', project);
+      newUrl.searchParams.set('user', user);
+      
+      // Copy existing hash
+      newUrl.hash = window.location.hash;
+
+      if (result.length > 0) {
+        result += ", ";
+      }
+      result += '<a href="' + newUrl.href + '">' + project + '</a>';
+    } else {
+      // No permission, just append text
+      if (result.length > 0) {
+        result += ", ";
+      }
+      result += project;
     }
-    result += '<a href="'+url+'">'+project+'</a>';
-  } else {
-    result += project;
-  }
   });
   return new Handlebars.SafeString(result);
 });
 
-Handlebars.registerHelper('gen_projects_link', function(config,projects) {
+Handlebars.registerHelper('gen_projects_link', function(config, projects) {
   let result = "";
-  if (!Array.isArray(projects)){
+  if (!Array.isArray(projects)) {
     projects = [projects];
   }
   let count = 0;
   projects.forEach(function(project) {
-//	console.log("gen_projects_link: "+config+" "+project);
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&project='+project;
-  if (self.helperContext.permission && ["observer","support","project"].indexOf(self.helperContext.permission) != -1) {
-     if (result.length > 0) {
-      result += ", ";
+    // Check permission
+    if (view.navdata.data.permission && ["observer", "support", "project"].indexOf(view.navdata.data.permission) != -1) {
+      
+      // Start fresh with base URL
+      let newUrl = new URL(window.location.origin + window.location.pathname);
+      
+      // Set parameters
+      newUrl.searchParams.set('config', config);
+      if (view.navdata.data.demo || view.url_data.demo) {
+        newUrl.searchParams.set('demo', '');
+      }
+      newUrl.searchParams.set('project', project);
+      
+      // Copy existing hash
+      newUrl.hash = window.location.hash;
+
+      if (result.length > 0) {
+        result += ", ";
+      }
+      
+      // Formatting logic for lists
+      count = count + 1;
+      if (count > 10) {
+        result += "<br>";
+        count = 0;
+      }
+      
+      result += '<a href="' + newUrl.href + '">' + project + '</a>';
+    } else {
+      // No permission, just append text
+      if (result.length > 0) {
+        result += ", ";
+      }
+      result += project;
     }
-    count = count + 1;
-     if (count > 10) {
-      result += "<br>";
-      count = 0;
-    }
-    result += '<a href="'+url+'">'+project+'</a>';
-  } else {
-    result += project;
-  }
   });
   return new Handlebars.SafeString(result);
 });
 
 Handlebars.registerHelper('gen_project_link', function(config,project) {
 //    console.log("gen_project_link: "+config+" "+project);
-  let result = "";
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&project='+project;
-  if (self.helperContext.permission && ["observer","support","mentor"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="'+url+'">'+project+'</a>';
+  // Check permission
+  if (view.navdata.data.permission && ["observer", "support", "mentor"].indexOf(view.navdata.data.permission) != -1) {
+    
+    // Start fresh
+    let newUrl = new URL(window.location.origin + window.location.pathname);
+
+    // Set specific params
+    newUrl.searchParams.set('config', config);
+    newUrl.searchParams.set('project', params.value);
+
+    // Copy hash
+    newUrl.hash = window.location.hash;
+    
+    result = `<a href="${newUrl.href}">${params.value}</a>`;
   } else {
-    result = project;
+    result = params.value;
   }
   return new Handlebars.SafeString(result);
 });
 
 Handlebars.registerHelper('gen_mentor_link', function(config,mentor) {
-//    console.log("gen_mentor_link: "+config+" "+mentor);
-  let result = "";
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&mentor='+mentor;
-  if (self.helperContext.permission && ["observer","support"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="'+url+'">'+mentor+'</a>';
+  //    console.log("gen_mentor_link: "+config+" "+mentor);
+  // Check permission
+  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+    
+    // Start fresh
+    let newUrl = new URL(window.location.origin + window.location.pathname);
+
+    // Set specific params
+    newUrl.searchParams.set('config', config);
+    newUrl.searchParams.set('mentor', params.value);
+
+    // Copy hash
+    newUrl.hash = window.location.hash;
+
+    result = `<a href="${newUrl.href}">${params.value}</a>`;
   } else {
-    result = mentor;
+    result = params.value;
   }
-  return new Handlebars.SafeString(result);
+  return new Handlebars.SafeString(result)
 });
 
 Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {

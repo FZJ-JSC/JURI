@@ -215,40 +215,68 @@ function create_report_link(params,type,project,user) {
 };
 
 
-function gen_project_user_link(params,config,project) {
+function gen_project_user_link(params, config, project) {
   //    console.log("gen_project_user_link: "+config+" "+params.data[project]+" "+params.value);
-  let result = "";
-  if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
-    let url = `index.html?config=${config}&project=${params.data[project]}&user=${params.value}`;
-    result = `<a href="${url}">${params.value}</a>`;
+  // Check permission
+  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+    
+    // Start fresh with the base URL (no query, no hash)
+    let newUrl = new URL(window.location.origin + window.location.pathname);
+
+    // Set only the parameters we explicitly want
+    newUrl.searchParams.set('config', config);
+    newUrl.searchParams.set('project', params.data[project]);
+    newUrl.searchParams.set('user', params.value);
+
+    // Copy the hash (fragment) from the current window to preserve page/view state
+    newUrl.hash = window.location.hash;
+
+    return `<a href="${newUrl.href}">${params.value}</a>`;
   } else {
-    result = params.value;
+    return params.value;
   }
-  return result;
 };
 
-function gen_project_link(params,config) {
+function gen_project_link(params, config) {
   //    console.log("gen_project_link: "+config+" "+params.value);
-  let result = "";
-  if (view.navdata.data.permission && ["observer","support","mentor"].indexOf(view.navdata.data.permission) != -1) {
-    let url = `index.html?config=${config}&project=${params.value}`;
-    result = `<a href="${url}">${params.value}</a>`;
+  // Check permission
+  if (view.navdata.data.permission && ["observer", "support", "mentor"].indexOf(view.navdata.data.permission) != -1) {
+    
+    // Start fresh
+    let newUrl = new URL(window.location.origin + window.location.pathname);
+
+    // Set specific params
+    newUrl.searchParams.set('config', config);
+    newUrl.searchParams.set('project', params.value);
+
+    // Copy hash
+    newUrl.hash = window.location.hash;
+    
+    return `<a href="${newUrl.href}">${params.value}</a>`;
   } else {
-    result = params.value;
+    return params.value;
   }
-  return result;
 };
 
-function gen_mentor_link(params,config) {
+function gen_mentor_link(params, config) {
   //    console.log("gen_mentor_link: "+config+" "+params.value);
-  let result = "";
-  if (view.navdata.data.permission && ["observer","support"].indexOf(view.navdata.data.permission) != -1) {
-    let url = `index.html?config=${config}&mentor=${params.value}`;
-    result = `<a href="${url}">${params.value}</a>`;
+  // Check permission
+  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+    
+    // Start fresh
+    let newUrl = new URL(window.location.origin + window.location.pathname);
+
+    // Set specific params
+    newUrl.searchParams.set('config', config);
+    newUrl.searchParams.set('mentor', params.value);
+
+    // Copy hash
+    newUrl.hash = window.location.hash;
+
+    return `<a href="${newUrl.href}">${params.value}</a>`;
   } else {
-    result = params.value;
+    return params.value;
   }
-  return result;
 };
 
 function gen_benchmark_link(params) {
