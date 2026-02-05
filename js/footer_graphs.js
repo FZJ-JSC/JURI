@@ -80,7 +80,10 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
       for (let key of keys) {
         params[key] = $($(this).find("td")[i++]).text()
       }
-      self.apply_data(params);
+      // Deferring applying data to avoid graphs not being there yet when line is selected
+      setTimeout(() => {
+        self.apply_data(params);
+      }, 0);
       return;
     }
   });
@@ -117,7 +120,10 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
       for (let key of keys) {
         params[key] = $(new_selected.find("td")[i++]).text();
       }
-      self.apply_data(params);
+      // Deferring applying data to avoid graphs not being there yet when line is selected
+      setTimeout(() => {
+        self.apply_data(params);
+      }, 0);
     }
   }
 
