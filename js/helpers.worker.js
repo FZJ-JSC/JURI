@@ -16,65 +16,76 @@ Handlebars.registerHelper('replaceDataPlaceholder', function(link) {
   return new Handlebars.SafeString(result);
 });
 
-Handlebars.registerHelper('gen_project_user_link', function(config,project,user) {
-//    console.log("gen_project_user_link: "+config+" "+project+" "+user);
-  // Check permission
-  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
-    
-    // Start fresh with the base URL (no query, no hash)
-    let newUrl = new URL(window.location.origin + window.location.pathname);
+// Internal helper to build safe URLs in a Worker context
+// usage: buildSafeUrl({ config: 'cfg', project: 'proj' })
+function buildSafeUrl(paramsObj) {
+  // Retrieve location data passed from the main thread
+  const loc = self.helperContext.windowLocation || { origin: '', pathname: 'index.html', hash: '' };
+  
+  // Construct Base URL
+  let baseUrl = (loc.origin && loc.pathname.startsWith('/')) 
+                ? loc.origin + loc.pathname 
+                : loc.pathname;
 
-    // Set only the parameters we explicitly want
-    newUrl.searchParams.set('config', config);
-    newUrl.searchParams.set('project', params.data[project]);
-    newUrl.searchParams.set('user', params.value);
-
-    // Copy the hash (fragment) from the current window to preserve page/view state
-    newUrl.hash = window.location.hash;
-
-    result = `<a href="${newUrl.href}">${params.value}</a>`;
-  } else {
-    result = params.value;
+  // Use URLSearchParams
+  const params = new URLSearchParams();
+  
+  // Add 'demo' flag if active
+  if (self.helperContext.is_demo) {
+    params.set('demo', ''); // treated as &demo=
   }
 
-  return new Handlebars.SafeString(result);
+  // Add all other parameters
+  for (const [key, value] of Object.entries(paramsObj)) {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, value);
+    }
+  }
+
+  // Return full URL
+  return `${baseUrl}?${params.toString()}${loc.hash}`;
+}
+
+
+Handlebars.registerHelper('gen_project_user_link', function(config, project, user) {
+  // Check permission
+  if (self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
+    
+    const url = buildSafeUrl({
+      config: config,
+      project: project,
+      user: user
+    });
+
+    return new Handlebars.SafeString(`<a href="${url}">${user}</a>`);
+  } else {
+    return new Handlebars.SafeString(user);
+  }
 });
+
 
 Handlebars.registerHelper('gen_user_projects_link', function(config, user, projects) {
   let result = "";
   if (!Array.isArray(projects)) {
     projects = [projects];
   }
+  
   projects.forEach(function(project) {
-    // Check permission
-    if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
-      
-      // Start fresh with base URL
-      let newUrl = new URL(window.location.origin + window.location.pathname);
-      
-      // Set parameters
-      newUrl.searchParams.set('config', config);
-      if (view.navdata.data.demo || view.url_data.demo) {
-        newUrl.searchParams.set('demo', ''); // Sets &demo= (value-less param)
-      }
-      newUrl.searchParams.set('project', project);
-      newUrl.searchParams.set('user', user);
-      
-      // Copy existing hash
-      newUrl.hash = window.location.hash;
+    if (self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
+      const url = buildSafeUrl({
+        config: config,
+        project: project,
+        user: user
+      });
 
-      if (result.length > 0) {
-        result += ", ";
-      }
-      result += '<a href="' + newUrl.href + '">' + project + '</a>';
+      if (result.length > 0) result += ", ";
+      result += `<a href="${url}">${project}</a>`;
     } else {
-      // No permission, just append text
-      if (result.length > 0) {
-        result += ", ";
-      }
+      if (result.length > 0) result += ", ";
       result += project;
     }
   });
+  
   return new Handlebars.SafeString(result);
 });
 
@@ -83,159 +94,177 @@ Handlebars.registerHelper('gen_projects_link', function(config, projects) {
   if (!Array.isArray(projects)) {
     projects = [projects];
   }
+  
   let count = 0;
   projects.forEach(function(project) {
-    // Check permission
-    if (view.navdata.data.permission && ["observer", "support", "project"].indexOf(view.navdata.data.permission) != -1) {
-      
-      // Start fresh with base URL
-      let newUrl = new URL(window.location.origin + window.location.pathname);
-      
-      // Set parameters
-      newUrl.searchParams.set('config', config);
-      if (view.navdata.data.demo || view.url_data.demo) {
-        newUrl.searchParams.set('demo', '');
-      }
-      newUrl.searchParams.set('project', project);
-      
-      // Copy existing hash
-      newUrl.hash = window.location.hash;
+    if (self.helperContext.permission && ["observer", "support", "project"].indexOf(self.helperContext.permission) != -1) {
+      const url = buildSafeUrl({
+        config: config,
+        project: project
+      });
 
-      if (result.length > 0) {
-        result += ", ";
-      }
+      if (result.length > 0) result += ", ";
       
-      // Formatting logic for lists
-      count = count + 1;
+      count++;
       if (count > 10) {
         result += "<br>";
         count = 0;
       }
-      
-      result += '<a href="' + newUrl.href + '">' + project + '</a>';
+      result += `<a href="${url}">${project}</a>`;
     } else {
-      // No permission, just append text
-      if (result.length > 0) {
-        result += ", ";
-      }
+      if (result.length > 0) result += ", ";
       result += project;
     }
   });
+  
   return new Handlebars.SafeString(result);
 });
 
-Handlebars.registerHelper('gen_project_link', function(config,project) {
-//    console.log("gen_project_link: "+config+" "+project);
-  // Check permission
-  if (view.navdata.data.permission && ["observer", "support", "mentor"].indexOf(view.navdata.data.permission) != -1) {
-    
-    // Start fresh
-    let newUrl = new URL(window.location.origin + window.location.pathname);
-
-    // Set specific params
-    newUrl.searchParams.set('config', config);
-    newUrl.searchParams.set('project', params.value);
-
-    // Copy hash
-    newUrl.hash = window.location.hash;
-    
-    result = `<a href="${newUrl.href}">${params.value}</a>`;
-  } else {
-    result = params.value;
-  }
-  return new Handlebars.SafeString(result);
-});
-
-Handlebars.registerHelper('gen_mentor_link', function(config,mentor) {
-  //    console.log("gen_mentor_link: "+config+" "+mentor);
-  // Check permission
-  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
-    
-    // Start fresh
-    let newUrl = new URL(window.location.origin + window.location.pathname);
-
-    // Set specific params
-    newUrl.searchParams.set('config', config);
-    newUrl.searchParams.set('mentor', params.value);
-
-    // Copy hash
-    newUrl.hash = window.location.hash;
-
-    result = `<a href="${newUrl.href}">${params.value}</a>`;
-  } else {
-    result = params.value;
-  }
-  return new Handlebars.SafeString(result)
-});
-
-Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {
-  // console.log("gen_search_jobid_link: ",jobid);
+Handlebars.registerHelper('gen_project_link', function(config, project) {
   let result = "";
-  if (jobid in self.helperContext.mapjobid_to_day && self.helperContext.permission && ["observer","support"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="javascript:void(0)" onclick="apply_search(\'JobID\','+jobid+',true)">'+jobid+'</a>';
+  
+  if (self.helperContext.permission && ["observer", "support", "mentor"].indexOf(self.helperContext.permission) != -1) {
+    const url = buildSafeUrl({
+      config: config,
+      project: project
+    });
+    result = `<a href="${url}">${project}</a>`;
+  } else {
+    result = project;
+  }
+  
+  return new Handlebars.SafeString(result);
+});
+
+Handlebars.registerHelper('gen_mentor_link', function(config, mentor) {
+  let result = "";
+  
+  if (self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
+    const url = buildSafeUrl({
+      config: config,
+      mentor: mentor
+    });
+    result = `<a href="${url}">${mentor}</a>`;
+  } else {
+    result = mentor;
+  }
+  
+  return new Handlebars.SafeString(result);
+});
+
+/* 
+   FIX for gen_search_jobid_link:
+   Instead of 'javascript:void(0)' + onclick (which fails with Ctrl+Click/Middle Click),
+   we generate a real URL with a query parameter like 'search_id=123'.
+   
+   The main thread must define logic to read this param on load/navigation 
+   and apply the search logic.
+*/
+Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {
+  let result = "";
+  
+  if (jobid in self.helperContext.mapjobid_to_day && self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
+    // We add a specific param for the search logic
+    const url = buildSafeUrl({
+      search_field: 'JobID',
+      search_value: jobid,
+      search_exact: 'true'
+    });
+    
+    result = `<a href="${url}" onclick="apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>`;
   } else {
     result = jobid;
   }
+  
   return new Handlebars.SafeString(result);
 });
 
 Handlebars.registerHelper('gen_jobid_list_link', function(jobidlist) {
-  // console.log("gen_jobid_list_link: ",jobidlist);
   let result = "";
-  var jobids = jobidlist.split(/[\s]+/); // Splitting jobs and eventual status
-  jobids.forEach((jobidstatus) => {
-    matches = jobidstatus.match(/(\d+)(\[\w\])?(<br>)?/);
-    jobid = matches[1];
-    jobstatus = matches[2] ?? "";
-    newline = matches[3] ?? "";
-    if (matches[1] in self.helperContext.mapjobid_to_day) {
-      result += '<a href="javascript:void(0)" onclick="apply_search(\'JobID\','+jobid+',true)">'+jobid+'</a>'+jobstatus+newline+" ";
-    } else {
-      result += jobidstatus+" ";
-    }
-  })
-  return new Handlebars.SafeString(result);
-});
+  var jobids = jobidlist.split(/[\s]+/);
   
+  jobids.forEach((jobidstatus) => {
+    let matches = jobidstatus.match(/(\d+)(\[\w\])?(<br>)?/);
+    if (!matches) return;
 
-Handlebars.registerHelper('user_link_jobr', function(project,user,config_prefix,system) {
-  // console.log("user_link1: "+project+" "+user+" "+system);
-  let config = ((!config_prefix || typeof config_prefix != "string")?self.helperContext.system:config_prefix)+'_user';
-  config += (!system || typeof system != "string")?"":"_system";
-  let result = "";
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&project='+project+'&user='+user;
-  url += (!system || typeof system != "string")?'':'&system='+system;
-  if (self.helperContext.permission && ["observer","support","project","advisor","mentor"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="'+url+'">'+((!system || typeof system != "string")?user:system)+'</a>';
-  } else {
-    result = (!system || typeof system != "string")?user:system;
-  }
+    let jobid = matches[1];
+    let jobstatus = matches[2] ?? "";
+    let newline = matches[3] ?? "";
+    
+    if (matches[1] in self.helperContext.mapjobid_to_day) {
+      const url = buildSafeUrl({
+        search_field: 'JobID',
+        search_value: jobid,
+        search_exact: 'true'
+      });
+      
+      // HREF provides valid URL for new tabs, onclick handles in-page update
+      result += `<a href="${url}" onclick="apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>${jobstatus}${newline} `;
+    } else {
+      result += jobidstatus + " ";
+    }
+  });
+  
   return new Handlebars.SafeString(result);
 });
 
-Handlebars.registerHelper('mentor_link', function(user,config_prefix) {
-  let config = ((!config_prefix || typeof config_prefix != "string")?self.helperContext.system:config_prefix)+'_mentor';
+Handlebars.registerHelper('user_link_jobr', function(project, user, config_prefix, system) {
+  let config = ((!config_prefix || typeof config_prefix != "string") ? self.helperContext.system : config_prefix) + '_user';
+  config += (!system || typeof system != "string") ? "" : "_system";
+  
+  let label = (!system || typeof system != "string") ? user : system;
   let result = "";
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&user='+user;
-  if (self.helperContext.permission && ["observer","support"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="'+url+'">'+ user +'</a>';
+
+  if (self.helperContext.permission && ["observer", "support", "project", "advisor", "mentor"].indexOf(self.helperContext.permission) != -1) {
+    const url = buildSafeUrl({
+      config: config,
+      project: project,
+      user: user,
+      system: (!system || typeof system != "string") ? undefined : system
+    });
+    result = `<a href="${url}">${label}</a>`;
+  } else {
+    result = label;
+  }
+  
+  return new Handlebars.SafeString(result);
+});
+
+Handlebars.registerHelper('mentor_link', function(user, config_prefix) {
+  let config = ((!config_prefix || typeof config_prefix != "string") ? self.helperContext.system : config_prefix) + '_mentor';
+  let result = "";
+  
+  if (self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
+    const url = buildSafeUrl({
+      config: config,
+      user: user
+    });
+    result = `<a href="${url}">${user}</a>`;
   } else {
     result = user;
   }
+  
   return new Handlebars.SafeString(result);
-  });
+});
 
-Handlebars.registerHelper('project_link', function(project,config_prefix,system) {
-  let config = ((!config_prefix || typeof config_prefix != "string")?self.helperContext.system:config_prefix)+'_project';
-  config += (!system || typeof system != "string")?"":"_system";
+Handlebars.registerHelper('project_link', function(project, config_prefix, system) {
+  let config = ((!config_prefix || typeof config_prefix != "string") ? self.helperContext.system : config_prefix) + '_project';
+  config += (!system || typeof system != "string") ? "" : "_system";
+  
+  let label = (!system || typeof system != "string") ? project : system;
   let result = "";
-  let url = 'index.html?config='+config+(self.helperContext.is_demo?"&demo":"")+'&project='+project;
-  url += (!system || typeof system != "string")?'':'&system='+system;
-  if (self.helperContext.permission && ["observer","support","advisor","mentor","project"].indexOf(self.helperContext.permission) != -1) {
-    result = '<a href="'+url+'">'+((!system || typeof system != "string")?project:system)+'</a>';
+
+  if (self.helperContext.permission && ["observer", "support", "advisor", "mentor", "project"].indexOf(self.helperContext.permission) != -1) {
+    const url = buildSafeUrl({
+      config: config,
+      project: project,
+      system: (!system || typeof system != "string") ? undefined : system
+    });
+    result = `<a href="${url}">${label}</a>`;
   } else {
-    result = (!system || typeof system != "string")?project:system;
+    result = label;
   }
+  
   return new Handlebars.SafeString(result);
 });
 

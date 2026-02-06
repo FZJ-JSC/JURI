@@ -2433,6 +2433,11 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
           const helperContext = {
             is_demo: (self.navdata.data.demo || self.url_data.demo) ? true : false,
             permission: self.navdata.data.permission,
+            windowLocation: {
+              origin: window.location.origin,
+              pathname: window.location.pathname,
+              hash: window.location.hash
+            },
             mapjobid_to_day: self.mapjobid_to_day,
             system: self.navdata.data.system,
             fs: self.navdata.data.fs,
