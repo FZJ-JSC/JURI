@@ -170,7 +170,7 @@ function update_mapjobid_to_day() {
 }
 
 // Perform search using "filter" values written in "header"
-function apply_search(header,filter,follow) {
+function apply_search(header, filter, follow) {
   // Getting map jobid to day
   let found = false;
   // Remove previous filter message (if that is the case)
@@ -178,32 +178,59 @@ function apply_search(header,filter,follow) {
   for (let [key, value] of Object.entries(view.mapjobid_to_day)) {
     // Check if the value of the filter is on the csv file
     if (key.indexOf(filter) !== -1) {
-      value = parseInt(value)
+      value = parseInt(value);
       // If 'follow=true' change the page to the corresponding value
       if (follow) {
+        if (!view.initial_data.filter) view.initial_data.filter = {};
         view.initial_data.filter[header] = filter.toString();
+        // This updates the URL hash for the current page state
         view.setHash(true);
-        changePage(value)
+        changePage(value);
         return;
       }
-      // Otherwise, add the link with the search results
+      // Construct the URL for "Open in New Tab"
+      let url = new URL(window.location.href);
+      // Add/Update the specific parameters for the search logic
+      url.searchParams.set('search_field', header);
+      url.searchParams.set('search_value', filter);
+      let href = url.href;
+
+      let linkText = "";
       if (value !== -1) {
-        let date = new Date()
+        let date = new Date();
         date.setDate(date.getDate() - value);
         let date_str = String(date.getDate()).padStart(2, '0') + "." + String(date.getMonth() + 1).padStart(2, '0') + "." + date.getFullYear();
-        let link = $("<a>").attr("href", "#").text(date_str).click(function () { changePage(value); return; });
+        linkText = date_str;
+      } else {
+        linkText = 'currently active';
+      }
+
+      // Create the link
+      let link = $("<a>")
+        .attr("href", href)
+        .text(linkText)
+        .click(function (e) { 
+          // Allow Ctrl/Cmd+Click to open in new tab
+          if (e.ctrlKey || e.metaKey || e.which === 2) return;
+          
+          // Normal click: Handle in-page immediately
+          e.preventDefault(); 
+          changePage(value); 
+        });
+          
+      if (value !== -1) {
         $("#main_content").append($("<span>").addClass('filtermessage').text(`JobID ${key} found on `).append(link));
       } else {
-        let link = $("<a>").attr("href", "#").text('currently active').click(function () { changePage(value); return; });
         $("#main_content").append($("<span>").addClass('filtermessage').text(`JobID ${key} is `).append(link));
       }
       found = true;
     }
   }
+  
   if (!found) {
     // If no result is found, but 'follow' is used, there is no page to go to
     if (follow) {
-      alert(`${header}:${filter} was not found. The job may have been too short.`)
+      alert(`${header}:${filter} was not found. The job may have been too short.`);
     } else {
       no_results();
     }

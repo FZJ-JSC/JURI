@@ -760,6 +760,8 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
   // (Only done if search_field is used)
   if ( self.navdata.search_field && self.navdata.search_field.length > 0) {
     self.mapjobid_to_day = await update_mapjobid_to_day();
+    // Check URL for search params and redirect if found.
+    self.checkUrlForSearch();
   }
 
   if (Array.isArray(page)) {
@@ -971,6 +973,27 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
   return;
 }
 
+
+View.prototype.checkUrlForSearch = function() {
+  // Use a URL object to easily manipulate params
+  const url = new URL(window.location.href);
+  const field = url.searchParams.get('search_field');
+  const value = url.searchParams.get('search_value');
+
+  // If URL contains search params, trigger the search
+  if (field && value) {
+    
+    // Remove parameters to avoid infinite loop
+    url.searchParams.delete('search_field');
+    url.searchParams.delete('search_value');
+    
+    // Update the browser URL without reloading
+    window.history.replaceState(null, '', url);
+
+    // Trigger the search and change page
+    apply_search(field, value, true);
+  }
+};
 
 /**
  * Update the text in #view_data_info with url_data and page_data, when they exist
