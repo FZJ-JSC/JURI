@@ -152,14 +152,6 @@ Handlebars.registerHelper('gen_mentor_link', function(config, mentor) {
   return new Handlebars.SafeString(result);
 });
 
-/* 
-   FIX for gen_search_jobid_link:
-   Instead of 'javascript:void(0)' + onclick (which fails with Ctrl+Click/Middle Click),
-   we generate a real URL with a query parameter like 'search_id=123'.
-   
-   The main thread must define logic to read this param on load/navigation 
-   and apply the search logic.
-*/
 Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {
   let result = "";
   
