@@ -951,6 +951,15 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
 
         // Post-process function after selecting page
         if (typeof postprocess === "function") postprocess();
+
+        // Wait for the browser to paint the changes
+        // (Double requestAnimationFrame to ensure the event fires after the next paint cycle)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const event = new CustomEvent("pageLoadComplete");
+            window.dispatchEvent(event);
+          });
+        });
       }, 0);
 
       return;
