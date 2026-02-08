@@ -131,16 +131,31 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
   $("#main_content table tbody tr").addClass("clickable");
 }
 
-
+/**
+ * Add dragger to resize the footer and optionally resizes it to the value given in the
+ * URL (footer_size option)
+ */
 View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
   let self = this;
   
-  // Initialize footer height
-  if (view.footersize) {
-    $("footer").height(view.footersize);
-  } else {
-    $("footer").height(280);
+  // Max footer height: window height - Header height - 50px buffer for main content
+  let max_allowed_height = $(window).height() - $("#header").height() - 50;
+
+  // Check if URL has an override
+  let url_height = self.check_footer_height_option();
+
+  // Initialize footer height priority: URL Param > Saved in View object > Default
+  let init_height = 280;
+  if (url_height !== null) {
+    init_height = url_height;
+  } else if (view.footersize) {
+    init_height = view.footersize;
   }
+
+  // Apply max constraint
+  if (init_height > max_allowed_height) init_height = max_allowed_height;
+
+  $("footer").height(init_height);
 
   // Create the dragger element
   let drag = $('<div>').attr('id', 'dragger');
@@ -194,7 +209,14 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
     const dy = m_pos - currentY;
     
     m_pos = currentY;
-    footer.height(footer.height() + dy);
+    let new_height = footer.height() + dy;
+    let current_max = $(window).height() - $("#header").height() - 50;
+    
+    if (new_height > current_max) {
+      new_height = current_max;
+    }
+    
+    footer.height(new_height);
 
     // Minimum height calculation
     if (footer.height() < $("#footer_footer").height() + $("#footer_infoline").height() + 105) {
@@ -268,6 +290,26 @@ View.prototype.FooterGraph.prototype.add_mouse_resize = function () {
   return;
 };
 
+/**
+ * This function checks if the option 'footer_height' is given in the URL
+ * If it is, gets the value and returns it
+ * @returns {int} target_height of the footer
+ */
+View.prototype.FooterGraph.prototype.check_footer_height_option = function() {
+  // Check if getHash found it during initialization
+  if (view.initial_data && view.initial_data.footer_height) {
+    let target_height = parseInt(view.initial_data.footer_height);
+
+    // Remove it from the data structure so it doesn't persist on next setHash
+    delete view.initial_data.footer_height;
+
+    // Update the URL immediately to remove the parameter visually
+    view.setHash(false); 
+
+    return target_height;
+  }
+  return null;
+};
 
 /* Function to apply x-range relayout to all the elements to sync graphs */
 View.prototype.FooterGraph.prototype.relayout = function (ed) {

@@ -2676,9 +2676,6 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
 };
 
 
-
-
-
 /**
  * Capitalize first letter of string
  * @returns {string} capitalized string
@@ -2698,44 +2695,23 @@ View.prototype.setHash = function (keep_history) {
   let hash = "";
   parameter = {};
   // Add active page
-  if (self.initial_data.page) {
-    parameter["page"] = self.initial_data.page;
-  }
+  if (self.initial_data.page) parameter["page"] = self.initial_data.page;
   // Add active filter
-  if (self.initial_data.filter) {
-    // parameter = Object.assign({}, parameter, self.initial_data.filter);
-    Object.assign(parameter, self.initial_data.filter);
-  }
+  if (self.initial_data.filter) Object.assign(parameter, self.initial_data.filter);
   // Add active sort
-  if (self.initial_data.sort) {
-    // parameter = Object.assign({}, parameter, self.initial_data.sort);
-    Object.assign(parameter, self.initial_data.sort);
-  }
+  if (self.initial_data.sort) Object.assign(parameter, self.initial_data.sort);
   // Add colorscale
-  if (self.initial_data.colors) {
-    // parameter = Object.assign({}, parameter, self.initial_data.colors);
-    Object.assign(parameter, self.initial_data.colors);
-  }
+  if (self.initial_data.colors) Object.assign(parameter, self.initial_data.colors);
   // Add auto-refresh
-  if (self.initial_data.refresh) {
-    Object.assign(parameter, self.initial_data.refresh);
-  }
+  if (self.initial_data.refresh) Object.assign(parameter, self.initial_data.refresh);
   // Add Presentation Mode
-  if (self.initial_data.presentation) {
-    Object.assign(parameter, self.initial_data.presentation);
-  }
+  if (self.initial_data.presentation) Object.assign(parameter, self.initial_data.presentation);
   // Add description box
-  if (self.initial_data.description) {
-    Object.assign(parameter, self.initial_data.description);
-  }
+  if (self.initial_data.description) Object.assign(parameter, self.initial_data.description);
   // Add options box
-  if (self.initial_data.options) {
-    Object.assign(parameter, self.initial_data.options);
-  }
+  if (self.initial_data.options) Object.assign(parameter, self.initial_data.options);
   // Add quickfilter
-  if (self.initial_data.quickfilter) {
-    parameter["quickfilter"] = self.initial_data.quickfilter;
-  }
+  if (self.initial_data.footer_height) parameter["footer_height"] = self.initial_data.footer_height;
 
   // Build hash into URL
   for (let key in parameter) {

@@ -117,6 +117,17 @@ function resize() {
   $("#footer_graphs").css("margin-bottom",$("#footer_footer").height())
   // Set height of the footer (that can be dragged with the mouse)
   $("footer").css("min-height",$("#footer_infoline").height() + $("#footer_footer").height())
+
+  // Calculate maximum allowed height for footer (Window - Header - minimal Main content buffer)
+  // We reserve 50px for #main_content so the UI doesn't look broken
+  let max_footer_height = $(window).height() - $("#header").height() - 50; 
+  
+  // If current footer is larger than available space, shrink it
+  if ($("footer").height() > max_footer_height) {
+    $("footer").height(max_footer_height);
+    // Update the view tracking variable if it exists
+    view.footersize = max_footer_height;
+  }
   // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
   $("#main_content").height($(window).height() - $("#header").height() - ($("#tabs_scroll").height()??0) - $("footer").height() - 10);
   $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height());
@@ -205,6 +216,8 @@ function getHash() {
           target = params[key].options;
         } else if (entry == "quickfilter") {
           target = params[key];
+        } else if (entry == "footer_height") {
+          target = params[key]; 
         } else {
           target = params[key].filter;
           entry = entry;
