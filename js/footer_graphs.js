@@ -400,21 +400,50 @@ View.prototype.FooterGraph.prototype.apply_config = function () {
     $("#graph_selection ul").append($("<li>").attr("id", "page_" + element.name.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '')).append(link));
     view.apply_tooltip(link);
   });
-  // Select first available page by default
-  self.select_page($("#graph_selection ul li").first().text());
+
+  // Determine initial page: URL parameter > First available page
+  let initial_page = $("#graph_selection ul li").first().text();
+  
+  if (view.initial_data.footer_tab) {
+    // Verify the requested tab actually exists in the configuration to avoid errors
+    let tab_exists = self.config.some(element => element.name === view.initial_data.footer_tab);
+    if (tab_exists) {
+      initial_page = view.initial_data.footer_tab;
+    }
+  }
+
+  // Select the determined page
+  self.select_page(initial_page);
 }
 
 /* Select a specifc graph page */
 View.prototype.FooterGraph.prototype.select_page = function (page) {
   let self = this;
   $("#graph_selection ul li").removeClass("active");
+  
+  // Clean up ID generation to match HTML attributes
   let id = "page_" + page.replaceAll(' ', '_').replaceAll("$", '').replaceAll("/", '');
-  $(`[id="${id}"]`).addClass("active");
+  let selected_tab = $(`[id="${id}"]`);
+  
+  selected_tab.addClass("active");
   $(self).parent().addClass("active");
+  
   self.current_page = page;
   self.clear();
   self.create_graphs();
   self.apply_data();
+
+  // Update URL Hash with the selected tab
+  // Check if the selected tab is the first one in the list (default)
+  // If it is the first one, we remove the parameter to keep the URL clean
+  if (selected_tab.is(':first-child')) {
+    delete view.initial_data.footer_tab;
+  } else {
+    view.initial_data.footer_tab = page;
+  }
+  
+  // Update the URL without reloading page or creating history entry
+  view.setHash(false);
 }
 
 /* Clear the footer graph area */

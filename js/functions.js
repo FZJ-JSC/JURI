@@ -218,6 +218,8 @@ function getHash() {
           target = params[key];
         } else if (entry == "footer_height") {
           target = params[key]; 
+        } else if (entry == "footer_tab") {
+          target = params[key];
         } else {
           target = params[key].filter;
           entry = entry;

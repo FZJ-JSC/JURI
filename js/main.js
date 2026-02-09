@@ -2711,7 +2711,11 @@ View.prototype.setHash = function (keep_history) {
   // Add options box
   if (self.initial_data.options) Object.assign(parameter, self.initial_data.options);
   // Add quickfilter
+  if (self.initial_data.quickfilter) parameter["quickfilter"] = self.initial_data.quickfilter;
+  // Add footer height
   if (self.initial_data.footer_height) parameter["footer_height"] = self.initial_data.footer_height;
+  // Add footer tab
+  if (self.initial_data.footer_tab) parameter["footer_tab"] = self.initial_data.footer_tab;
 
   // Build hash into URL
   for (let key in parameter) {
