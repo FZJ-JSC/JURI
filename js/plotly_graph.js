@@ -846,10 +846,12 @@ PlotlyGraph.prototype.plot = function (params) {
           };
   
           let minmax = {};
-          // If min/max is present and nodes>1, change hover info and prepare information for background curves
+          // If min/max is present and nnodes>1 (or ngpus>1 for GPU tabs), change hover info and prepare information for background curves
           // Show min/max also when nnodes is undefined (e.g., in Project view)
-          let nnodes = params ? params['#Nodes'] : undefined
-          if ((self.minmax == true) && (((nnodes === undefined) || (nnodes > 1)) || (self.graph_data.xcol != 'date')) ) {
+          const nnodes = params['#Nodes'];
+          const ngpus = params['#GPUs'] ?? 4;
+          const activeTabId = $("#graph_selection ul li.active").attr("id") || "";
+          if ((self.minmax == true) && (((nnodes === undefined) || (nnodes > 1)) || (activeTabId.includes("GPU") && ngpus > 1) || (self.graph_data.xcol != 'date')) ) {
             trace.hovertemplate = [];
             for (let i = 0; i < trace.x.length; i++) {
               trace.hovertemplate.push(trace.min[i].toFixed(2) + ' / <b>' + trace.y[i].toFixed(2) + '</b> / ' + trace.max[i].toFixed(2));
