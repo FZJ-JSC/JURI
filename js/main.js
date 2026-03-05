@@ -2468,6 +2468,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             windowLocation: {
               origin: window.location.origin,
               pathname: window.location.pathname,
+              search: window.location.search,
               hash: window.location.hash
             },
             mapjobid_to_day: self.mapjobid_to_day,

@@ -27,8 +27,8 @@ function buildSafeUrl(paramsObj) {
                 ? loc.origin + loc.pathname 
                 : loc.pathname;
 
-  // Use URLSearchParams
-  const params = new URLSearchParams();
+  // Use URLSearchParams with existing search params so we don't lose ?config=...
+  const params = new URLSearchParams(loc.search);
   
   // Add 'demo' flag if active
   if (self.helperContext.is_demo) {
@@ -42,8 +42,11 @@ function buildSafeUrl(paramsObj) {
     }
   }
 
+  // Decode %2F back to / for cleaner looking URLs
+  let queryString = params.toString().replace(/%2F/g, '/');
+
   // Return full URL
-  return `${baseUrl}?${params.toString()}${loc.hash}`;
+  return `${baseUrl}?${queryString}${window.location.hash}`;
 }
 
 
@@ -156,14 +159,13 @@ Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {
   let result = "";
   
   if (jobid in self.helperContext.mapjobid_to_day && self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
-    // We add a specific param for the search logic
+    // We add specific params for the search logic
     const url = buildSafeUrl({
       search_field: 'JobID',
-      search_value: jobid,
-      search_exact: 'true'
+      search_value: jobid
     });
     
-    result = `<a href="${url}" onclick="apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>`;
+    result = `<a href="${url}" onclick="if(event.ctrlKey || event.metaKey || event.button === 1) return true; apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>`;
   } else {
     result = jobid;
   }
@@ -186,12 +188,11 @@ Handlebars.registerHelper('gen_jobid_list_link', function(jobidlist) {
     if (matches[1] in self.helperContext.mapjobid_to_day) {
       const url = buildSafeUrl({
         search_field: 'JobID',
-        search_value: jobid,
-        search_exact: 'true'
+        search_value: jobid
       });
       
       // HREF provides valid URL for new tabs, onclick handles in-page update
-      result += `<a href="${url}" onclick="apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>${jobstatus}${newline} `;
+      result += `<a href="${url}" onclick="if(event.ctrlKey || event.metaKey || event.button === 1) return true; apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>${jobstatus}${newline} `;
     } else {
       result += jobidstatus + " ";
     }

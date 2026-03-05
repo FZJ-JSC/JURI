@@ -258,6 +258,68 @@ function gen_project_link(params, config) {
   }
 };
 
+
+/**
+ * Generate a list of project links (independent of Handlebars)
+ * @param {object} params - object containing .value (the project(s))
+ * @param {string} config - config name for the link
+ * @returns {string} HTML string with links
+ */
+function gen_projects_link(params, config) {
+  let val = params.value;
+  let projects = [];
+
+  // Robust input handling:
+  // 1. If it's already an array, use it.
+  // 2. If it's a string, split by comma (handling potential spaces).
+  // 3. Otherwise, wrap it in an array.
+  if (Array.isArray(val)) {
+    projects = val;
+  } else if (typeof val === 'string') {
+    // Remove brackets if they exist (e.g. "[user1, user2]") and split
+    projects = val.replace(/[\[\]]/g, '').split(',').map(item => item.trim());
+  } else if (val) {
+    projects = [val];
+  }
+
+  let result = "";
+  let count = 0;
+  
+  projects.forEach(function(project) {
+    // Check permission using global view object
+    if (view.navdata.data.permission && ["observer", "support", "project"].indexOf(view.navdata.data.permission) != -1) {
+      
+      // Construct URL
+      let newUrl = new URL(window.location.origin + window.location.pathname);
+      newUrl.searchParams.set('config', config);
+      newUrl.searchParams.set('project', project);
+      
+      // If demo mode is active, preserve it
+      if (view.url_data && view.url_data.demo) {
+         newUrl.searchParams.set('demo', '');
+      }
+
+      // Preserve Hash
+      newUrl.hash = window.location.hash;
+
+      if (result.length > 0) result += ", ";
+      
+      count++;
+      if (count > 10) {
+        result += "<br>";
+        count = 0;
+      }
+      result += `<a href="${newUrl.href}">${project}</a>`;
+    } else {
+      if (result.length > 0) result += ", ";
+      result += project;
+    }
+  });
+  
+  return result;
+};
+
+
 function gen_mentor_link(params, config) {
   //    console.log("gen_mentor_link: "+config+" "+params.value);
   // Check permission
@@ -294,3 +356,61 @@ function gen_benchmark_link(params) {
   let finalUrl = currentUrl.href;
   return `<a href="${finalUrl}" onclick="if (event.metaKey || event.ctrlKey || event.shiftKey) return; view.selectPage('${targetId}'); return false;">${params.value}</a>`;
 };
+
+function gen_search_jobid_link(params) {
+  let jobid = params.value;
+  let result = "";
+
+  if (jobid in view.mapjobid_to_day && view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+    // Start with current URL to preserve config, demo flags, and hash
+    let newUrl = new URL(window.location.href);
+    
+    newUrl.searchParams.set('search_field', 'JobID');
+    newUrl.searchParams.set('search_value', jobid);
+
+    // Decode %2F back to / for cleaner looking URLs
+    let href = newUrl.href.replace(/%2F/g, '/');
+
+    // Add modifier key check to the onclick string.
+    // If Ctrl/Cmd/Middle-click is used, it returns true (allows default browser new tab).
+    // Otherwise, it runs apply_search and returns false (stays on page).
+    result = `<a href="${href}" onclick="if(event.ctrlKey || event.metaKey || event.button === 1) return true; apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>`;
+  } else {
+    result = jobid;
+  }
+
+  return result;
+}
+
+function gen_jobid_list_link(params) {
+  let jobidlist = params.value;
+  if (!jobidlist) return "";
+
+  let result = "";
+  let jobids = String(jobidlist).split(/[\s]+/);
+
+  jobids.forEach((jobidstatus) => {
+    let matches = jobidstatus.match(/(\d+)(\[\w\])?(<br>)?/);
+    if (!matches) return;
+
+    let jobid = matches[1];
+    let jobstatus = matches[2] ?? "";
+    let newline = matches[3] ?? "";
+
+    if (jobid in view.mapjobid_to_day) {
+      // Start with current URL to preserve config, demo flags, and hash
+      let newUrl = new URL(window.location.href);
+      
+      newUrl.searchParams.set('search_field', 'JobID');
+      newUrl.searchParams.set('search_value', jobid);
+
+      let href = newUrl.href.replace(/%2F/g, '/');
+
+      result += `<a href="${href}" onclick="if(event.ctrlKey || event.metaKey || event.button === 1) return true; apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>${jobstatus}${newline} `;
+    } else {
+      result += jobidstatus + " ";
+    }
+  });
+
+  return result;
+}
