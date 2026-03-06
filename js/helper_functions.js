@@ -387,9 +387,13 @@ function gen_jobid_list_link(params) {
   if (!jobidlist) return "";
 
   let result = "";
-  let jobids = String(jobidlist).split(/[\s]+/);
+  // If it's already an array, use it. If it's a string, split by spaces or commas.
+  let jobids = Array.isArray(jobidlist) ? jobidlist : String(jobidlist).split(/[\s,]+/);
 
-  jobids.forEach((jobidstatus) => {
+  jobids.forEach((item) => {
+    let jobidstatus = String(item).trim();
+    if (!jobidstatus) return;
+
     let matches = jobidstatus.match(/(\d+)(\[\w\])?(<br>)?/);
     if (!matches) return;
 
@@ -398,7 +402,6 @@ function gen_jobid_list_link(params) {
     let newline = matches[3] ?? "";
 
     if (jobid in view.mapjobid_to_day) {
-      // Start with current URL to preserve config, demo flags, and hash
       let newUrl = new URL(window.location.href);
       
       newUrl.searchParams.set('search_field', 'JobID');
@@ -412,5 +415,5 @@ function gen_jobid_list_link(params) {
     }
   });
 
-  return result;
+  return result.trim();
 }

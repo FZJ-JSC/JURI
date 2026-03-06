@@ -174,10 +174,16 @@ Handlebars.registerHelper('gen_search_jobid_link', function(jobid) {
 });
 
 Handlebars.registerHelper('gen_jobid_list_link', function(jobidlist) {
-  let result = "";
-  var jobids = jobidlist.split(/[\s]+/);
+  if (!jobidlist) return "";
   
-  jobids.forEach((jobidstatus) => {
+  let result = "";
+  // If it's already an array, use it. If it's a string, split by spaces or commas.
+  let jobids = Array.isArray(jobidlist) ? jobidlist : String(jobidlist).split(/[\s,]+/);
+
+  jobids.forEach((item) => {
+    let jobidstatus = String(item).trim();
+    if (!jobidstatus) return;
+
     let matches = jobidstatus.match(/(\d+)(\[\w\])?(<br>)?/);
     if (!matches) return;
 
@@ -185,20 +191,19 @@ Handlebars.registerHelper('gen_jobid_list_link', function(jobidlist) {
     let jobstatus = matches[2] ?? "";
     let newline = matches[3] ?? "";
     
-    if (matches[1] in self.helperContext.mapjobid_to_day) {
+    if (jobid in self.helperContext.mapjobid_to_day) {
       const url = buildSafeUrl({
         search_field: 'JobID',
         search_value: jobid
       });
       
-      // HREF provides valid URL for new tabs, onclick handles in-page update
       result += `<a href="${url}" onclick="if(event.ctrlKey || event.metaKey || event.button === 1) return true; apply_search('JobID', '${jobid}', true); return false;">${jobid}</a>${jobstatus}${newline} `;
     } else {
       result += jobidstatus + " ";
     }
   });
   
-  return new Handlebars.SafeString(result);
+  return new Handlebars.SafeString(result.trim());
 });
 
 Handlebars.registerHelper('user_link_jobr', function(project, user, config_prefix, system) {
