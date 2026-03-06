@@ -205,7 +205,7 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
           // Only process if this call is still current.
           if (self._currentCallId !== callId) return;
           // Parse the CSV text into an array of objects.
-          let parsed = csvToArr(csvText, ",");
+          let parsed = csvToArr(csvText, self.graph_data.csv_delimiter??",");
           // Push each parsed row into the data array.
           parsed.forEach((row) => currentDataArray.push(row));
         })
@@ -237,7 +237,7 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
           // Only process if this call is still current.
           if (self._currentCallId !== callId) return;
           // Parse the CSV text and push each row into the trace's data array.
-          let parsed = csvToArr(csvText, ",");
+          let parsed = csvToArr(csvText, trace.csv_delimiter??",");
           parsed.forEach((row) => currentTraceArray.push(row));
         })
         .fail(function () {
@@ -272,7 +272,7 @@ Math.avg = (...a) => Math.sum(...a) / a.length;
 Math.last = (...a) => a.at(-1);
 
 /* This function checks if "show_pattern" is given inside argument 'object'. If it is not
-given, it returns true. If it is given, it returns true when the give pattern matches
+given, it returns true. If it is given, it returns true when the given pattern matches
 the comparison with #key# given by replaceDataPlaceholder (that obtains values from the table) */
 function checkPattern(object,params) {
   let match_pattern = true;
@@ -358,6 +358,7 @@ PlotlyGraph.prototype.plot = function (params) {
         type: trace_data.type ?? "scatter",
         yaxis: trace_data.yaxis ?? "y",
         xaxis: trace_data.xaxis ?? "x",
+        visible: trace_data.visible ?? true, 
       }
       let trace = { ...trace_default };
       let step = {};
@@ -469,7 +470,11 @@ PlotlyGraph.prototype.plot = function (params) {
             trace.x = data.map(function (x) { return x[xColKey].toString() });
           } else if (trace_data.xcol != 'date' && (self.graph_data.xcol && self.graph_data.xcol != 'date')) {
             // This is the regular non-category (strings), non-date case, so we parse it as a float.
-            trace.x = data.map(function (x) { return parseFloat(x[xColKey]) });
+            trace.x = data.map(function (x) { 
+              let val = parseFloat(x[self.graph_data.xcol]);
+              // If parsing fails (NaN), return fillNA. Otherwise, return the parsed number.
+              return isNaN(val) ? self.graph_data.fillNA : val; 
+            });
           } else {
             // This is the date case. We use timestamps that are more efficient, so we need to set the type to 'date'
             trace.x = data.map(function (x) { return self.parseToTimestamp(x[xColKey]) });
@@ -482,7 +487,9 @@ PlotlyGraph.prototype.plot = function (params) {
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
-              return { min: null, y: isNaN(+val[0])? val[0] : +val[0] * factor, max: null };
+              // If empty, use fillNA (fallback to null if fillNA is undefined). Otherwise, compute value.
+              let y_val = (val[0] === "" || val[0] == null) ? (self.graph_data.fillNA ?? null) : +val[0] * factor;
+              return { min: null, y: y_val, max: null };
             }
           })
           trace.y = values.map(function (y) { return y.y });
@@ -801,20 +808,20 @@ PlotlyGraph.prototype.plot = function (params) {
           trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
 
           // Sorting data in-place before processing
-          let xcol = self.graph_data.xcol;
+          let xcol = self.graph_data.xcol ?? trace_data.xcol;
           self.sortDataByX(data, xcol, layout.xaxis.type);
 
           // Getting x values
           if (layout.xaxis.type === 'category') {
             // If the x-axis values are strings, we have to set the layout.xaxis.type === 'category'
-            trace.x = data.map(function (x) { return x[self.graph_data.xcol].toString() });
+            trace.x = data.map(function (x) { return x[xcol].toString() });
             layout.xaxis.autorange = true;
-          } else if ((layout.xaxis.type !== 'date') && (self.graph_data.xcol && self.graph_data.xcol != 'date')) {
+          } else if ((layout.xaxis.type !== 'date') && (xcol && xcol != 'date')) {
             // This is the regular non-category (strings), non-date case, so we parse it as a float.
-            trace.x = data.map(function (x) { return parseFloat(x[self.graph_data.xcol]) });
+            trace.x = data.map(function (x) { return parseFloat(x[xcol]) });
           } else {
             // This is the date case. We use timestamps that are more efficient, so we need to set the type to 'date'
-            trace.x = data.map(function (x) { return self.parseToTimestamp(x[self.graph_data.xcol]) });
+            trace.x = data.map(function (x) { return self.parseToTimestamp(x[xcol]) });
             layout.xaxis.type = 'date';
           }
           // Parsing values and min/max when present
