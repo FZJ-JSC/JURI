@@ -46,7 +46,7 @@ function buildSafeUrl(paramsObj) {
   let queryString = params.toString().replace(/%2F/g, '/');
 
   // Return full URL
-  return `${baseUrl}?${queryString}${window.location.hash}`;
+  return `${baseUrl}?${queryString}${self.helperContext.windowLocation.hash}`;
 }
 
 
