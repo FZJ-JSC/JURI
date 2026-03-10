@@ -496,7 +496,6 @@ PlotlyGraph.prototype.plot = function (params) {
                 // If it's a number, apply the factor.
                 y_val = isNaN(+val[0]) ? val[0] : +val[0] * factor;
               }
-
               return { min: null, y: y_val, max: null };
             }
           })
@@ -838,10 +837,16 @@ PlotlyGraph.prototype.plot = function (params) {
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
-              // If empty, return null. Otherwise, convert to number (+val[0]) and multiply.
-              // Here we check for empty string explicitly, otherwise it's transformed to 0 and plotly
-              // will put a point there - and most of the times (always?) we don't want to show this artificial point
-              return { min: null, y: val[0] === "" ? null : +val[0] * factor, max: null };
+              let y_val;
+              // Check for missing data first (empty string, null, or undefined)
+              if (val[0] === "" || val[0] == null) {
+                y_val = self.graph_data.fillNA ?? null;
+              } else { // If it's data, check if it's a string or a number
+                // If it evaluates to NaN (it's a string), keep the string. 
+                // If it's a number, apply the factor.
+                y_val = isNaN(+val[0]) ? val[0] : +val[0] * factor;
+              }
+              return { min: null, y: y_val, max: null };
             }
           })
           trace.y = values.map(function (y) { return y.y });
