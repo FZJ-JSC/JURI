@@ -1318,7 +1318,7 @@ View.prototype.check_filteroptions = function (filters) {
   // Checking if checkboxes on options need to be checked, and checking them
   for (let [name, input] of Object.entries(self.page_data.options)) {
     for (let [optname, filter] of Object.entries(input)) {
-      let id = `${name.replace(/(\s)/g, '_')}_${optname.replace(/(\s)/g, '_')}`;
+      let id = `${name.replace(/(\s)/g, '_').replace(/[\(\)]/g, '')}_${optname.replace(/(\s)/g, '_').replace(/[\(\)]/g, '')}`;
       let checked = true;
       for (let [key, value] of Object.entries(filter)) {
         if (!filters.hasOwnProperty(key)||!filters[key].includes(value)) {
@@ -1392,7 +1392,7 @@ View.prototype.add_filter_options = function (filter,options) {
 
   // Looping over the different options according to their order on the columns
   for (let [key, values] of Object.entries(options).sort(([a], [b]) => sortByKeyOrder(a, b, self.gridApi.getColumns().map((col)=>col.colDef.headerName)))) {
-    let id = key.replace(/(\s)/g, '_');
+    let id = key.replace(/(\s)/g, '_').replace(/[\(\)]/g, '');
     // Adding current option 'title' in a cell
     optionsrow.append($('<td>',{id: id}).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'))
     let this_option = $('<td>').addClass('optionvalues')
