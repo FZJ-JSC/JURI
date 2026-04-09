@@ -62,8 +62,10 @@ if(isset($_GET["jobid"])) {
   $project = $info[0];
   $user = $info[1];
   if (!$project) {
-    // If no project is found, forward to error page
-    header('Location: error404.html');
+    // If no project is found, show 404 page WITHOUT changing URL
+    http_response_code(404);
+    include('error404.html');
+    exit;
   } else {
     // Building correct link
     $systemname_link = $systemname; 
