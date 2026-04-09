@@ -15,44 +15,18 @@ function init_grid() {
     rowData: view.contexts[view.page_context],
     columnDefs: view.columnDefs,
     initialState: view.gridState[view.clicked_page]??null, // Recovering state, if existing
+    // Registering filter components
+    components: {
+      DateTimeParentFilter: DateTimeParentFilter,
+      DateFloatingFilterComponent: DateFloatingFilterComponent,
+      TimeIntervalParentFilter: TimeIntervalParentFilter,
+      TimeIntervalFloatingFilterComponent: TimeIntervalFloatingFilterComponent
+    },
     // perform a regular expression search
     quickFilterMatcher: (quickFilterParts, rowQuickFilterAggregateText) => {
       return quickFilterParts.every(part => rowQuickFilterAggregateText.match(part));
     },
     dataTypeDefinitions: {  // To redefine or define new types
-      date: {         // Redefining the dateString type to recognize our type of dates
-        baseDataType: "date",
-        extendsDataType: "date",
-      //   valueParser: (params) =>{
-      //     console.log('valueParser')
-      //     return params.newValue != null && params.newValue.match("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}")
-      //       ? params.newValue
-      //       : null;
-      //     },
-        // valueFormatter: (params) => {
-        //   console.log('valueFormatter',params.value)
-        //   return params.value == null ? "" : params.value;
-        // },
-      //   dataTypeMatcher: (value) => {
-      //     console.log('dataTypeMatcher')
-      //     return typeof value === "string" && !!value.match("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}");
-      //   },
-      //   dateParser: (value) => {
-      //     console.log('dateParser')
-      //     const date = new Date(value)
-      //     if (value == null || value === "") {
-      //       return undefined;
-      //     }
-      //     return date;
-      //   },
-      //   dateFormatter: (value) => {
-      //     console.log('dateFormatter')
-      //     if (value == null) {
-      //       return undefined;
-      //     }
-      //     return value.toLocaleString('sv-SE');
-      //   },
-      },
       dateString: {         // Redefining the dateString type to recognize our type of dates
         baseDataType: "dateString",
         extendsDataType: "dateString",
@@ -68,11 +42,12 @@ function init_grid() {
           return typeof value === "string" && !!value.match("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}");
         },
         dateParser: (value) => {
-          const date = new Date(value)
           if (value == null || value === "") {
             return undefined;
           }
-          return date;
+          // Standardize string to ISO format (replacing space with T) 
+          // so the native new Date() parser never fails across different browsers
+          return new Date(value.replace(' ', 'T'));
         },
         dateFormatter: (value) => {
           if (value == null) {
@@ -81,32 +56,21 @@ function init_grid() {
           return value.toLocaleString('sv-SE');
         },
       },
-      timeInterval: {         // Adding new timeInterval type based on number
+      timeInterval: {
         baseDataType: "number",
         extendsDataType: "number",
-        valueGetter: (params) => {
-          if (params.newValue == null) {
-            return null;
-          }
-          // convert from HHhMMm to minutes 
-          const [ hours, min ] = params.newValue.trim().slice(0,-2).split('h');
-          return hours*60+min;
-        },
+        
+        // Formats the cell UI automatically
+        valueFormatter: (params) => hhmm_short(params),
+        
+        // Parses edits back to seconds
         valueParser: (params) => {
-          if (params.newValue == null) {
-            return null;
-          }
-          // convert from HHhMMm to minutes 
-          const [ hours, min ] = params.newValue.trim().slice(0,-2).split('h');
-          return hours*60+min;
+          return params.newValue != null ? parseTimeToSeconds(params.newValue) : null;
         },
-        valueFormatter: (params) => {
-          return params.value == null ? "" : params.value;
-        },
-        dataTypeMatcher: (value) => {
-          return typeof value === "string" && !! value.match("((\d+)h)?(\d+)m");
-        },
-      },
+        
+        // Tells ag-Grid this is numerical data
+        dataTypeMatcher: (value) => typeof value === "number",
+      }
     },
 
     defaultColDef: {          // Default definitions for the columns
@@ -268,7 +232,8 @@ function resizeGrid() {
   if ((num_displayed_cols*93 > content_width)) {
     view.gridApi.autoSizeAllColumns(false);
   } else {
-    view.gridApi.sizeColumnsToFit({defaultMinWidth: content_width/num_displayed_cols});
+    view.gridApi.sizeColumnsToFit();
+    // view.gridApi.sizeColumnsToFit({defaultMinWidth: content_width/num_displayed_cols});
   }
 }
 
@@ -294,18 +259,23 @@ function navigateToNextCell(params) {
 }
 
 function get_filter_string(value) {
+  // The exact text typed by the user is prioritized for custom filters
+  if (value.rawUserInput) {
+    return value.rawUserInput;
+  }
+
   let filter;
   if (value.filterType == 'date') {
-    filter = `${value.dateFrom??""}${(value.dateFrom&&value.dateTo)?'-':''}${value.dateTo??""}`
+    filter = `${value.dateFrom??""}${(value.dateFrom&&value.dateTo)?'-':''}${value.dateTo??""}`;
   } else {
     if (value.type == 'greaterThan') {
-      filter = `>${value.filter.toString()}`
+      filter = `>${value.filter.toString()}`;
     } else if (value.type == 'lessThan') {
-      filter = `<${value.filter.toString()}`
+      filter = `<${value.filter.toString()}`;
     } else if (value.type == 'inRange') {
-      filter = `${value.filter.toString()}-${value.filterTo.toString()}`
+      filter = `${value.filter.toString()}-${value.filterTo.toString()}`;
     } else {
-      filter = `${value.filter.toString()}`
+      filter = `${value.filter.toString()}`;
     }
   }
   return filter;
@@ -405,29 +375,6 @@ let numberFilterParams = {
 };
 
 
-let dateFilterParams = {
-  // To include selected dates when "between" is used (otherwise, between dates 10 and 12 only shows jobs on 11)
-  inRangeInclusive: true,
-  // Comparator that returns 0 if date is on the same day (irrespective of time on that day)
-  // -1 for hours/date before that given date ("yesterday" and before), and +1 to hours/date after that given day ("tomorrow" and after)
-  comparator: (filterLocalDateAtMidnight, cellValue) => {
-      const dateAsString = cellValue;
-
-      if (dateAsString == null) {
-          return 0;
-      }
-      const cellDate = new Date(dateAsString);
-      // Return values that are between midnight of "today" and midnight of "tomorrow"
-      if (cellDate < filterLocalDateAtMidnight) {
-          return -1;
-      } else if (cellDate > new Date(filterLocalDateAtMidnight.setTime( filterLocalDateAtMidnight.getTime() + 86400000 ))) {
-          return 1;
-      }
-      return 0;
-  }
-}
-
-
 // autoSizeAll() {
 //   const allColumnIds = view.gridApi.getAllColumns().map((column) => column.getColId());
 //   this.gridColumnApi.autoSizeColumns(allColumnIds);
@@ -483,8 +430,28 @@ class NumberFloatingFilterComponent {
         });
         return;
       }
-      // Deal with the separate cases (>, <, - or equal) separately
-      if (this.eFilterInput.value.startsWith('>')) {
+      // Deal with the separate cases (>=, <=, >, <, - or equal) separately
+      if (this.eFilterInput.value.startsWith('>=')) {
+        let original = this.eFilterInput.value;
+        let number = this.eFilterInput.value.slice(2);
+        if (!number.match(/^\d*\.?\d*$/)) return;
+        this.currentValue = Number(number);
+        params.parentFilterInstance(instance => {
+          instance.onFloatingFilterChanged('greaterThanOrEqual', this.currentValue);
+          this.eFilterInput.value = original;
+          if (typeof onFilterChanged === "function") onFilterChanged();
+        });  
+      } else if (this.eFilterInput.value.startsWith('<=')) {
+        let original = this.eFilterInput.value;
+        let number = this.eFilterInput.value.slice(2);
+        if (!number.match(/^\d*\.?\d*$/)) return;
+        this.currentValue = Number(number);
+        params.parentFilterInstance(instance => {
+          instance.onFloatingFilterChanged('lessThanOrEqual', this.currentValue);
+          this.eFilterInput.value = original;
+          if (typeof onFilterChanged === "function") onFilterChanged();
+        });  
+      } else if (this.eFilterInput.value.startsWith('>')) {
         // Storing original value to recover at the end (as onFloatingFilterChanged changes the value to the number)
         let original = this.eFilterInput.value
         let number = this.eFilterInput.value.slice(1)
@@ -601,4 +568,656 @@ class NumberFloatingFilterComponent {
       }
     });
   }
+}
+
+
+
+/**
+ * Class DateTimeParentFilter
+ * 
+ * ag-Grid's native date filter explicitly destroys exact times.
+ * This custom filter engine is used to replace the native filter entirely so 
+ * timestamps can be strictly compared down to the second, allowing exact time 
+ * filtering to function correctly.
+ */
+class DateTimeParentFilter {
+  init(params) {
+    this.params = params;
+    this.filterModel = null;
+  }
+
+  getGui() {
+    let div = document.createElement('div');
+    div.style.padding = '15px';
+    div.style.fontWeight = 'bold';
+    div.innerText = 'Please use the text box below the header to filter dates and times.';
+    return div;
+  }
+
+  doesFilterPass(params) {
+    if (!this.filterModel) return true;
+
+    // The raw date string is retrieved from the cell
+    let cellValue = this.params.getValue(params.node);
+    if (!cellValue) return false;
+
+    // String values are safely converted to timestamps, guarding against null/undefined
+    const toTimestamp = (val) => {
+      if (!val || typeof val !== 'string') return null;
+      return new Date(val.replace(' ', 'T')).getTime();
+    };
+
+    let cellTime = toTimestamp(cellValue);
+    let fromTime = toTimestamp(this.filterModel.dateFrom);
+    
+    // Rows are allowed to pass if the saved model is missing a valid date
+    if (!fromTime || !cellTime) return true;
+    
+    if (this.filterModel.type === 'equals') {
+      return cellTime === fromTime;
+    }
+    if (this.filterModel.type === 'greaterThan') {
+      return cellTime > fromTime;
+    }
+    if (this.filterModel.type === 'greaterThanOrEqual') {
+      return cellTime >= fromTime;
+    }
+    if (this.filterModel.type === 'lessThan') {
+      return cellTime < fromTime;
+    }
+    if (this.filterModel.type === 'lessThanOrEqual') {
+      return cellTime <= fromTime;
+    }
+    if (this.filterModel.type === 'inRange') {
+      let toTime = toTimestamp(this.filterModel.dateTo);
+      // The boundary is treated as a simple 'greater than' if the end time is missing
+      if (!toTime) return cellTime >= fromTime;
+      
+      return cellTime >= fromTime && cellTime <= toTime;
+    }
+    
+    return true;
+  }
+
+  isFilterActive() {
+    return this.filterModel != null;
+  }
+
+  getModel() {
+    if (!this.filterModel) return null;
+    return {
+      filterType: 'date',
+      type: this.filterModel.type,
+      dateFrom: this.filterModel.dateFrom,
+      dateTo: this.filterModel.dateTo,
+      rawUserInput: this.filterModel.rawUserInput
+    };
+  }
+
+  setModel(model) {
+    this.filterModel = model;
+  }
+
+  destroy() {
+    // The specific column filter data is forcefully removed from the grid model
+    // when this component is destroyed by the ag-Grid lifecycle.
+    if (this.params && this.params.api && this.params.column) {
+      let currentModel = this.params.api.getFilterModel();
+      let myColId = this.params.column.getColId();
+      if (currentModel[myColId]) {
+        delete currentModel[myColId];
+        this.params.api.setFilterModel(currentModel);
+      }
+    }
+  }
+}
+
+/**
+ * Class DateFloatingFilterComponent
+ * 
+ * The default ag-Grid date picker is replaced with a smart text-based input field. 
+ * This allows dates, times, and complex operators (like >=, <=, >, <, and ranges) 
+ * to be quickly typed using pure text.
+ * 
+ * User text is explicitly translated into exact temporal boundaries:
+ * - Day Exact:  "2026-04-07"  -> InRange (2026-04-07 00:00:00 to 2026-04-07 23:59:59)
+ * - Day >=:     ">= 2026-04-07" -> GreaterThanOrEqual (2026-04-07 00:00:00)
+ * - Day >:      "> 2026-04-07"  -> GreaterThan (2026-04-07 23:59:59)
+ * - Day <=:     "<= 2026-04-07" -> LessThanOrEqual (2026-04-07 23:59:59)
+ * - Day <:      "< 2026-04-07"  -> LessThan (2026-04-07 00:00:00)
+ */
+let uniqueDateIdCounter = 0; 
+
+class DateFloatingFilterComponent {
+  
+  init(params) {
+    this.params = params;
+    
+    // DOM elements are created for the floating text input
+    this.eGui = $('<div>').addClass('ag-floating-filter-input').attr('role', 'presentation');
+    let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field');
+    let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper');
+    
+    let input = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                            .attr('type', 'text')
+                            .attr('placeholder', 'YYYY-MM-DD or >...') 
+                            .attr('id', `ag-custom-date-${uniqueDateIdCounter++}-input`)
+                            .attr('autocomplete', 'off');
+    
+    eWrapper.append(input);
+    div.append(eWrapper);
+    this.eGui.append(div);
+    this.eFilterInput = this.eGui.find('input')[0];
+
+    // The custom tooltip is constructed with Bootstrap dark theme styling
+    this.customTooltip = $('<div>')
+        .css({
+            position: 'absolute', 
+            zIndex: '999999',      
+            backgroundColor: 'rgba(0, 0, 0, 0.85)', 
+            color: '#ffffff',                       
+            border: 'none',                         
+            padding: '8px 12px',                    
+            borderRadius: '4px',                    
+            boxShadow: '0px 4px 8px rgba(0,0,0,0.2)',
+            display: 'none',       
+            width: 'max-content',
+            fontSize: '12px',
+            lineHeight: '1.5',
+            textAlign: 'left',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+        })
+        .html(`
+            <strong style="color: #66afe9;">Date Filter Tips:</strong><br>
+            <b>Date (Optional Time):</b> YYYY-MM-DD (HH:MM)<br>
+            <b>After (Inclusive):</b> &gt;= YYYY-MM-DD (HH:MM)<br>
+            <b>After:</b> &gt; YYYY-MM-DD (HH:MM)<br>
+            <b>Before (Inclusive):</b> &lt;= YYYY-MM-DD (HH:MM)<br>
+            <b>Before:</b> &lt; YYYY-MM-DD (HH:MM)<br>
+            <b>Range:</b> YYYY-MM-DD (HH:MM) - YYYY-MM-DD (HH:MM)<br>
+            <span style="color: #ffb3b3; font-size: 11px;"><i>(Must use spaces around the dash!)</i></span>
+        `);
+
+    // The tooltip is appended directly to the body to escape ag-Grid overflow traps
+    $('body').append(this.customTooltip);
+
+    // The tooltip is displayed and positioned when the input receives focus
+    this.eFilterInput.addEventListener('focus', () => {
+        if (this.eFilterInput.value === '') {
+            let rect = this.eFilterInput.getBoundingClientRect();
+            this.customTooltip.css({
+                top: (rect.bottom + window.scrollY + 5) + 'px',
+                left: (rect.left + window.scrollX) + 'px',
+                display: 'block'
+            });
+        }
+    });
+
+    // The tooltip is hidden when focus is lost
+    this.eFilterInput.addEventListener('blur', () => {
+        setTimeout(() => { this.customTooltip.css('display', 'none'); }, 150);
+    });
+
+    // The tooltip is hidden immediately when keyboard input begins
+    this.eFilterInput.addEventListener('keydown', () => {
+        this.customTooltip.css('display', 'none');
+    });
+    
+    // A timer is stored to prevent evaluation on every single keystroke
+    this.debounceTimer = null;
+
+    const onInputBoxChanged = () => {
+      clearTimeout(this.debounceTimer);
+      
+      this.debounceTimer = setTimeout(() => {
+        let val = this.eFilterInput.value.trim();
+        
+        // The filter is removed entirely if the input is cleared
+        if (val === '') {
+          params.parentFilterInstance(instance => {
+            instance.setModel(null);        
+            params.api.onFilterChanged();   
+          });
+          return;
+        }
+
+        // The text input is passed to our global parsing helper
+        let parsedModel = parseDateFilterText(val);
+
+        // The constructed model is applied to the grid if parsing was successful
+        if (parsedModel) {
+          params.parentFilterInstance(instance => {
+            instance.setModel(parsedModel);
+            params.api.onFilterChanged(); 
+            
+            if (typeof onFilterChanged === "function") {
+                onFilterChanged();
+            }
+          });
+        }
+      }, 500); 
+    };
+
+    this.eFilterInput.addEventListener('input', onInputBoxChanged);
+  }
+
+  onParentModelChanged(parentModel) {
+    let activeModels = this.params.api.getFilterModel();
+    let myColId = this.params.column.getColId();
+    
+    // The input is wiped and aborted if the grid reports no active filter
+    if (!activeModels[myColId] || !parentModel || parentModel.dateFrom == null) {
+      this.eFilterInput.value = '';
+      return;
+    }
+
+    if (document.activeElement === this.eFilterInput) return;
+
+    // Prioritize exactly what the user typed
+    if (parentModel.rawUserInput) {
+      this.eFilterInput.value = parentModel.rawUserInput;
+      return;
+    }
+
+    // Fallback: If no raw input was saved, we mathematically reconstruct it
+    // The internal 00:00:00 or 23:59:59 boundary logic is hidden from the user interface
+    const cleanStr = (str, isEnd) => {
+        if (!str) return '';
+        if (isEnd && str.endsWith('23:59:59')) return str.slice(0, 10);
+        if (!isEnd && str.endsWith('00:00:00')) return str.slice(0, 10);
+        return str;
+    };
+
+    let fromStr = parentModel.dateFrom || '';
+    let toStr = parentModel.dateTo || '';
+
+    // The text string is reconstructed based on the active filter model
+    if (parentModel.type === 'inRange') {
+       let cFrom = cleanStr(fromStr, false);
+       let cTo = cleanStr(toStr, true);
+       
+       if (cFrom === cTo && cFrom !== '') {
+          this.eFilterInput.value = cFrom;
+       } else {
+          this.eFilterInput.value = `${cFrom} - ${cTo}`;
+       }
+    } else if (parentModel.type === 'greaterThanOrEqual') {
+       this.eFilterInput.value = `>= ${cleanStr(fromStr, false)}`;
+    } else if (parentModel.type === 'lessThanOrEqual') {
+       this.eFilterInput.value = `<= ${cleanStr(fromStr, true)}`;
+    } else if (parentModel.type === 'greaterThan') {
+       this.eFilterInput.value = `> ${cleanStr(fromStr, true)}`;
+    } else if (parentModel.type === 'lessThan') {
+       this.eFilterInput.value = `< ${cleanStr(fromStr, false)}`;
+    } else {
+       this.eFilterInput.value = fromStr;
+    }
+  }
+
+  getGui() {
+    return this.eGui[0];
+  }
+
+  destroy() {
+    // The custom tooltip DOM element is removed to prevent invisible memory leaks
+    if (this.customTooltip) {
+      this.customTooltip.remove();
+    }
+  }
+}
+
+
+
+/**
+ * Class TimeIntervalParentFilter
+ * 
+ * Strict mathematical comparisons on raw seconds are enforced.
+ * The default text/number filters are replaced to ensure that numerical values
+ * are evaluated correctly without accidental string matches.
+ */
+class TimeIntervalParentFilter {
+  init(params) {
+    this.params = params;
+    this.filterModel = null;
+  }
+
+  getGui() {
+    let div = document.createElement('div');
+    div.style.padding = '15px';
+    div.style.fontWeight = 'bold';
+    div.innerText = 'Please use the text box below the header to filter time.';
+    return div;
+  }
+
+  doesFilterPass(params) {
+    if (!this.filterModel) return true;
+
+    // The raw value is retrieved from the cell
+    let cellValue = this.params.getValue(params.node);
+    if (cellValue == null || cellValue === '') return false;
+
+    // The cell value is forced to be evaluated as a strict number
+    let cellSecs = Number(cellValue);
+    if (isNaN(cellSecs)) return false;
+
+    let filterSecs = this.filterModel.filter;
+
+    if (this.filterModel.type === 'equals') return cellSecs === filterSecs;
+    if (this.filterModel.type === 'greaterThan') return cellSecs > filterSecs;
+    if (this.filterModel.type === 'greaterThanOrEqual') return cellSecs >= filterSecs;
+    if (this.filterModel.type === 'lessThan') return cellSecs < filterSecs;
+    if (this.filterModel.type === 'lessThanOrEqual') return cellSecs <= filterSecs;
+    if (this.filterModel.type === 'inRange') {
+      let toSecs = this.filterModel.filterTo;
+      if (toSecs == null) return cellSecs >= filterSecs;
+      return cellSecs >= filterSecs && cellSecs <= toSecs;
+    }
+    return true;
+  }
+
+  isFilterActive() {
+    return this.filterModel != null;
+  }
+
+  getModel() {
+    if (!this.filterModel) return null;
+    return {
+      filterType: 'number',
+      type: this.filterModel.type,
+      filter: this.filterModel.filter,
+      filterTo: this.filterModel.filterTo,
+      rawUserInput: this.filterModel.rawUserInput
+    };
+  }
+
+  setModel(model) {
+    this.filterModel = model;
+  }
+
+  destroy() {
+    // The specific column filter data is forcefully removed from the grid model
+    // when this component is destroyed by the ag-Grid lifecycle.
+    if (this.params && this.params.api && this.params.column) {
+      let currentModel = this.params.api.getFilterModel();
+      let myColId = this.params.column.getColId();
+      if (currentModel[myColId]) {
+        delete currentModel[myColId];
+        this.params.api.setFilterModel(currentModel);
+      }
+    }
+  }
+}
+
+/**
+ * Class TimeIntervalFloatingFilterComponent
+ * 
+ * The default numeric floating filter is replaced with a smart text-based input field.
+ * This allows raw seconds to be filtered using human-readable time strings.
+ * 
+ * SUPPORTED FORMATS:
+ * - Exact Match:    "1d 2h 3m 4s" or "1h30m"
+ * - Default (Sec):  "300" (Automatically parsed as 300 seconds)
+ * - Inequalities:   "> 1h", "< 5m", ">= 1d", "<= 30s"
+ * - In Range:       "10m - 1h" (MUST have spaces around the dash!)
+ */
+let uniqueTimeIdCounter = 0; 
+
+class TimeIntervalFloatingFilterComponent {
+  
+  init(params) {
+    this.params = params; 
+
+    // DOM elements are created for the floating text input
+    this.eGui = $('<div>').addClass('ag-floating-filter-input').attr('role', 'presentation');
+    let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field');
+    let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper');
+    
+    let input = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                            .attr('type', 'text')
+                            .attr('placeholder', '1h30m or < 5m...') 
+                            .attr('id', `ag-custom-time-${uniqueTimeIdCounter++}-input`)
+                            .attr('autocomplete', 'off');
+    
+    eWrapper.append(input);
+    div.append(eWrapper);
+    this.eGui.append(div);
+    this.eFilterInput = this.eGui.find('input')[0];
+
+    // The custom tooltip is constructed with Bootstrap dark theme styling
+    this.customTooltip = $('<div>')
+        .css({
+            position: 'absolute', 
+            zIndex: '999999',                       
+            backgroundColor: 'rgba(0, 0, 0, 0.85)', 
+            color: '#ffffff',                       
+            border: 'none',
+            padding: '8px 12px',
+            borderRadius: '4px',
+            boxShadow: '0px 4px 8px rgba(0,0,0,0.2)',
+            display: 'none',                        
+            width: 'max-content',
+            fontSize: '12px',
+            lineHeight: '1.5',
+            textAlign: 'left',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif'
+        })
+        .html(`
+            <strong style="color: #66afe9;">Time Filter Tips:</strong><br>
+            <b>Format:</b> 1d 2h 3m 4s (Letters required for units)<br>
+            <b>Default (No letters):</b> 300 = 300s (5m)<br>
+            <b>Max/Min:</b> &lt; 5m  |  &gt;= 1h<br>
+            <b>Range:</b> 10m - 1h<br>
+            <span style="color: #ffb3b3; font-size: 11px;"><i>(Must use spaces around the dash!)</i></span>
+        `);
+
+    // The tooltip is appended directly to the body to escape ag-Grid overflow traps
+    $('body').append(this.customTooltip);
+
+    // The tooltip is displayed and positioned when the input receives focus
+    this.eFilterInput.addEventListener('focus', () => {
+        if (this.eFilterInput.value === '') {
+            let rect = this.eFilterInput.getBoundingClientRect();
+            this.customTooltip.css({
+                top: (rect.bottom + window.scrollY + 5) + 'px',
+                left: (rect.left + window.scrollX) + 'px',
+                display: 'block'
+            });
+        }
+    });
+
+    // The tooltip is hidden when focus is lost
+    this.eFilterInput.addEventListener('blur', () => {
+        setTimeout(() => { this.customTooltip.css('display', 'none'); }, 150);
+    });
+
+    // The tooltip is hidden immediately when keyboard input begins
+    this.eFilterInput.addEventListener('keydown', () => {
+        this.customTooltip.css('display', 'none');
+    });
+
+    // A timer is stored to prevent evaluation on every single keystroke
+    this.debounceTimer = null;
+
+    const onInputBoxChanged = () => {
+      clearTimeout(this.debounceTimer);
+      
+      this.debounceTimer = setTimeout(() => {
+        let val = this.eFilterInput.value.trim();
+        
+        // The filter is removed entirely if the input is cleared
+        if (val === '') {
+          params.parentFilterInstance(instance => {
+            instance.setModel(null);
+            params.api.onFilterChanged();
+          });
+          return;
+        }
+
+        // The text input is passed to our global parsing helper
+        let parsedModel = parseTimeFilterText(val);
+
+        // The constructed model is applied to the grid if parsing was successful
+        if (parsedModel) {
+          params.parentFilterInstance(instance => {
+            instance.setModel(parsedModel);
+            params.api.onFilterChanged(); 
+            
+            if (typeof onFilterChanged === "function") {
+              onFilterChanged();
+            }
+          });
+        }
+      }, 500); 
+    };
+
+    this.eFilterInput.addEventListener('input', onInputBoxChanged);
+  }
+
+  onParentModelChanged(parentModel) {
+    let activeModels = this.params.api.getFilterModel();
+    let myColId = this.params.column.getColId();
+    
+    // The input is wiped and aborted if the grid reports no active filter
+    if (!activeModels[myColId] || !parentModel || parentModel.filter == null) {
+      this.eFilterInput.value = '';
+      return;
+    }
+
+    if (document.activeElement === this.eFilterInput) return;
+
+    // Prioritize exactly what the user typed (from URL)
+    if (parentModel.rawUserInput) {
+      this.eFilterInput.value = parentModel.rawUserInput;
+      return;
+    }
+
+    // Fallback: If no raw input was saved, we mathematically reconstruct it
+    const format = (sec) => sec != null ? hhmm_short({ value: sec }) : '';
+
+    // The text string is reconstructed based on the active filter model
+    if (parentModel.type === 'inRange') {
+       this.eFilterInput.value = `${format(parentModel.filter)} - ${format(parentModel.filterTo)}`;
+    } else if (parentModel.type === 'greaterThanOrEqual') {
+       this.eFilterInput.value = `>= ${format(parentModel.filter)}`;
+    } else if (parentModel.type === 'lessThanOrEqual') {
+       this.eFilterInput.value = `<= ${format(parentModel.filter)}`;
+    } else if (parentModel.type === 'greaterThan') {
+       this.eFilterInput.value = `> ${format(parentModel.filter)}`;
+    } else if (parentModel.type === 'lessThan') {
+       this.eFilterInput.value = `< ${format(parentModel.filter)}`;
+    } else {
+       this.eFilterInput.value = format(parentModel.filter);
+    }
+  }
+
+  getGui() {
+    return this.eGui[0];
+  }
+
+  destroy() {
+    // The custom tooltip DOM element is removed to prevent invisible memory leaks
+    if (this.customTooltip) {
+      this.customTooltip.remove();
+    }
+  }
+}
+
+
+/**
+ * Parses user input text into a mathematical Date filter object.
+ * Returns null if the input is invalid or empty.
+ */
+function parseDateFilterText(val) {
+  if (!val) return null;
+  val = val.trim();
+
+  let type = 'equals';
+  let dateFrom = null;
+  let dateTo = null;
+
+  let isGreaterThanOrEqual = val.startsWith('>=');
+  let isLessThanOrEqual = val.startsWith('<=');
+  let isGreaterThan = !isGreaterThanOrEqual && val.startsWith('>');
+  let isLessThan = !isLessThanOrEqual && val.startsWith('<');
+  let isRange = val.includes(' - ');
+
+  if (isRange) {
+    let parts = val.split(' - ');
+    let fromStr = parts[0].trim();
+    let toStr = parts[1] ? parts[1].trim() : null;
+    
+    type = 'inRange';
+    dateFrom = fromStr.includes(':') ? fromStr : `${fromStr} 00:00:00`;
+    if (toStr) {
+      dateTo = toStr.includes(':') ? toStr : `${toStr} 23:59:59`;
+    }
+  } else {
+    let rawDate = val.replace(/^[><=]+\s*/, '').trim();
+    let hasTime = rawDate.includes(':');
+
+    if (isGreaterThanOrEqual) {
+      type = 'greaterThanOrEqual';
+      dateFrom = hasTime ? rawDate : `${rawDate} 00:00:00`;
+    } else if (isLessThanOrEqual) {
+      type = 'lessThanOrEqual';
+      dateFrom = hasTime ? rawDate : `${rawDate} 23:59:59`;
+    } else if (isGreaterThan) {
+      type = 'greaterThan';
+      dateFrom = hasTime ? rawDate : `${rawDate} 23:59:59`;
+    } else if (isLessThan) {
+      type = 'lessThan';
+      dateFrom = hasTime ? rawDate : `${rawDate} 00:00:00`;
+    } else {
+      if (hasTime) {
+        type = 'equals';
+        dateFrom = rawDate;
+      } else {
+        type = 'inRange';
+        dateFrom = `${rawDate} 00:00:00`;
+        dateTo = `${rawDate} 23:59:59`;
+      }
+    }
+  }
+
+  // The raw string is injected so the URL generator can retrieve it later
+  return { type, dateFrom, dateTo, rawUserInput: val };
+}
+
+/**
+ * Parses user input text into a mathematical TimeInterval filter object.
+ * Returns null if the input is invalid or empty.
+ */
+function parseTimeFilterText(val) {
+  if (!val) return null;
+  val = val.trim();
+
+  let type = 'equals';
+  let secFrom = null;
+  let secTo = null;
+
+  let isGreaterThanOrEqual = val.startsWith('>=');
+  let isLessThanOrEqual = val.startsWith('<=');
+  let isGreaterThan = !isGreaterThanOrEqual && val.startsWith('>');
+  let isLessThan = !isLessThanOrEqual && val.startsWith('<');
+  let isRange = val.includes(' - ');
+
+  if (isRange) {
+    type = 'inRange';
+    let parts = val.split(' - ');
+    secFrom = parseTimeToSeconds(parts[0]);
+    secTo = parseTimeToSeconds(parts[1]);
+  } else {
+    let rawTimeText = val.replace(/^[><=]+\s*/, '').trim();
+    secFrom = parseTimeToSeconds(rawTimeText);
+
+    if (isGreaterThanOrEqual) type = 'greaterThanOrEqual';
+    else if (isLessThanOrEqual) type = 'lessThanOrEqual';
+    else if (isGreaterThan) type = 'greaterThan';
+    else if (isLessThan) type = 'lessThan';
+  }
+
+  if (secFrom === null) return null;
+
+  // The raw string is injected so the URL generator can retrieve it later
+  return { type, filter: secFrom, filterTo: secTo, rawUserInput: val };
 }

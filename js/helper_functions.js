@@ -32,25 +32,66 @@ function round_number_or_null_int(number) {
   return round_number_generic(number.value, true, 0);
 };
 
-function hhmm_short(number) {
-  let hoursfrac = Math.floor(number.value+1)/3600
-  let days=Math.floor(hoursfrac/24); 
-  let rest=hoursfrac-(days*24);
-  let hours=Math.floor(rest); 
-  let ret;
-  rest=rest-hours;
-  min=Math.floor(rest*60);  
-  if(days>0) {
-    ret=`${days}d${hours.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}h${min.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}m`;
-  } else if(hours>0) {
-    ret=`${hours}h${min.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false})}m`;
-  } else {
-    ret=`${min}m`;
-  }
-  // console.log(number.value,(number.value+1)/3600,hoursfrac,days,rest,hours,min,ret)
-  return ret;
-};
+/**
+ * Formats raw seconds into a human-readable time string (e.g., 1d02h03m04s).
+ * This is used by both the cell formatter and the filter component.
+ * 
+ * @param {Object} params - The ag-Grid params object, or a mock object {value: seconds}
+ * @returns {String} The formatted time string
+ */
+function hhmm_short(params) {
+  // Catch nulls or undefined values gracefully
+  if (params == null || params.value == null || params.value === '') return "";
+  
+  // Use Math.round to fix any floating point inaccuracies from the backend (e.g. 59.9999 -> 60)
+  let total_seconds = Math.round(Number(params.value)); 
+  
+  let days = Math.floor(total_seconds / 86400);
+  let hours = Math.floor((total_seconds % 86400) / 3600);
+  let mins = Math.floor((total_seconds % 3600) / 60);
+  let secs = total_seconds % 60;
+  
+  // Helper to pad with leading zeros (e.g., 5 -> 05)
+  const pad = (num) => num.toLocaleString('en-US', {minimumIntegerDigits: 2, useGrouping:false});
 
+  if (days > 0) {
+    return `${days}d${pad(hours)}h${pad(mins)}m${pad(secs)}s`;
+  } else if (hours > 0) {
+    return `${hours}h${pad(mins)}m${pad(secs)}s`;
+  } else if (mins > 0) {
+    return `${mins}m${pad(secs)}s`;
+  } else {
+    return `${secs}s`;
+  }
+}
+
+/**
+ * Parses a human-readable time string ("1d 2h", "1h30m", or "300") back into raw seconds.
+ * 
+ * @param {String} textStr - The text inputted by the user
+ * @returns {Number|null} The total time in seconds, or null if invalid
+ */
+function parseTimeToSeconds(textStr) {
+  if (!textStr) return null;
+  let text = textStr.trim().toLowerCase();
+  
+  // If it's a pure number, assume it's seconds
+  if (/^\d+$/.test(text)) return parseInt(text, 10);
+  
+  let total = 0;
+  let d = text.match(/(\d+)d/);
+  let h = text.match(/(\d+)h/);
+  let m = text.match(/(\d+)m/);
+  let s = text.match(/(\d+)s/);
+  
+  if (d) total += parseInt(d[1], 10) * 86400;
+  if (h) total += parseInt(h[1], 10) * 3600;
+  if (m) total += parseInt(m[1], 10) * 60;
+  if (s) total += parseInt(s[1], 10);
+  
+  // Return null if parsing failed, unless the user explicitly typed '0'
+  return total === 0 && !text.includes('0') ? null : total;
+}
 
 function cell_color(params,column) {
   let color_obj;
@@ -199,14 +240,28 @@ function create_report_link(params,type,project,user) {
     icon = "fa-area-chart";
     title = "Show job report"
     text = "Show HTML job report"
-  } else {
+
+  }
+  else if (type == "aireport") { 
+    icon = "fa-lightbulb-o";
+    title = "Generate AI report"
+    text = "Generate AI report"
+  }
+  else {
     icon = "fa-file-pdf-o";
     title = "Download job report"
     text = "Download PDF job report"
   }
   if ( (filename) && (filename!='-') ) {
     let url = `data/${((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')}projects/${projectname}/${username}/${((typeof filename !== 'undefined')?filename:'#')}`;
-    result = `<a href="${url}" ><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+    if (type == "aireport") {
+      //result = `<a href="#" onclick="generate_ai_report('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+      result = `<a href="#" onclick="showAiReportDialog('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+    }
+    else{
+      result = `<a href="${url}" ><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+    }
+    
   } else {
     result = `<span style="color: grey;" class="fa ${icon}" title="No job report available" aria-label="No job report available"/>`;
   }
