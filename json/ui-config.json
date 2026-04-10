@@ -1,0 +1,9 @@
+  {
+    "llviewai": {
+        "enableChatBot": true,
+        "chatBotEndpoint": "/api/llview-ai",
+        "enableAIReports": true,
+        "aiReportEndpoint": "/api/llview-ai",
+        "enableTableAttachment": true
+    }
+  }

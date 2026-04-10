@@ -112,6 +112,10 @@ View.prototype.show = function () {
     return;
   }));
 
+  self.deferrer.push($.getJSON("json/ui-config.json", function (uiJson) {
+    self.uiConfig = uiJson || {};
+  }));
+
   // When ref and config json files have been loaded, proceed with the loading/configuration
   $.when.apply($, self.deferrer).done(function () {
     // Restarting deferrer as the current ones are done
@@ -293,6 +297,11 @@ View.prototype.show = function () {
             if (self.navdata.data.permission == "support") {
               self.add_presentation();
             }
+            /*NA edit: adding chatbot button & functionality */
+            if (self.navdata) {   // only after successful login
+              if (self.uiConfig && self.uiConfig.llviewai.enableChatBot) { addChatbotLogic(); }
+            }
+            /*NA edit ends*/
 
             // Add logo
             $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5, width: 72}))

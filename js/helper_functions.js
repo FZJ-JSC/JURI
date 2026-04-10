@@ -9,6 +9,7 @@
 * Contributors:
 *    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*    Nabil Abubaker (Forschungszentrum Juelich GmbH)   
 */
 
 function round_number_generic(number, ignore_null, dec_places) {
@@ -256,7 +257,12 @@ function create_report_link(params,type,project,user) {
     let url = `data/${((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')}projects/${projectname}/${username}/${((typeof filename !== 'undefined')?filename:'#')}`;
     if (type == "aireport") {
       //result = `<a href="#" onclick="generate_ai_report('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
-      result = `<a href="#" onclick="showAiReportDialog('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+      if(view.uiConfig && view.uiConfig.llviewai.enableAIReports){
+        result = `<a href="#" onclick="showAiReportDialog('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+      }
+      else{
+        result = `<span style="color: grey;" class="fa ${icon}" title="AI reports are not enabled" aria-label="AI reports are not enabled"/>`;
+      }
     }
     else{
       result = `<a href="${url}" ><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
