@@ -317,6 +317,14 @@ a {
 }
 /*** End of Alert banner ***/
 
+#top_info_area {
+  /* Assign the wrapper to the first row */
+  grid-row: 1; 
+  /* Make the wrapper stack its children vertically */
+  display: flex;
+  flex-direction: column;
+}
+
 #infotext, #optionsdiv {
   grid-row: 1; /* First row */
   margin-left: 15px;

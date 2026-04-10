@@ -811,7 +811,11 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
 
     // If the page has changed, clean up top menus
     if (pageChanged) {
-      $("main").children(":not(#main_content)").remove();
+      // Remove everything except #main_content and #top_info_area
+      $("main").children(":not(#main_content):not(#top_info_area)").remove();
+
+      // Clear children inside #top_info_area (but keep the container)
+      $("#top_info_area").children().remove();
     }
 
     // Automatically close navbar on small devices
@@ -1405,7 +1409,7 @@ View.prototype.add_filter_options = function (filter,options) {
       this_option.append(option_label)
         .append(`<br>`);
       // Adding filter when input checkbox is clicked
-      $('main').on('change', `#optionsdiv #${inputid}`, (e) => {
+      $('#top_info_area').on('change', `#optionsdiv #${inputid}`, (e) => {
         let delimiter="||";
         if (e.target.checked) {
           self.add_filter(filter_entry,delimiter=delimiter);
@@ -1494,7 +1498,7 @@ View.prototype.add_filter_options = function (filter,options) {
             .attr("aria-label","Click to hide the options to filter the table")
           self.initial_data.options = { 'showoptions': 'true' };
           self.setHash();
-          $('main').prepend(optionsdiv);
+          $('#top_info_area').prepend(optionsdiv);
           // Checking which options should be already selected
           self.check_filteroptions(self.initial_data.filter);
           optionsdiv.slideDown(function() {
@@ -1540,7 +1544,7 @@ View.prototype.add_filter_options = function (filter,options) {
     filteroptions.addClass('active');
     filteroptions.attr("data-original-title","Click to hide the options to filter the table")
       .attr("aria-label","Click to hide the options to filter the table")
-    $('main').prepend(optionsdiv);
+    $('#top_info_area').prepend(optionsdiv);
     // Checking which options should be already selected
     self.check_filteroptions(self.initial_data.filter);
     optionsdiv.slideDown(function() {
@@ -1590,7 +1594,7 @@ View.prototype.add_or_update_infobutton = function (description) {
       .attr("aria-label","Click to hide description of page")
     // Removing previous text before adding new one
     $('#infotext').remove();
-    $('main').prepend(infotext);
+    $('#top_info_area').prepend(infotext);
 
     // Apply KaTeX for the initial page load
     self.renderLaTeX('infotext');
@@ -1622,7 +1626,7 @@ View.prototype.add_or_update_infobutton = function (description) {
         .attr("aria-label","Click to hide description of page");
       self.initial_data.description = { 'showinfo': 'true' };
       self.setHash();
-      $('main').prepend(infotext);
+      $('#top_info_area').prepend(infotext);
 
       // Apply KaTeX after the user clicks to show info
       self.renderLaTeX('infotext');
