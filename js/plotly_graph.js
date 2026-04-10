@@ -859,7 +859,7 @@ PlotlyGraph.prototype.plot = function (params) {
           trace.marker = trace_data.marker ?? {
             size: 5,
             color: trace_data.color ?? trace.y,
-            colorscale: 'Jet',
+            colorscale: trace_data.color ?? 'Jet',
           };
 
           let minmax = {};
@@ -945,6 +945,10 @@ PlotlyGraph.prototype.plot = function (params) {
         if (!self.graph_data.slider) {
           traces.push(trace);
         }
+      } else { // if there's no data
+        // If there are no traces, remove tick0 and dtick from the graph, as that makes the page unresponsive
+        delete layout.xaxis.dtick;
+        delete layout.xaxis.tick0;
       }
     }
 
@@ -1018,7 +1022,6 @@ PlotlyGraph.prototype.plot = function (params) {
     } else {
       range = [xmin, xmax];
     }
-
     // Force the range and disable autorange to prevent the 1970/1-hour jump
     layout.xaxis.range = layout.xaxis.range ?? range;
     layout.xaxis.autorange = false;

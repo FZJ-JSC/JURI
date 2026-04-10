@@ -128,15 +128,42 @@ function resize() {
     // Update the view tracking variable if it exists
     view.footersize = max_footer_height;
   }
-  // Height of main content is window size - the height of the header - height of the footer - optionsdiv - infotext - 10 for padding(?)
-  $("#main_content").height($(window).height() - $("#header").height() - ($("#tabs_scroll").height()??0) - $("footer").height() - 10);
-  $("#main_content thead tr.filter th").css("top", $("#main_content thead tr:first").height());
-  $("#main_content thead tr.aggregate th").css("top", $("#main_content thead tr:first").height() +
-                        $("#main_content thead tr.filter").height() - 4);
-  if ($("#myGrid")) {
-    $("#myGrid").height($("#main_content").height()-($('#optionsdiv').outerHeight()?$('#optionsdiv').outerHeight()+4:0) - ($('#infotext').outerHeight()?$('#infotext').outerHeight()+4:0));
-    if (view.gridApi) resizeGrid()
+
+  // Get the height of the new wrapper 
+  // (outerHeight(true) automatically includes that margin-top: 4px you were trying to manually add before)
+  const topInfoHeight = $("#top_info_area").outerHeight(true) || 0;
+  
+  // Safely get the heights of the other layout elements
+  const headerHeight = $("#header").outerHeight() || 0;
+  const footerHeight = $("footer").outerHeight() || 0;
+  const tabsHeight = $("#tabs_scroll").outerHeight() || 0;
+
+  // Calculate actual available space 
+  // Now we actually subtract the info boxes here, exactly as your original comment intended!
+  const availableHeight = $(window).height() - headerHeight - tabsHeight - footerHeight - topInfoHeight - 10;
+  
+  // Set the correct height to main content
+  $("#main_content").height(availableHeight);
+
+  // Adjust table sticky headers (Logic remains the same, just slightly cleaned up)
+  const firstTrHeight = $("#main_content thead tr:first").height() || 0;
+  $("#main_content thead tr.filter th").css("top", firstTrHeight);
+  
+  const filterTrHeight = $("#main_content thead tr.filter").height() || 0;
+  $("#main_content thead tr.aggregate th").css("top", firstTrHeight + filterTrHeight - 4);
+
+  // Resize myGrid
+  if ($("#myGrid").length) {
+    // Because we correctly subtracted the info boxes from availableHeight above,
+    // we don't need the crazy inline math anymore. myGrid just fills the space!
+    $("#myGrid").height(availableHeight);
+    
+    if (typeof view !== 'undefined' && view.gridApi) {
+      resizeGrid();
+    }
   }
+
+
   for (let i = 0; i < view.resize_function.length; ++i) {
     view.resize_function[i]();
   }
