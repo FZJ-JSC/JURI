@@ -259,7 +259,6 @@ function navigateToNextCell(params) {
 }
 
 function get_filter_string(value) {
-  // The exact text typed by the user is prioritized for custom filters
   if (value.rawUserInput) {
     return value.rawUserInput;
   }
@@ -270,16 +269,26 @@ function get_filter_string(value) {
   } else {
     if (value.type == 'greaterThan') {
       filter = `>${value.filter.toString()}`;
+    } else if (value.type == 'greaterThanOrEqual') {
+      filter = `>=${value.filter.toString()}`;
     } else if (value.type == 'lessThan') {
       filter = `<${value.filter.toString()}`;
+    } else if (value.type == 'lessThanOrEqual') {
+      filter = `<=${value.filter.toString()}`;
     } else if (value.type == 'inRange') {
       filter = `${value.filter.toString()}-${value.filterTo.toString()}`;
+    } else if (value.type == 'blank') {
+      filter = 'blank';
+    } else if (value.type == 'notBlank') {
+      filter = 'notBlank';
     } else {
-      filter = `${value.filter.toString()}`;
+      // Fallback: guard against undefined filter value for any unexpected type
+      filter = value.filter != null ? value.filter.toString() : '';
     }
   }
   return filter;
 }
+
 
 function onFilterChanged(event) {
   view.initial_data.filter = {}
@@ -512,19 +521,22 @@ class NumberFloatingFilterComponent {
   onParentModelChanged(parentModel) {
     // When the filter is empty we will receive a null message here
     this.eFilterInput.disabled = false;
+
     if (!parentModel) {
       this.eFilterInput.value = '';
-    } else {
-      if (parentModel.operator) { // Multiple conditions
-        // Setting the text into the input
-        this.eFilterInput.value = parentModel.conditions.map((cond) => get_filter_string(cond)).join(` ${parentModel.operator} `);
-        // Disabling input of filter when there are multiple conditions
-        this.eFilterInput.disabled = true;
-      } else { // Single condition
-        // Setting the text into the input
-        this.eFilterInput.value = get_filter_string(parentModel);
-        // Re-enabling input filter when there are no multiple conditions
-      }
+      return;
+    }
+    if (parentModel.operator) { // Multiple conditions
+      // Setting the text into the input
+      this.eFilterInput.value = parentModel.conditions
+        .map((cond) => get_filter_string(cond))
+        .join(` ${parentModel.operator} `);
+      // Disabling input of filter when there are multiple conditions
+      this.eFilterInput.disabled = true;
+    } else { // Single condition
+      // Setting the text into the input
+      this.eFilterInput.value = get_filter_string(parentModel);
+      // Re-enabling input filter when there are no multiple conditions
     }
   }
 
@@ -576,32 +588,224 @@ class NumberFloatingFilterComponent {
  * Class DateTimeParentFilter
  * 
  * ag-Grid's native date filter explicitly destroys exact times.
- * This custom filter engine is used to replace the native filter entirely so 
- * timestamps can be strictly compared down to the second, allowing exact time 
- * filtering to function correctly.
+ * This custom filter engine replaces the native filter entirely so 
+ * timestamps can be strictly compared down to the second. A native-looking UI 
+ * is rendered in the hamburger menu, utilizing exact ag-Grid DOM structures 
+ * to inherit the active theme perfectly.
  */
 class DateTimeParentFilter {
   init(params) {
     this.params = params;
     this.filterModel = null;
+    this.buildGui();
+  }
+
+  /**
+   * A native-looking filter menu is constructed using identical ag-Grid markup
+   */
+  buildGui() {
+    // The main wrapper is built strictly using native classes without manual sizing constraints
+    this.eGuiWrapper = $('<div>').addClass('ag-filter')[0];
+    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed')[0];
+    let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper');
+
+    let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
+    let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
+    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
+                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false');
+    
+    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals');
+    let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
+                         .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
+
+    this.selectWrapper.append(this.eDisplayField, icon);
+    selectContainer.append(selectLabel, this.selectWrapper);
+
+    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation');
+
+    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false');
+    let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    this.eInput1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...')[0];
+    input1Wrapper.append(this.eInput1);
+    input1Container.append(input1Label, input1Wrapper);
+
+    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true')[0];
+    let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    this.eInput2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To')[0];
+    input2Wrapper.append(this.eInput2);
+    $(this.eInput2Container).append(input2Label, input2Wrapper);
+
+    filterBody.append(input1Container, this.eInput2Container);
+    bodyWrapper.append(selectContainer, filterBody);
+    $(this.eGui).append(bodyWrapper);
+    $(this.eGuiWrapper).append(this.eGui);
+
+    // The popup wrapper is appended directly to the body to prevent layout clipping
+    this.ePopup = $('<div>').addClass('ag-theme-balham ag-popup').css({
+      display: 'none'
+    })[0];
+    
+    // Fixed positioning is used so the popup maps perfectly to viewport coordinates
+    this.eList = $('<div>').addClass('ag-list ag-select-list ag-ltr ag-popup-child ag-popup-positioned-under')
+                           .attr('role', 'listbox').css({
+                             position: 'fixed', background: 'white',
+                             border: '1px solid var(--ag-borders-color, #bdc3c7)',
+                             boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999
+                           })[0];
+    $(this.ePopup).append(this.eList);
+    $('body').append(this.ePopup);
+
+    // Event propagation is halted on the detached popup so ag-Grid is unaware of interactions
+    $(this.ePopup).on('mousedown mouseup click touchstart', (e) => {
+      e.stopPropagation();
+    });
+
+    this.options = {
+      'contains': 'Contains',
+      'equals': 'Equals',
+      'greaterThan': 'Greater Than',
+      'greaterThanOrEqual': 'Greater Than or Equal',
+      'lessThan': 'Less Than',
+      'lessThanOrEqual': 'Less Than or Equal',
+      'inRange': 'In Range'
+    };
+
+    this.currentType = 'equals';
+
+    // The dropdown options are generated and click events are assigned
+    Object.entries(this.options).forEach(([val, label]) => {
+      let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
+                           .html(`<span>${label}</span>`);
+      item.on('click', (e) => {
+        e.stopPropagation();
+        this.currentType = val;
+        $(this.eDisplayField).text(label);
+        $(this.ePopup).hide();
+        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+        this.onChange();
+      });
+      item.on('mouseenter', () => item.css('background-color', 'var(--ag-row-hover-color, #f5f7f7)'));
+      item.on('mouseleave', () => item.css('background-color', 'transparent'));
+      $(this.eList).append(item);
+    });
+
+    // The popup display is toggled on click and positioned explicitly via screen coordinates
+    this.selectWrapper.on('click', (e) => {
+      e.stopPropagation();
+      let isExpanded = this.selectWrapper.hasClass('ag-picker-expanded');
+      
+      if (isExpanded) {
+        $(this.ePopup).hide();
+        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+      } else {
+        // Viewport bounding rectangle guarantees exact screen positioning for the fixed element
+        let rect = this.selectWrapper[0].getBoundingClientRect();
+        
+        $(this.eList).css({
+          top: rect.bottom + 'px',
+          left: rect.left + 'px',
+          width: rect.width + 'px',
+          minWidth: rect.width + 'px'
+        });
+        
+        $(this.ePopup).show();
+        this.selectWrapper.addClass('ag-picker-expanded').attr('aria-expanded', 'true');
+      }
+    });
+
+    // The event target is verified as a DOM Node to prevent crashes on window blur events
+    this.closeDropdown = (e) => {
+      if (!e.target || !(e.target instanceof Node)) {
+        $(this.ePopup).hide();
+        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+        return;
+      }
+      if (this.ePopup && this.selectWrapper) {
+        if (!this.ePopup.contains(e.target) && !this.selectWrapper[0].contains(e.target)) {
+          $(this.ePopup).hide();
+          this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', this.closeDropdown, true);
+    window.addEventListener('blur', this.closeDropdown);
+
+    // Changes in the inputs trigger a sync with the grid
+    this.onChange = () => {
+      let type = this.currentType;
+      let val1 = this.eInput1.value.trim();
+      let val2 = this.eInput2.value.trim();
+
+      if (type === 'inRange') {
+        $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
+      } else {
+        $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+      }
+
+      if (!val1) {
+        this.filterModel = null;
+        this.params.filterChangedCallback();
+        return;
+      }
+
+      let syntheticString = '';
+      if (type === 'contains' || type === 'equals') {
+        syntheticString = val1;
+      } else if (type === 'greaterThan') {
+        syntheticString = `> ${val1}`;
+      } else if (type === 'greaterThanOrEqual') {
+        syntheticString = `>= ${val1}`;
+      } else if (type === 'lessThan') {
+        syntheticString = `< ${val1}`;
+      } else if (type === 'lessThanOrEqual') {
+        syntheticString = `<= ${val1}`;
+      } else if (type === 'inRange') {
+        syntheticString = `${val1} - ${val2}`;
+      }
+
+      this.filterModel = parseDateFilterText(syntheticString);
+      
+      if (this.filterModel && type === 'contains') {
+        this.filterModel.type = 'contains';
+        this.filterModel.filterText = val1;
+      }
+
+      this.params.filterChangedCallback();
+    };
+
+    this.eInput1.addEventListener('input', this.onChange);
+    this.eInput2.addEventListener('input', this.onChange);
+  }
+
+  /**
+   * The cursor is automatically placed in the input box when the menu is opened
+   */
+  afterGuiAttached() {
+    if (this.eInput1) {
+      setTimeout(() => this.eInput1.focus(), 50);
+    }
   }
 
   getGui() {
-    let div = document.createElement('div');
-    div.style.padding = '15px';
-    div.style.fontWeight = 'bold';
-    div.innerText = 'Please use the text box below the header to filter dates and times.';
-    return div;
+    return this.eGuiWrapper;
   }
 
   doesFilterPass(params) {
     if (!this.filterModel) return true;
 
-    // The raw date string is retrieved from the cell
     let cellValue = this.params.getValue(params.node);
     if (!cellValue) return false;
 
-    // String values are safely converted to timestamps, guarding against null/undefined
+    if (this.filterModel.type === 'contains') {
+      return cellValue.toLowerCase().includes(this.filterModel.filterText.toLowerCase());
+    }
+
     const toTimestamp = (val) => {
       if (!val || typeof val !== 'string') return null;
       return new Date(val.replace(' ', 'T')).getTime();
@@ -610,29 +814,16 @@ class DateTimeParentFilter {
     let cellTime = toTimestamp(cellValue);
     let fromTime = toTimestamp(this.filterModel.dateFrom);
     
-    // Rows are allowed to pass if the saved model is missing a valid date
     if (!fromTime || !cellTime) return true;
     
-    if (this.filterModel.type === 'equals') {
-      return cellTime === fromTime;
-    }
-    if (this.filterModel.type === 'greaterThan') {
-      return cellTime > fromTime;
-    }
-    if (this.filterModel.type === 'greaterThanOrEqual') {
-      return cellTime >= fromTime;
-    }
-    if (this.filterModel.type === 'lessThan') {
-      return cellTime < fromTime;
-    }
-    if (this.filterModel.type === 'lessThanOrEqual') {
-      return cellTime <= fromTime;
-    }
+    if (this.filterModel.type === 'equals') return cellTime === fromTime;
+    if (this.filterModel.type === 'greaterThan') return cellTime > fromTime;
+    if (this.filterModel.type === 'greaterThanOrEqual') return cellTime >= fromTime;
+    if (this.filterModel.type === 'lessThan') return cellTime < fromTime;
+    if (this.filterModel.type === 'lessThanOrEqual') return cellTime <= fromTime;
     if (this.filterModel.type === 'inRange') {
       let toTime = toTimestamp(this.filterModel.dateTo);
-      // The boundary is treated as a simple 'greater than' if the end time is missing
       if (!toTime) return cellTime >= fromTime;
-      
       return cellTime >= fromTime && cellTime <= toTime;
     }
     
@@ -650,17 +841,49 @@ class DateTimeParentFilter {
       type: this.filterModel.type,
       dateFrom: this.filterModel.dateFrom,
       dateTo: this.filterModel.dateTo,
+      filterText: this.filterModel.filterText,
       rawUserInput: this.filterModel.rawUserInput
     };
   }
 
   setModel(model) {
     this.filterModel = model;
+    
+    if (!model) {
+      this.currentType = 'equals';
+      $(this.eDisplayField).text(this.options['equals']);
+      this.eInput1.value = '';
+      this.eInput2.value = '';
+      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+      return;
+    }
+
+    this.currentType = model.type;
+    $(this.eDisplayField).text(this.options[model.type] || 'Equals');
+    
+    if (model.type === 'inRange') {
+      $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
+    } else {
+      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+    }
+
+    let raw = model.rawUserInput || '';
+    if (model.type === 'inRange') {
+      let parts = raw.split('-');
+      this.eInput1.value = parts[0] ? parts[0].trim() : '';
+      this.eInput2.value = parts[1] ? parts[1].trim() : '';
+    } else if (model.type === 'contains') {
+      this.eInput1.value = model.filterText || raw;
+    } else {
+      this.eInput1.value = raw.replace(/^[><=]+\s*/, '').trim();
+    }
   }
 
   destroy() {
-    // The specific column filter data is forcefully removed from the grid model
-    // when this component is destroyed by the ag-Grid lifecycle.
+    document.removeEventListener('mousedown', this.closeDropdown, true);
+    window.removeEventListener('blur', this.closeDropdown);
+    if (this.ePopup) $(this.ePopup).remove();
+
     if (this.params && this.params.api && this.params.column) {
       let currentModel = this.params.api.getFilterModel();
       let myColId = this.params.column.getColId();
@@ -680,11 +903,12 @@ class DateTimeParentFilter {
  * to be quickly typed using pure text.
  * 
  * User text is explicitly translated into exact temporal boundaries:
- * - Day Exact:  "2026-04-07"  -> InRange (2026-04-07 00:00:00 to 2026-04-07 23:59:59)
+ * - Day Exact:  "2026-04-07"    -> InRange (2026-04-07 00:00:00 to 2026-04-07 23:59:59)
  * - Day >=:     ">= 2026-04-07" -> GreaterThanOrEqual (2026-04-07 00:00:00)
  * - Day >:      "> 2026-04-07"  -> GreaterThan (2026-04-07 23:59:59)
  * - Day <=:     "<= 2026-04-07" -> LessThanOrEqual (2026-04-07 23:59:59)
  * - Day <:      "< 2026-04-07"  -> LessThan (2026-04-07 00:00:00)
+ * - string:     "04-07"         -> contains the string
  */
 let uniqueDateIdCounter = 0; 
 
@@ -693,14 +917,13 @@ class DateFloatingFilterComponent {
   init(params) {
     this.params = params;
     
-    // DOM elements are created for the floating text input
     this.eGui = $('<div>').addClass('ag-floating-filter-input').attr('role', 'presentation');
     let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field');
     let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper');
     
     let input = $('<input>').addClass('ag-input-field-input ag-text-field-input')
                             .attr('type', 'text')
-                            .attr('placeholder', 'YYYY-MM-DD or >...') 
+                            // .attr('placeholder', 'YYYY-MM-DD or >...') 
                             .attr('id', `ag-custom-date-${uniqueDateIdCounter++}-input`)
                             .attr('autocomplete', 'off');
     
@@ -709,7 +932,6 @@ class DateFloatingFilterComponent {
     this.eGui.append(div);
     this.eFilterInput = this.eGui.find('input')[0];
 
-    // The custom tooltip is constructed with Bootstrap dark theme styling
     this.customTooltip = $('<div>')
         .css({
             position: 'absolute', 
@@ -738,10 +960,8 @@ class DateFloatingFilterComponent {
             <span style="color: #ffb3b3; font-size: 11px;"><i>(Must use spaces around the dash!)</i></span>
         `);
 
-    // The tooltip is appended directly to the body to escape ag-Grid overflow traps
     $('body').append(this.customTooltip);
 
-    // The tooltip is displayed and positioned when the input receives focus
     this.eFilterInput.addEventListener('focus', () => {
         if (this.eFilterInput.value === '') {
             let rect = this.eFilterInput.getBoundingClientRect();
@@ -753,17 +973,14 @@ class DateFloatingFilterComponent {
         }
     });
 
-    // The tooltip is hidden when focus is lost
     this.eFilterInput.addEventListener('blur', () => {
         setTimeout(() => { this.customTooltip.css('display', 'none'); }, 150);
     });
 
-    // The tooltip is hidden immediately when keyboard input begins
     this.eFilterInput.addEventListener('keydown', () => {
         this.customTooltip.css('display', 'none');
     });
     
-    // A timer is stored to prevent evaluation on every single keystroke
     this.debounceTimer = null;
 
     const onInputBoxChanged = () => {
@@ -772,7 +989,6 @@ class DateFloatingFilterComponent {
       this.debounceTimer = setTimeout(() => {
         let val = this.eFilterInput.value.trim();
         
-        // The filter is removed entirely if the input is cleared
         if (val === '') {
           params.parentFilterInstance(instance => {
             instance.setModel(null);        
@@ -781,10 +997,8 @@ class DateFloatingFilterComponent {
           return;
         }
 
-        // The text input is passed to our global parsing helper
         let parsedModel = parseDateFilterText(val);
 
-        // The constructed model is applied to the grid if parsing was successful
         if (parsedModel) {
           params.parentFilterInstance(instance => {
             instance.setModel(parsedModel);
@@ -805,22 +1019,18 @@ class DateFloatingFilterComponent {
     let activeModels = this.params.api.getFilterModel();
     let myColId = this.params.column.getColId();
     
-    // The input is wiped and aborted if the grid reports no active filter
-    if (!activeModels[myColId] || !parentModel || parentModel.dateFrom == null) {
+    if (!activeModels[myColId] || !parentModel || (parentModel.dateFrom == null && parentModel.type !== 'contains')) {
       this.eFilterInput.value = '';
       return;
     }
 
     if (document.activeElement === this.eFilterInput) return;
 
-    // Prioritize exactly what the user typed
     if (parentModel.rawUserInput) {
       this.eFilterInput.value = parentModel.rawUserInput;
       return;
     }
 
-    // Fallback: If no raw input was saved, we mathematically reconstruct it
-    // The internal 00:00:00 or 23:59:59 boundary logic is hidden from the user interface
     const cleanStr = (str, isEnd) => {
         if (!str) return '';
         if (isEnd && str.endsWith('23:59:59')) return str.slice(0, 10);
@@ -831,7 +1041,6 @@ class DateFloatingFilterComponent {
     let fromStr = parentModel.dateFrom || '';
     let toStr = parentModel.dateTo || '';
 
-    // The text string is reconstructed based on the active filter model
     if (parentModel.type === 'inRange') {
        let cFrom = cleanStr(fromStr, false);
        let cTo = cleanStr(toStr, true);
@@ -841,6 +1050,8 @@ class DateFloatingFilterComponent {
        } else {
           this.eFilterInput.value = `${cFrom} - ${cTo}`;
        }
+    } else if (parentModel.type === 'contains') {
+       this.eFilterInput.value = parentModel.filterText || '';
     } else if (parentModel.type === 'greaterThanOrEqual') {
        this.eFilterInput.value = `>= ${cleanStr(fromStr, false)}`;
     } else if (parentModel.type === 'lessThanOrEqual') {
@@ -859,7 +1070,6 @@ class DateFloatingFilterComponent {
   }
 
   destroy() {
-    // The custom tooltip DOM element is removed to prevent invisible memory leaks
     if (this.customTooltip) {
       this.customTooltip.remove();
     }
@@ -872,31 +1082,212 @@ class DateFloatingFilterComponent {
  * Class TimeIntervalParentFilter
  * 
  * Strict mathematical comparisons on raw seconds are enforced.
- * The default text/number filters are replaced to ensure that numerical values
- * are evaluated correctly without accidental string matches.
+ * A native-looking UI is rendered in the hamburger menu, utilizing exact ag-Grid 
+ * DOM structures to inherit the active theme perfectly. This allows raw seconds 
+ * to be filtered using human-readable time strings perfectly synced with the floating text box.
  */
 class TimeIntervalParentFilter {
   init(params) {
     this.params = params;
     this.filterModel = null;
+    this.buildGui();
+  }
+
+  /**
+   * A native-looking filter menu is constructed using identical ag-Grid markup
+   */
+  buildGui() {
+    // The main wrapper is built strictly using native classes without manual sizing constraints
+    this.eGuiWrapper = $('<div>').addClass('ag-filter')[0];
+    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed')[0];
+    let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper');
+
+    let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
+    let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
+    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
+                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false');
+    
+    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals');
+    let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
+                         .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
+
+    this.selectWrapper.append(this.eDisplayField, icon);
+    selectContainer.append(selectLabel, this.selectWrapper);
+
+    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation');
+
+    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false');
+    let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    this.eInput1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...')[0];
+    input1Wrapper.append(this.eInput1);
+    input1Container.append(input1Label, input1Wrapper);
+
+    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true')[0];
+    let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    this.eInput2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To')[0];
+    input2Wrapper.append(this.eInput2);
+    $(this.eInput2Container).append(input2Label, input2Wrapper);
+
+    filterBody.append(input1Container, this.eInput2Container);
+    bodyWrapper.append(selectContainer, filterBody);
+    $(this.eGui).append(bodyWrapper);
+    $(this.eGuiWrapper).append(this.eGui);
+
+    // The popup wrapper is appended directly to the body to prevent layout clipping
+    this.ePopup = $('<div>').addClass('ag-theme-balham ag-popup').css({
+      display: 'none'
+    })[0];
+    
+    // Fixed positioning is used so the popup maps perfectly to viewport coordinates
+    this.eList = $('<div>').addClass('ag-list ag-select-list ag-ltr ag-popup-child ag-popup-positioned-under')
+                           .attr('role', 'listbox').css({
+                             position: 'fixed', background: 'white',
+                             border: '1px solid var(--ag-borders-color, #bdc3c7)',
+                             boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999
+                           })[0];
+    $(this.ePopup).append(this.eList);
+    $('body').append(this.ePopup);
+
+    // Event propagation is halted on the detached popup so ag-Grid is unaware of interactions
+    $(this.ePopup).on('mousedown mouseup click touchstart', (e) => {
+      e.stopPropagation();
+    });
+
+    this.options = {
+      'equals': 'Equals',
+      'greaterThan': 'Greater Than',
+      'greaterThanOrEqual': 'Greater Than or Equal',
+      'lessThan': 'Less Than',
+      'lessThanOrEqual': 'Less Than or Equal',
+      'inRange': 'In Range'
+    };
+
+    this.currentType = 'equals';
+
+    // The dropdown options are generated and click events are assigned
+    Object.entries(this.options).forEach(([val, label]) => {
+      let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
+                           .html(`<span>${label}</span>`);
+      item.on('click', (e) => {
+        e.stopPropagation();
+        this.currentType = val;
+        this.eDisplayField.text(label);
+        $(this.ePopup).hide();
+        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+        this.onChange();
+      });
+      item.on('mouseenter', () => item.css('background-color', 'var(--ag-row-hover-color, #f5f7f7)'));
+      item.on('mouseleave', () => item.css('background-color', 'transparent'));
+      $(this.eList).append(item);
+    });
+
+    // The popup display is toggled on click and positioned explicitly via screen coordinates
+    this.selectWrapper.on('click', (e) => {
+      e.stopPropagation();
+      let isExpanded = this.selectWrapper.hasClass('ag-picker-expanded');
+      
+      if (isExpanded) {
+        $(this.ePopup).hide();
+        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+      } else {
+        // Viewport bounding rectangle guarantees exact screen positioning for the fixed element
+        let rect = this.selectWrapper[0].getBoundingClientRect();
+        
+        $(this.eList).css({
+          top: rect.bottom + 'px',
+          left: rect.left + 'px',
+          width: rect.width + 'px',
+          minWidth: rect.width + 'px'
+        });
+        
+        $(this.ePopup).show();
+        this.selectWrapper.addClass('ag-picker-expanded').attr('aria-expanded', 'true');
+      }
+    });
+
+    // The event target is verified as a DOM Node to prevent crashes on window blur events
+    this.closeDropdown = (e) => {
+      if (!e.target || !(e.target instanceof Node)) {
+        $(this.ePopup).hide();
+        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+        return;
+      }
+      if (this.ePopup && this.selectWrapper) {
+        if (!this.ePopup.contains(e.target) && !this.selectWrapper[0].contains(e.target)) {
+          $(this.ePopup).hide();
+          this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+        }
+      }
+    };
+    
+    document.addEventListener('mousedown', this.closeDropdown, true);
+    window.addEventListener('blur', this.closeDropdown);
+
+    // Changes in the inputs trigger a sync with the grid
+    this.onChange = () => {
+      let type = this.currentType;
+      let val1 = this.eInput1.value.trim();
+      let val2 = this.eInput2.value.trim();
+
+      if (type === 'inRange') {
+        $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
+      } else {
+        $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+      }
+
+      if (!val1) {
+        this.filterModel = null;
+        this.params.filterChangedCallback();
+        return;
+      }
+
+      let syntheticString = '';
+      if (type === 'equals') {
+        syntheticString = val1;
+      } else if (type === 'greaterThan') {
+        syntheticString = `> ${val1}`;
+      } else if (type === 'greaterThanOrEqual') {
+        syntheticString = `>= ${val1}`;
+      } else if (type === 'lessThan') {
+        syntheticString = `< ${val1}`;
+      } else if (type === 'lessThanOrEqual') {
+        syntheticString = `<= ${val1}`;
+      } else if (type === 'inRange') {
+        syntheticString = `${val1} - ${val2}`;
+      }
+
+      this.filterModel = parseTimeFilterText(syntheticString);
+      this.params.filterChangedCallback();
+    };
+
+    this.eInput1.addEventListener('input', this.onChange);
+    this.eInput2.addEventListener('input', this.onChange);
+  }
+
+  /**
+   * The cursor is automatically placed in the input box when the menu is opened
+   */
+  afterGuiAttached() {
+    if (this.eInput1) {
+      setTimeout(() => this.eInput1.focus(), 50);
+    }
   }
 
   getGui() {
-    let div = document.createElement('div');
-    div.style.padding = '15px';
-    div.style.fontWeight = 'bold';
-    div.innerText = 'Please use the text box below the header to filter time.';
-    return div;
+    return this.eGuiWrapper;
   }
 
   doesFilterPass(params) {
     if (!this.filterModel) return true;
 
-    // The raw value is retrieved from the cell
     let cellValue = this.params.getValue(params.node);
     if (cellValue == null || cellValue === '') return false;
 
-    // The cell value is forced to be evaluated as a strict number
     let cellSecs = Number(cellValue);
     if (isNaN(cellSecs)) return false;
 
@@ -932,11 +1323,40 @@ class TimeIntervalParentFilter {
 
   setModel(model) {
     this.filterModel = model;
+    
+    if (!model) {
+      this.currentType = 'equals';
+      this.eDisplayField.text(this.options['equals']);
+      this.eInput1.value = '';
+      this.eInput2.value = '';
+      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+      return;
+    }
+
+    this.currentType = model.type;
+    this.eDisplayField.text(this.options[model.type] || 'Equals');
+    
+    if (model.type === 'inRange') {
+      $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
+    } else {
+      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+    }
+
+    let raw = model.rawUserInput || '';
+    if (model.type === 'inRange') {
+      let parts = raw.split('-');
+      this.eInput1.value = parts[0] ? parts[0].trim() : '';
+      this.eInput2.value = parts[1] ? parts[1].trim() : '';
+    } else {
+      this.eInput1.value = raw.replace(/^[><=]+\s*/, '').trim();
+    }
   }
 
   destroy() {
-    // The specific column filter data is forcefully removed from the grid model
-    // when this component is destroyed by the ag-Grid lifecycle.
+    document.removeEventListener('mousedown', this.closeDropdown, true);
+    window.removeEventListener('blur', this.closeDropdown);
+    if (this.ePopup) $(this.ePopup).remove();
+
     if (this.params && this.params.api && this.params.column) {
       let currentModel = this.params.api.getFilterModel();
       let myColId = this.params.column.getColId();
@@ -947,6 +1367,7 @@ class TimeIntervalParentFilter {
     }
   }
 }
+
 
 /**
  * Class TimeIntervalFloatingFilterComponent
@@ -967,14 +1388,13 @@ class TimeIntervalFloatingFilterComponent {
   init(params) {
     this.params = params; 
 
-    // DOM elements are created for the floating text input
     this.eGui = $('<div>').addClass('ag-floating-filter-input').attr('role', 'presentation');
     let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field');
     let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper');
     
     let input = $('<input>').addClass('ag-input-field-input ag-text-field-input')
                             .attr('type', 'text')
-                            .attr('placeholder', '1h30m or < 5m...') 
+                            // .attr('placeholder', '1h30m or < 5m...') 
                             .attr('id', `ag-custom-time-${uniqueTimeIdCounter++}-input`)
                             .attr('autocomplete', 'off');
     
@@ -983,7 +1403,6 @@ class TimeIntervalFloatingFilterComponent {
     this.eGui.append(div);
     this.eFilterInput = this.eGui.find('input')[0];
 
-    // The custom tooltip is constructed with Bootstrap dark theme styling
     this.customTooltip = $('<div>')
         .css({
             position: 'absolute', 
@@ -1010,10 +1429,8 @@ class TimeIntervalFloatingFilterComponent {
             <span style="color: #ffb3b3; font-size: 11px;"><i>(Must use spaces around the dash!)</i></span>
         `);
 
-    // The tooltip is appended directly to the body to escape ag-Grid overflow traps
     $('body').append(this.customTooltip);
 
-    // The tooltip is displayed and positioned when the input receives focus
     this.eFilterInput.addEventListener('focus', () => {
         if (this.eFilterInput.value === '') {
             let rect = this.eFilterInput.getBoundingClientRect();
@@ -1025,17 +1442,14 @@ class TimeIntervalFloatingFilterComponent {
         }
     });
 
-    // The tooltip is hidden when focus is lost
     this.eFilterInput.addEventListener('blur', () => {
         setTimeout(() => { this.customTooltip.css('display', 'none'); }, 150);
     });
 
-    // The tooltip is hidden immediately when keyboard input begins
     this.eFilterInput.addEventListener('keydown', () => {
         this.customTooltip.css('display', 'none');
     });
 
-    // A timer is stored to prevent evaluation on every single keystroke
     this.debounceTimer = null;
 
     const onInputBoxChanged = () => {
@@ -1044,7 +1458,6 @@ class TimeIntervalFloatingFilterComponent {
       this.debounceTimer = setTimeout(() => {
         let val = this.eFilterInput.value.trim();
         
-        // The filter is removed entirely if the input is cleared
         if (val === '') {
           params.parentFilterInstance(instance => {
             instance.setModel(null);
@@ -1053,10 +1466,8 @@ class TimeIntervalFloatingFilterComponent {
           return;
         }
 
-        // The text input is passed to our global parsing helper
         let parsedModel = parseTimeFilterText(val);
 
-        // The constructed model is applied to the grid if parsing was successful
         if (parsedModel) {
           params.parentFilterInstance(instance => {
             instance.setModel(parsedModel);
@@ -1077,7 +1488,6 @@ class TimeIntervalFloatingFilterComponent {
     let activeModels = this.params.api.getFilterModel();
     let myColId = this.params.column.getColId();
     
-    // The input is wiped and aborted if the grid reports no active filter
     if (!activeModels[myColId] || !parentModel || parentModel.filter == null) {
       this.eFilterInput.value = '';
       return;
@@ -1085,16 +1495,13 @@ class TimeIntervalFloatingFilterComponent {
 
     if (document.activeElement === this.eFilterInput) return;
 
-    // Prioritize exactly what the user typed (from URL)
     if (parentModel.rawUserInput) {
       this.eFilterInput.value = parentModel.rawUserInput;
       return;
     }
 
-    // Fallback: If no raw input was saved, we mathematically reconstruct it
     const format = (sec) => sec != null ? hhmm_short({ value: sec }) : '';
 
-    // The text string is reconstructed based on the active filter model
     if (parentModel.type === 'inRange') {
        this.eFilterInput.value = `${format(parentModel.filter)} - ${format(parentModel.filterTo)}`;
     } else if (parentModel.type === 'greaterThanOrEqual') {
@@ -1115,7 +1522,6 @@ class TimeIntervalFloatingFilterComponent {
   }
 
   destroy() {
-    // The custom tooltip DOM element is removed to prevent invisible memory leaks
     if (this.customTooltip) {
       this.customTooltip.remove();
     }
@@ -1124,8 +1530,9 @@ class TimeIntervalFloatingFilterComponent {
 
 
 /**
- * Parses user input text into a mathematical Date filter object.
- * Returns null if the input is invalid or empty.
+ * User input text is parsed into a mathematical Date filter object.
+ * Partial dates (like "04-14") or invalid dates are detected and automatically 
+ * trigger a 'contains' string search instead of strict mathematical bounds.
  */
 function parseDateFilterText(val) {
   if (!val) return null;
@@ -1154,6 +1561,15 @@ function parseDateFilterText(val) {
   } else {
     let rawDate = val.replace(/^[><=]+\s*/, '').trim();
     let hasTime = rawDate.includes(':');
+
+    // Invalid or partial dates are detected to fallback to a 'contains' search.
+    // A strict check ensures it at least starts with a 4-digit year.
+    let testDateStr = hasTime ? rawDate : `${rawDate} 00:00:00`;
+    let testDate = new Date(testDateStr.replace(' ', 'T')).getTime();
+
+    if (isNaN(testDate) || !rawDate.match(/^\d{4}/)) {
+      return { type: 'contains', filterText: rawDate, rawUserInput: val };
+    }
 
     if (isGreaterThanOrEqual) {
       type = 'greaterThanOrEqual';
@@ -1184,7 +1600,7 @@ function parseDateFilterText(val) {
 }
 
 /**
- * Parses user input text into a mathematical TimeInterval filter object.
+ * User input text is parsed into a mathematical TimeInterval filter object.
  * Returns null if the input is invalid or empty.
  */
 function parseTimeFilterText(val) {
