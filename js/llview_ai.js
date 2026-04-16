@@ -402,13 +402,6 @@ function addChatbotModalHandlers() {
     }
   });
 
-  // SEND
-  $('#chatbotSendBtn').on('click', sendChat);
-  $('#chatbotInput').on('keypress', function (e) {
-    if (e.which === 13 && !e.shiftKey) {
-      e.preventDefault(); sendChat();
-    }
-  });
 
   // MINIMIZE / RESTORE
   const $bodyFooter = $('#chatbotModal .modal-body');
@@ -469,26 +462,36 @@ function addChatbotHtml() {
 
 function addChatbotLogic() {
   addChatbotHtml();
-  addChatbotModalHandlers();
-  $('body').append(
+  // addChatbotModalHandlers();
+  $('#pageWrapper').append(
     // $('<button>', {id:'chatbotBtn', title:'Chatbot'}).addClass('fa fa-comment')
     `  <button class="ai-chat-btn" id="chatbotBtn" title="Chatbot">
                   <span class="chat-icon"><span class="dots">•••</span></span>
                   <!-- <span class="sparkles"></span> -->
                   </button>`);
-  //$('#chatbotBtn').on('click', () => $('#chatbotModal').modal('show'));
-  //$('#chatbotBtn').on('click', () => { $('#chatSidebar').addClass('open'); $('#chatbotInput').focus();});
-  $('#chatbotBtn').on('click', () => {
-    const $sb = $('#chatSidebar');
-    $sb.toggleClass('open');
-    if ($sb.hasClass('open')) { $('#chatbotInput').focus(); }
-    else { $sb.css({ 'width': '', 'max-width': '' }); } // reset width to default when closing
+
+  const $wrapper = $('#pageWrapper');
+  const $sidebar = $('#chatSidebar');
+  const $resizer = $('#chatResizer');
+  const $btn = $('#chatbotBtn');
+  let dragging = false;
+  let startX = 0, startWidth = 0;
+  $btn.on('click', () => {
+    if($wrapper.hasClass('sidebar-open')) {
+      $wrapper.removeClass('sidebar-open').css('--sidebar-width', '0px');
+      
+    } else {
+      $wrapper.addClass('sidebar-open').css('--sidebar-width', '350px');
+      $('#chatbotInput').focus();
+    }
   });
+
   $('#chatCloseBtn').on('click', () => {
-    $('#chatSidebar')
-      .removeClass('open')
-      .css({ 'width': '', 'max-width': '' }) // reset width to default when closing;
+    $wrapper
+      .removeClass('sidebar-open')
+      .css('--sidebar-width', '0px');
   });
+
   $('#attachContainer').on('click', () => {
     const $cn = $('#attachContainer');
     const $symb = $('#attachSymbol');
@@ -497,13 +500,20 @@ function addChatbotLogic() {
 
     $('#chatbotInput').focus();
   });
-  let dragging = false;
-  let startX, startWidth;
 
-  $('#chatResizer').on('mousedown', function (e) {
+  $resizer.on('mousedown', function (e) {
     dragging = true;
     startX = e.clientX;
-    startWidth = $('#chatSidebar').width();   // current width (0 when closed)
+    startWidth = $sidebar.width();   // current width (0 when closed)
+    $('body').addClass('no-select'); // optional – prevents text selection while dragging
+    e.preventDefault();
+  });
+
+  $btn.on('mousedown', function (e) {
+    if (!$wrapper.hasClass('sidebar-open')) return; // only start dragging if sidebar is open
+    dragging = true;
+    startX = e.clientX;
+    startWidth = $sidebar.width();   // current width (0 when closed)
     $('body').addClass('no-select'); // optional – prevents text selection while dragging
     e.preventDefault();
   });
@@ -515,15 +525,23 @@ function addChatbotLogic() {
 
     // enforce sensible limits
     newWidth = Math.max(200, Math.min(1200, newWidth)); // 200‑1200 px min/max
-    $('#chatSidebar').css('width', newWidth + 'px')
-      .css('max-width', newWidth + 'px')
+    //$('#chatSidebar').css('width', newWidth + 'px') .css('max-width', newWidth + 'px')
     //.addClass('open');                // ensures main area shrinks while dragging
+    $wrapper.css('--sidebar-width', newWidth + 'px'); // update CSS variable for any dependent styles
   });
 
   $(document).on('mouseup', function () {
     if (dragging) {
       dragging = false;
       $('body').removeClass('no-select');
+    }
+  });
+  
+  // SEND
+  $('#chatbotSendBtn').on('click', sendChat);
+  $('#chatbotInput').on('keypress', function (e) {
+    if (e.which === 13 && !e.shiftKey) {
+      e.preventDefault(); sendChat();
     }
   });
 }

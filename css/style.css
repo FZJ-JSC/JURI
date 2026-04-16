@@ -1116,13 +1116,6 @@ footer.container-fluid {
   background: rgba(0,0,0,0.5);
 }
 
-/*NA: style for the chatbot button*/ 
- #chatbotBtn {
-       position:fixed; bottom:30em; right:0.7rem; z-index:1955;
-       background: var(--fzj-color-blue); color: #fff; border:none; border-radius:10%;
-       width:1rem; height:4rem; font-size:1.5rem; cursor:pointer;
-     }
-
 .modal-header {
   background-color: var(--fzj-color-blue);
   color: #fff;
@@ -1170,7 +1163,9 @@ footer.container-fluid {
 
 #pageWrapper{
     display:flex;
+    position:relative;
     min-height:calc(100vh-56px-40px);
+   --sidebar-width:0px;
 }
 #pageWrapper>main{
     flex:1 1 0;
@@ -1182,8 +1177,8 @@ footer.container-fluid {
     box-sizing:border-box;
 }
 .chat-sidebar{
-    width:0;
-    max-width:0;
+    width:var(--sidebar-width);
+    max-width:var(--sidebar-width);
     overflow:hidden;
     background:#fff;
     border-left:1px solid #ddd;
@@ -1192,10 +1187,10 @@ footer.container-fluid {
     transition:width .3s ease,max-width .3s ease;
     order:2;
 }
-.chat-sidebar.open{
+/*.chat-sidebar.open{
     width:350px;
     max-width:350px;
-}
+}*/
 #chatResizer{
     /*display: none;*/ 
     width:1px;
@@ -1211,14 +1206,23 @@ footer.container-fluid {
 #attachContainer:hover{color:#000; font-style: normal;}
 #attachContainer.active{background-color:var(--fzj-color-green); color:#3b3b3b; font-family:monospace; font-style: normal;}
 
+/*NA: style for the chatbot button*/ 
+ #chatbotBtn {
+    position:absolute;
+    top:50%;
+    transform:translateY(-50%);
+    /*bottom:30em;*/
+    right:var(--sidebar-width);
+    z-index:1955;
+    background: var(--fzj-color-blue); color: #fff; border:none; border-radius:5%;
+    width:1.8rem; height:6rem; font-size:1.5rem; cursor:pointer;
+    transition:right .3s ease,max-width .3s ease;
+ }
+
 /*NA: styles for the chatbotBtn start*/
 .ai-chat-btn {
-  position: fixed;
-  bottom: 200px;
-  right: 20px;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  /*position: fixed;*/
+  border-radius: 10%;
   border: none;
   cursor: pointer;
   background: linear-gradient(135deg, #4facfe, #00f2fe);
@@ -1237,24 +1241,13 @@ footer.container-fluid {
 /* Chat bubble */
 .chat-icon {
   background: white;
-  width: 10px;
-  height: 28px;
+  width: 15px;
+  height: 48px;
   border-radius: 8px;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* Bubble tail */
-.chat-icon::after {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 8px;
-  border-width: 6px;
-  border-style: solid;
-  border-color: white transparent transparent transparent;
 }
 
 /* Dots */
@@ -1271,7 +1264,7 @@ footer.container-fluid {
   50% { opacity: 1; }
 }
 
-/* Sparkles (AI stars ✨) */
+/* Sparkles (AI stars )*/
 .sparkles {
   position: absolute;
   width: 100%;
