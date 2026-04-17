@@ -444,9 +444,13 @@ function addChatbotLogic(self) {
     if (!dragging) return;
     const diff = startX - e.clientX;          // negative → enlarge, positive → shrink
     let newWidth = startWidth + diff;
-    if(Math.abs(diff) > 3) dragged = true; // if moved more than 3px, consider it a drag (not just a click)
+    if(Math.abs(diff) > 3){
+      dragged = true; // if moved more than 3px, consider it a drag (not just a click)
+     if(!$wrapper.hasClass('sidebar-open')) { $wrapper.addClass('sidebar-open');}
+    } 
     // enforce sensible limits
     newWidth = Math.max(0, Math.min(1200, newWidth)); // 0‑1200 px min/max
+    if(newWidth < 10) { newWidth=0; $wrapper.removeClass('sidebar-open');} // if resized all the way to 0, consider it closed
     $wrapper.css('--sidebar-width', newWidth + 'px'); // update CSS variable for any dependent styles
   });
 
