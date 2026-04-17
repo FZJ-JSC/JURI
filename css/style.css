@@ -1147,18 +1147,10 @@ footer.container-fluid {
   overflow-wrap: break-word;
 }
 
-#chatbotModal .modal-content{
-    height:100%;                /* fill the dialog’s max‑height */
-    display:flex;
-    flex-direction:column;
-}
 #chatbotMessages{
     flex:1 1 0;                 /* grow‑shrink‑basis = fill what’s left */
     overflow-y:auto;           /* scroll only this part */
     min-height:0;               /* needed for flex children */
-}
-#chatbotModal .modal-body > .p-3{
-    flex-shrink:0;
 }
 
 #pageWrapper{
@@ -1186,25 +1178,15 @@ footer.container-fluid {
     flex-direction:column;
     transition:width .3s ease,max-width .3s ease;
     order:2;
+    z-index:50;
 }
-/*.chat-sidebar.open{
-    width:350px;
-    max-width:350px;
-}*/
-#chatResizer{
-    /*display: none;*/ 
-    width:1px;
-    cursor:ew-resize;
-    background:#e0e0e0;
-    transition:background .2s;
-}
+
 /*body.no-select #chatResizer{pointer-events:auto;}*/
 /*body:not(.no-select) #chatResizer{pointer-events:none;}*/
-#chatResizer:hover{background:#c0c0c0;}
 .chat-sidebar:not(.open)+#chatResizer{display:none;}
-#attachContainer{ cursor:pointer; color:#ced0cb; font-style: italic; font-family: monospace;}
+#attachContainer{ cursor:pointer; color:#ced0cb; font-style: italic;}
 #attachContainer:hover{color:#000; font-style: normal;}
-#attachContainer.active{background-color:var(--fzj-color-green); color:#3b3b3b; font-family:monospace; font-style: normal;}
+#attachContainer.active{background-color:var(--fzj-color-green); color:#3b3b3b; font-style: normal;}
 
 /*NA: style for the chatbot button*/ 
  #chatbotBtn {
@@ -1213,16 +1195,18 @@ footer.container-fluid {
     transform:translateY(-50%);
     /*bottom:30em;*/
     right:var(--sidebar-width);
-    z-index:1955;
+    z-index:40;
     background: var(--fzj-color-blue); color: #fff; border:none; border-radius:5%;
     width:1.8rem; height:6rem; font-size:1.5rem; cursor:pointer;
     transition:right .3s ease,max-width .3s ease;
+    border-radius:15px 0 0 15px;
+
  }
 
 /*NA: styles for the chatbotBtn start*/
 .ai-chat-btn {
   /*position: fixed;*/
-  border-radius: 10%;
+  border-radius:15px 0 0 15px;
   border: none;
   cursor: pointer;
   background: linear-gradient(135deg, #4facfe, #00f2fe);

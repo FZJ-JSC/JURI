@@ -358,78 +358,8 @@ async function sendChat() {
   catch (err) { console.error('Chat error:', err); }
 }
 
-//$(function () {
-function addChatbotModalHandlers() {
-  const modalEl = document.getElementById('chatbotModal');
-
-  /* -------------------------------------------------
-   *  Helper: return a Bootstrap modal instance
-   * ------------------------------------------------- */
-  function getModalInstance() {
-    // Bootstrap 5.2+ – pure‑JS API
-    if (bootstrap.Modal && typeof bootstrap.Modal.getOrCreateInstance === 'function') {
-      return bootstrap.Modal.getOrCreateInstance(modalEl);
-    }
-
-    // Bootstrap 5.0‑5.1 – still has the static getInstance (but may be missing)
-    if (bootstrap.Modal && typeof bootstrap.Modal.getInstance === 'function') {
-      // If the instance already exists, return it; otherwise create one
-      return bootstrap.Modal.getInstance(modalEl) ||
-        new bootstrap.Modal(modalEl);
-    }
-
-    // Fallback for Bootstrap 4 / 5 when the jQuery plugin is available
-    // $(modalEl).modal() creates the instance behind the scenes
-    if (typeof $ !== 'undefined' && typeof $(modalEl).modal === 'function') {
-      return $(modalEl);   // this is a jQuery object that responds to .modal('hide')
-    }
-    // If nothing matches, throw a clear error
-    throw new Error('Bootstrap modal instance could not be created – check your Bootstrap version.');
-  }
-
-  /* -------------------------------------------------
-   *  CLOSE button (X) – hide the modal
-   * ------------------------------------------------- */
-  $('#chatbotCloseBtn').on('click', function () {
-    const instance = getModalInstance();
-
-    // If we got a pure‑JS instance → .hide()
-    if (instance instanceof bootstrap.Modal) {
-      instance.hide();
-    } else {
-      // jQuery object → .modal('hide')
-      instance.modal('hide');
-    }
-  });
-
-
-  // MINIMIZE / RESTORE
-  const $bodyFooter = $('#chatbotModal .modal-body');
-  function toggleMinimize() {
-    $bodyFooter.slideToggle(200, () => {
-      const minimized = $bodyFooter.is(':hidden');
-      $('#chatbotMinimizeBtn')
-        .attr('aria-label', minimized ? 'Restore' : 'Minimize')
-        .prop('title', minimized ? 'Restore chat' : 'Minimize chat');
-    });
-  }
-  $('#chatbotMinimizeBtn').on('click', toggleMinimize);
-
-  // ESC → MINIMIZE 
-  $(document).on('keydown', e => {
-    if (e.key === 'Escape' && $('#chatbotModal').hasClass('show')) {
-      e.preventDefault(); toggleMinimize();
-    }
-  });
-
-  // When the modal opens again, ensure the body is visible
-  $('#chatbotModal').on('shown.bs.modal', () => {
-    if ($bodyFooter.is(':hidden')) $bodyFooter.show();
-  });
-}
 function addChatbotHtml() {
   const chatbothtml = `
-    <div id="chatResizer" title="Drag to resize" class="bg-secondary"></div>
      <aside id="chatSidebar" class="chat-sidebar">
       <div class="chat-header d-flex justify-content-between align-items-center p-2 text-white"
        style="background-color:var(--fzj-color-blue);">
@@ -462,29 +392,19 @@ function addChatbotHtml() {
 
 function addChatbotLogic() {
   addChatbotHtml();
-  // addChatbotModalHandlers();
   $('#pageWrapper').append(
     // $('<button>', {id:'chatbotBtn', title:'Chatbot'}).addClass('fa fa-comment')
-    `  <button class="ai-chat-btn" id="chatbotBtn" title="Chatbot">
+    `  <button class="ai-chat-btn" id="chatbotBtn" title="Click or Drag to Open Chatbot">
                   <span class="chat-icon"><span class="dots">•••</span></span>
                   <!-- <span class="sparkles"></span> -->
                   </button>`);
 
   const $wrapper = $('#pageWrapper');
   const $sidebar = $('#chatSidebar');
-  const $resizer = $('#chatResizer');
   const $btn = $('#chatbotBtn');
-  let dragging = false;
+  let dragging = false, dragged = false;
   let startX = 0, startWidth = 0;
-  $btn.on('click', () => {
-    if($wrapper.hasClass('sidebar-open')) {
-      $wrapper.removeClass('sidebar-open').css('--sidebar-width', '0px');
-      
-    } else {
-      $wrapper.addClass('sidebar-open').css('--sidebar-width', '350px');
-      $('#chatbotInput').focus();
-    }
-  });
+  
 
   $('#chatCloseBtn').on('click', () => {
     $wrapper
@@ -501,32 +421,23 @@ function addChatbotLogic() {
     $('#chatbotInput').focus();
   });
 
-  $resizer.on('mousedown', function (e) {
+  $btn.on('mousedown', e => {
+    //if (!$wrapper.hasClass('sidebar-open')) return; // only start dragging if sidebar is open
     dragging = true;
+    dragged = false;
     startX = e.clientX;
     startWidth = $sidebar.width();   // current width (0 when closed)
     $('body').addClass('no-select'); // optional – prevents text selection while dragging
     e.preventDefault();
   });
 
-  $btn.on('mousedown', function (e) {
-    if (!$wrapper.hasClass('sidebar-open')) return; // only start dragging if sidebar is open
-    dragging = true;
-    startX = e.clientX;
-    startWidth = $sidebar.width();   // current width (0 when closed)
-    $('body').addClass('no-select'); // optional – prevents text selection while dragging
-    e.preventDefault();
-  });
-
-  $(document).on('mousemove', function (e) {
+  $(document).on('mousemove', e => {
     if (!dragging) return;
     const diff = startX - e.clientX;          // negative → enlarge, positive → shrink
     let newWidth = startWidth + diff;
-
+    if(Math.abs(diff) > 3) dragged = true; // if moved more than 3px, consider it a drag (not just a click)
     // enforce sensible limits
-    newWidth = Math.max(200, Math.min(1200, newWidth)); // 200‑1200 px min/max
-    //$('#chatSidebar').css('width', newWidth + 'px') .css('max-width', newWidth + 'px')
-    //.addClass('open');                // ensures main area shrinks while dragging
+    newWidth = Math.max(0, Math.min(1200, newWidth)); // 0‑1200 px min/max
     $wrapper.css('--sidebar-width', newWidth + 'px'); // update CSS variable for any dependent styles
   });
 
@@ -536,7 +447,18 @@ function addChatbotLogic() {
       $('body').removeClass('no-select');
     }
   });
-  
+ 
+  $btn.on('click', e => {
+    if(dragged) { e.stopImmediatePropagation(); return;} // prevent click action if we just finished dragging
+    if($wrapper.hasClass('sidebar-open')) {
+      $wrapper.removeClass('sidebar-open').css('--sidebar-width', '0px');
+      
+    } else {
+      $wrapper.addClass('sidebar-open').css('--sidebar-width', '350px');
+      $('#chatbotInput').focus();
+    }
+  });
+
   // SEND
   $('#chatbotSendBtn').on('click', sendChat);
   $('#chatbotInput').on('keypress', function (e) {
