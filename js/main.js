@@ -112,9 +112,16 @@ View.prototype.show = function () {
     return;
   }));
 
-  self.deferrer.push($.getJSON("json/ui-config.json", function (uiJson) {
-    self.uiConfig = uiJson || {};
-  }));
+  self.deferrer.push(
+    $.getJSON("juri_config/ui-config.json", function (uiJson) {
+      self.uiConfig = uiJson || {};
+    }).fail(function() {
+      // Fallback to json/ui-config.json if juri_config/ui-config.json doesn't exist
+      $.getJSON("json/ui-config.json", function (uiJson) {
+        self.uiConfig = uiJson || {};
+      });
+    })
+  );
 
   // When ref and config json files have been loaded, proceed with the loading/configuration
   $.when.apply($, self.deferrer).done(function () {
@@ -299,7 +306,7 @@ View.prototype.show = function () {
             }
             /*NA edit: adding chatbot button & functionality */
             if (self.navdata) {   // only after successful login
-              if (self.uiConfig && self.uiConfig.llviewai.enableChatBot) { addChatbotLogic(); }
+              if (self.uiConfig && self.uiConfig.llviewai.enableChatBot) { addChatbotLogic(self); }
             }
             /*NA edit ends*/
 

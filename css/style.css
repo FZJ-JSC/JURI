@@ -9,6 +9,7 @@
 * Contributors:
 *    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*    Nabil Abubaker (Forschungszentrum Juelich GmbH)   
 */
 :root {
   --fzj-color-blue:  #023d6b;
@@ -29,6 +30,7 @@ body {
   overflow: auto;
   font-family: Weissenhof Grotesk,Helvetica Neue,Arial,Helvetica,sans-serif;
   overflow-y: hidden;
+  height: 100%;
 }
 
 a {
@@ -1160,9 +1162,11 @@ footer.container-fluid {
    --sidebar-width:0px;
 }
 #pageWrapper>main{
-    flex:1 1 0;
-    min-width:0;
+    /*flex:1 1 0;*/
+    flex:1;
+    min-width:10px;
     overflow:auto;
+    height:100%;
 }
 #main_content{
     width:100%;
@@ -1183,7 +1187,8 @@ footer.container-fluid {
 
 /*body.no-select #chatResizer{pointer-events:auto;}*/
 /*body:not(.no-select) #chatResizer{pointer-events:none;}*/
-.chat-sidebar:not(.open)+#chatResizer{display:none;}
+/*.chat-sidebar:not(.open)+#chatResizer{display:none;}*/
+/*.chat-sidebar:not(.open){display:none;}*/
 #attachContainer{ cursor:pointer; color:#ced0cb; font-style: italic;}
 #attachContainer:hover{color:#000; font-style: normal;}
 #attachContainer.active{background-color:var(--fzj-color-green); color:#3b3b3b; font-style: normal;}
