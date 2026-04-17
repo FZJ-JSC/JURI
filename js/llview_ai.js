@@ -316,6 +316,7 @@ async function sendChat() {
   const $msgContainer = $('#chatbotMessages');
   let message = $input.val().trim();
   const attach = $('#attachContainer');
+  const symb = $('#attachSymbol');
   $msgContainer.append($('<div>').addClass('user-message').text(message));
   $input.val('');
   $msgContainer.scrollTop($msgContainer[0].scrollHeight);
@@ -334,6 +335,8 @@ async function sendChat() {
     }
     extra = ' (with attachment)';
     attach.removeClass('active');
+    if(symb.hasClass('fa-check')) symb.addClass('fa-plus').removeClass('fa-check');
+
   }
   console.log(`Sending message${extra}:`, message);
   const sysname = new URL(window.location.href).pathname.split('/')[1];
@@ -380,7 +383,7 @@ function addChatbotHtml(self) {
         <div id="chatbotMessages"
              class="flex-grow-1 overflow-auto p-3"
              style="background:#f8f9fa;"></div>`+ (self.uiConfig && self.uiConfig.llviewai.enableTableAttachment? `
-  <div id="attachContainer" class="d-flex align-items-center mb-2"> 
+  <div id="attachContainer" class="d-flex align-items-center"> 
     <span id="attachSymbol" class="fa fa-plus" style="font-size:1.2rem; margin-right:5px;"></span>
     <span id="attachLabel"> Attach Viewed Table Data</span>
   </div>` : ``) + `
@@ -402,7 +405,6 @@ function addChatbotHtml(self) {
 function addChatbotLogic(self) {
   addChatbotHtml(self);
   $('#pageWrapper').append(
-    // $('<button>', {id:'chatbotBtn', title:'Chatbot'}).addClass('fa fa-comment')
     `  <button class="ai-chat-btn" id="chatbotBtn" title="Click or Drag to Open Chatbot">
                   <span class="chat-icon"><span class="dots">•••</span></span>
                   <!-- <span class="sparkles"></span> -->

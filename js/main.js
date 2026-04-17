@@ -2498,6 +2498,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             default_colorscale: self.default_colorscale,
             url_data: self.url_data,
             used_colorscales: self.used_colorscales, // cached colorscales
+            aiReportEnabled: self.uiConfig && self.uiConfig.llviewai.enableAIReports? true : false,
             // Add any other properties from `self` that other helpers might need here.
           };
 
