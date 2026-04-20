@@ -496,7 +496,22 @@ Handlebars.registerHelper('mreporttemplate_link', function(filename,mentor) {
   return new Handlebars.SafeString(result);
   
 });
-
+Handlebars.registerHelper('aireport_link', function(grp,user,filename) {
+//    console.log("pdf_link: "+grp+" "+user+" "+filename);
+  let result = "";
+  if ( (filename) && (filename!='-') ) {
+    let url = 'data/'+(self.helperContext.is_demo?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
+    if(self.helperContext.aiReportEnabled){
+      result = `<a href=# onclick="showAiReportDialog('${url}'); return false;" ><span class="fa fa-lightbulb-o" title="Generate AI Report" aria-label="Generate AI Report"/></a>`;
+    }
+    else{
+      result = `<span style="color: grey;" class="fa fa-lightbulb-o" title="AI Reports are disabled" aria-label="AI Reports are disabled"/>`;
+    }
+  } else {
+    result = `<span style="color: grey;" class="fa fa-lightbulb-o" title="No job report available" aria-label="No job report available"/>`;
+  }
+  return new Handlebars.SafeString(result);
+});
 Handlebars.registerHelper('pdf_link', function(grp,user,filename) {
 //    console.log("pdf_link: "+grp+" "+user+" "+filename);
   let result = "";

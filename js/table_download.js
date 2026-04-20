@@ -10,7 +10,60 @@
 *    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
 */
 
-jQuery.fn.table2CSV = function(options) {
+
+function extractTableCSV($tbl, sep) {
+  const lines = [];
+
+  // header
+  const hdr = [];
+  $tbl.filter(":visible")
+      .find("thead tr:first th")
+      .each(function () {
+        if ($(this).css("display") !== "none")
+          hdr.push(formatData($(this).html()));
+      });
+  if (hdr.length) lines.push(hdr.join(sep));
+
+  // rows
+  $tbl.find("tr").each(function () {
+    const r = [];
+    $(this).filter(":visible")
+          .find("td")
+          .each(function () {
+            if ($(this).css("display") !== "none")
+              r.push(formatData($(this).html()));
+          });
+    if (r.length) lines.push(r.join(sep));
+  });
+
+  return lines.join("\n");
+}
+
+
+
+function downloadTableCSV(options) {
+  const opts = $.extend({ separator: ",", filename: "data.csv" }, options);
+  const $tbl = $("#main_content table");
+  if (!$tbl.length) return;
+
+  const csvText = extractTableCSV($tbl, opts.separator);
+  const blob = new Blob([csvText], { type: "text/csv" });
+
+  if (navigator.msSaveOrOpenBlob) {
+    navigator.msSaveOrOpenBlob(blob, opts.filename);
+  } else {
+    const a = document.createElement("a");
+    a.download = opts.filename;
+    a.href = URL.createObjectURL(blob);
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 0);
+    document.body.removeChild(a);
+  }
+}
+
+/*jQuery.fn.table2CSV = function(options) {
   var options = jQuery.extend({
     separator: ',',
     filename: 'data.csv'
@@ -64,14 +117,30 @@ jQuery.fn.table2CSV = function(options) {
     }
   }
 
-  function formatData(input) {
-    let output = input.replace(/\<[^\<]+\>/g, ""); //replace HTML
-    output = output.replace(/&nbsp;/gi,' '); //replace &nbsp;
-    output=output.replace(/&gt;/g,'>'); //replace &gt;
-    output=output.replace(/&lt;/g,'<'); //replace &lt;
-    return output.trim();
-  }
+  //function formatData(input) {
+  //  let output = input.replace(/\<[^\<]+\>/g, ""); //replace HTML
+  //  output = output.replace(/&nbsp;/gi,' '); //replace &nbsp;
+  //  output=output.replace(/&gt;/g,'>'); //replace &gt;
+  //  output=output.replace(/&lt;/g,'<'); //replace &lt;
+  //  return output.trim();
+  //}
+
+};*/
+function formatData(input) {
+  return input
+    .replace(/\<[^\<]+\>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&gt;/g, ">")
+    .replace(/&lt;/g, "<")
+    .trim();
+}
+
+
+jQuery.fn.table2CSV = function (options) {
+  downloadTableCSV(options);
 };
+
+
 
 function download_table() {
   if ($("#main_content table").length) {
@@ -82,6 +151,16 @@ function download_table() {
   } else if (view.gridApi) {
     view.gridApi.exportDataAsCsv()
   }
+}
+
+function get_table_data() {
+  if ($("#main_content table").length) {
+    const $tbl = $("#main_content table");
+    return extractTableCSV($tbl, ";");
+  } else if (view.gridApi) {
+    return view.gridApi.getDataAsCsv();
+  }
+  return "";
 }
 
 function enable_table_download() {

@@ -1,0 +1,19 @@
+  {
+    "llviewai": {
+        "enableChatBot": false,
+        "chatBotEndpoint": "",
+        "chatBotSupportEmail": "",
+        "chatBotLLMProvider": {
+            "name": "",
+            "url": ""
+        },
+        "enableAIReports": false,
+        "aiReportEndpoint": "",
+        "aiReportSupportEmail": "",
+        "aiReportLLMProvider": {
+            "name": "",
+            "url": ""
+        },
+        "enableTableAttachment": true
+    }
+  }

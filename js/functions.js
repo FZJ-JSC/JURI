@@ -144,6 +144,7 @@ function resize() {
   
   // Set the correct height to main content
   $("#main_content").height(availableHeight);
+  $('#pageWrapper').height(availableHeight +10 );
 
   // Adjust table sticky headers (Logic remains the same, just slightly cleaned up)
   const firstTrHeight = $("#main_content thead tr:first").height() || 0;

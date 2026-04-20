@@ -9,6 +9,7 @@
 * Contributors:
 *    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)  
+*    Nabil Abubaker (Forschungszentrum Juelich GmbH)  
 -->
 <!doctype html>
 <html lang="en">
@@ -57,16 +58,17 @@
     <div id="logo">
     </div>
   </header>
-  <main>
-    <div id="top_info_area">
-    </div>
-    <div id="main_content" class="container-fluid">
-    </div>
-  </main>
+  <div id="pageWrapper" class="d-flex">
+    <main>
+      <div id="main_content" class="flex-grow-1 container-fluid">
+      </div>
+    </main>
+    <!-- chatbot sidebar html goes here-->
+  </div>
   <footer class="fixed-bottom container-fluid bg-light">
     <div id="footer_infoline">
       <div class="d-inline-block" id="view_data_info"></div>
-      <div class="d-none d-md-inline-block float-right" id="footer_infoline_page_options"></div>
+      <div class="d-none d-md-inline-block float-right" id="footer_infoline_page_options" style="padding-right: 3rem;"></div>
     </div>
     <div id="footer_content"></div>
     <div id="footer_footer"> 
@@ -79,6 +81,8 @@
       </div>
     </div>
   </footer>
+  <script src="js/ext/markdown-it-13.min.js"></script>
+  <script src="js/ext/dompurify-2.min.js"></script>
   <script src="js/ext/jquery.min.js"></script>
   <script src="js/ext/jquery-ui.min.js"></script>
   <script src="js/ext/bootstrap.bundle.min.js"></script>
@@ -93,5 +97,6 @@
   <script src="js/functions.js"></script>
   <script src="js/helper_functions.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/llview_ai.js"></script>
 </body>
 </html>

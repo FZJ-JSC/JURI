@@ -9,6 +9,7 @@
 * Contributors:
 *    Sebastian Lührs (Forschungszentrum Juelich GmbH) 
 *    Filipe Guimarães (Forschungszentrum Juelich GmbH)   
+*    Nabil Abubaker (Forschungszentrum Juelich GmbH)   
 */
 
 /* The PlotlyGraph class represents a single graph and takes care of its rendering. */
@@ -113,18 +114,20 @@ function PlotlyGraph(graph_data) {
       borderwidth: 1
     }
   };
-  download_data_button = {'name': 'Download data', 
-  'icon': { 'width': 500, 
-        'height': 500, 
-        'path': 'M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z', 
-      }, 
-  'attr': 'download', 
-  'click': function(gd) {
+  download_data_button = {
+    'name': 'Download data',
+    'icon': {
+      'width': 500,
+      'height': 500,
+      'path': 'M216 0h80c13.3 0 24 10.7 24 24v168h87.7c17.8 0 26.7 21.5 14.1 34.1L269.7 378.3c-7.5 7.5-19.8 7.5-27.3 0L90.1 226.1c-12.6-12.6-3.7-34.1 14.1-34.1H192V24c0-13.3 10.7-24 24-24zm296 376v112c0 13.3-10.7 24-24 24H24c-13.3 0-24-10.7-24-24V376c0-13.3 10.7-24 24-24h146.7l49 49c20.1 20.1 52.5 20.1 72.6 0l49-49H488c13.3 0 24 10.7 24 24zm-124 88c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20zm64 0c0-11-9-20-20-20s-20 9-20 20 9 20 20 20 20-9 20-20z',
+    },
+    'attr': 'download',
+    'click': function (gd) {
       // Collecting data from all traces
       let data = {};
       for (let trace of gd.data) {
         if (trace.x) {
-          data[trace.name] = {"x": trace.x, "y": trace.y};
+          data[trace.name] = { "x": trace.x, "y": trace.y };
         }
       }
       // If data is empty, returns error to console
@@ -158,7 +161,7 @@ PlotlyGraph.prototype.add_data_to_graph = function (params) {
   let self = this;
   // Cleaning up data, to replot with new values when clicking again (e.g., in auto-refresh)
   clearTimeout(this.timeout);
-  this.timeout = setTimeout(function(){self.key_add_data_to_graph(params);},300);
+  this.timeout = setTimeout(function () { self.key_add_data_to_graph(params); }, 300);
 }
 
 
@@ -191,13 +194,13 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
   if (self.graph_data.datapath) {
     // Replace placeholders in the datapath with the provided parameters.
     localFilepath = replaceDataPlaceholder(self.graph_data.datapath, params, true);
-    
+
     // If the file has already been read, skip downloading to avoid duplicate data.
     if (!(localFilepath in self.data)) {
       // Initialize an array to store CSV data for this file.
       let currentDataArray = [];
       self.data[localFilepath] = currentDataArray;
-      
+
       // Download the graph data using jQuery's $.get.
       // The CSV text is then parsed using csvToArr.
       let jqxhr = $.get(localFilepath)
@@ -205,14 +208,14 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
           // Only process if this call is still current.
           if (self._currentCallId !== callId) return;
           // Parse the CSV text into an array of objects.
-          let parsed = csvToArr(csvText, self.graph_data.csv_delimiter??",");
+          let parsed = csvToArr(csvText, self.graph_data.csv_delimiter ?? ",");
           // Push each parsed row into the data array.
           parsed.forEach((row) => currentDataArray.push(row));
         })
         .fail(function () {
           // Allow plotting to continue even if one file is not found.
         });
-      
+
       deferrer.push(jqxhr);
       self._pendingRequests.push(jqxhr);
     }
@@ -223,27 +226,27 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
     if (trace.datapath) {
       // Replace placeholders in the trace datapath with parameters.
       let localTracePath = replaceDataPlaceholder(trace.datapath, params, true);
-      
+
       // If the file has already been read, skip to avoid duplicate data.
       if (localTracePath in self.data) continue;
-      
+
       // Initialize an array to store CSV data for this trace.
       let currentTraceArray = [];
       self.data[localTracePath] = currentTraceArray;
-      
+
       // Download the CSV data for this trace.
       let jqxhr = $.get(localTracePath)
         .done(function (csvText) {
           // Only process if this call is still current.
           if (self._currentCallId !== callId) return;
           // Parse the CSV text and push each row into the trace's data array.
-          let parsed = csvToArr(csvText, trace.csv_delimiter??",");
+          let parsed = csvToArr(csvText, trace.csv_delimiter ?? ",");
           parsed.forEach((row) => currentTraceArray.push(row));
         })
         .fail(function () {
           // Catch error to allow plotting to continue even if one file is not found.
         });
-      
+
       deferrer.push(jqxhr);
       self._pendingRequests.push(jqxhr);
     }
@@ -274,20 +277,20 @@ Math.last = (...a) => a.at(-1);
 /* This function checks if "show_pattern" is given inside argument 'object'. If it is not
 given, it returns true. If it is given, it returns true when the given pattern matches
 the comparison with #key# given by replaceDataPlaceholder (that obtains values from the table) */
-function checkPattern(object,params) {
+function checkPattern(object, params) {
   let match_pattern = true;
   if (object.show_pattern) {
     for (const [key, values] of Object.entries(object.show_pattern)) {  // Looping over the patterns
       let patterns = Array.isArray(values) ? values : [values] // Transforming to array if necessary, to handle many patterns
-      if (! params) { // If params is not defined, then no line was selected, and the pattern should not be shown
+      if (!params) { // If params is not defined, then no line was selected, and the pattern should not be shown
         match_pattern = false;
         break;
       }
-      if (! Object.keys(params).includes(key)) continue // If params is defined, but does not include given key, ignore this rule (to be able to use in different types of tables)
-      if (! patterns.some(pattern => {let regex = new RegExp(pattern); return regex.test(replaceDataPlaceholder("#"+key+"#", params))})) {  // If at least one pattern is matched
+      if (!Object.keys(params).includes(key)) continue // If params is defined, but does not include given key, ignore this rule (to be able to use in different types of tables)
+      if (!patterns.some(pattern => { let regex = new RegExp(pattern); return regex.test(replaceDataPlaceholder("#" + key + "#", params)) })) {  // If at least one pattern is matched
         // if (! patterns.some(pattern => replaceDataPlaceholder("#"+key+"#", params).includes(pattern))) {  // If at least one pattern is matched
         match_pattern = false;
-        break ;
+        break;
       };
     };
   }
@@ -305,7 +308,7 @@ PlotlyGraph.prototype.plot = function (params) {
   let self = this;
   // Getting div where plot is going to be added
   let graphDiv = $(`#${self.id}`);
-  if(self.graph_data.height) {
+  if (self.graph_data.height) {
     graphDiv.height(self.graph_data.height)
   }
   // Merging default layout with config one
@@ -336,7 +339,7 @@ PlotlyGraph.prototype.plot = function (params) {
     let backgroundTraces = []; // Temp storage for min/max filled areas
     if (layout.annotations) {
 
-      layout.annotations = layout.annotations.filter(annotation => checkPattern(annotation,params));
+      layout.annotations = layout.annotations.filter(annotation => checkPattern(annotation, params));
 
       layout.annotations.forEach((annotation, i) => {
         matches[i] = annotation.text.match(/#(.*?)#/g)
@@ -347,7 +350,7 @@ PlotlyGraph.prototype.plot = function (params) {
       });
     }
     if (layout.shapes) {
-      layout.shapes = layout.shapes.filter(annotation => checkPattern(annotation,params));
+      layout.shapes = layout.shapes.filter(annotation => checkPattern(annotation, params));
     }
 
     for (let trace_data of self.graph_data.traces) {
@@ -358,7 +361,7 @@ PlotlyGraph.prototype.plot = function (params) {
         type: trace_data.type ?? "scatter",
         yaxis: trace_data.yaxis ?? "y",
         xaxis: trace_data.xaxis ?? "x",
-        visible: trace_data.visible ?? true, 
+        visible: trace_data.visible ?? true,
       }
       let trace = { ...trace_default };
       let step = {};
@@ -368,8 +371,8 @@ PlotlyGraph.prototype.plot = function (params) {
       if (trace_data.where && data) {
         data = data.filter((item) => {
           return Object.keys(trace_data.where).every((key) => {
-            const conditions = Array.isArray(trace_data.where[key]) 
-              ? trace_data.where[key] 
+            const conditions = Array.isArray(trace_data.where[key])
+              ? trace_data.where[key]
               : [trace_data.where[key]]; // Ensure it's always an array
 
             // Check if item[key] satisfies ALL conditions
@@ -394,26 +397,43 @@ PlotlyGraph.prototype.plot = function (params) {
 
         // Trace options for heatmap must be done separately, as the data is expected to be differently
         // and some options are not required
+
+        /*NA-edit begin*/
         if (trace.type == 'heatmap') {                           // HEATMAP
           trace.colorscale = trace_data.colorscale ?? undefined;
           trace.reversescale = trace_data.reversescale ?? false;
 
-          // Getting x values and testing if it is 'date' or not (in which case, it's considered Int)
-          if (trace_data.xcol == 'date'){
-            trace.x = data.map(function (x)  { return self.parseToTimestamp(x[trace_data.xcol]) });
-            layout.xaxis.type = 'date';
-          } else {
-            trace.x = data.map(function (x)  { return parseInt(x[trace_data.xcol]) }); 
-            layout.xaxis.tickmode =  "array";
-            layout.xaxis.tickvals =  Array.from(new Set(trace.x)).sort(function(a, b) { return parseInt(a) - parseInt(b); });
-          }
-          // Removing duplicates and sorting
-          // (Works for both Numbers and Date objects due to JS coercion)
-          trace.x = Array.from(new Set(trace.x)).sort(function(a, b) { return a - b; });
-          
-          // Getting values of y as Integers, removing duplicates (with a Set), transforming back to array and sorting as integers
-          trace.y = Array.from(new Set(data.map(function (y) { return y[trace_data.ycol] }))).sort(function(a, b) { return parseInt(a) - parseInt(b); });
-          
+          let rawX = data.map(d => d[trace_data.xcol]);
+          trace.x = Array.from(new Set(rawX));
+          let xMap = new Map();        // map raw value -> numeric index
+          trace.x.forEach((val, idx) => xMap.set(val, idx));
+          layout.xaxis.tickmode = "array";
+          //layout.xaxis.tickvals =  Array.from(new Set(trace.x)).sort(function(a, b) { return parseInt(a) - parseInt(b); });
+          layout.xaxis.tickvals = Array.from(trace.x.keys());
+          layout.xaxis.ticktext = Array.from(trace.x.values());
+
+
+          let rawY = data.map(d => d[trace_data.ycol]);
+          console.log("Raw Y values before sorting:", rawY);
+          rawY.sort((a, b) => {
+            const regex = /jwb(\d+)/g;
+            const numsA = [...a.matchAll(regex)].map(m => parseInt(m[1], 10));
+            const numsB = [...b.matchAll(regex)].map(m => parseInt(m[1], 10));
+            for (let i = 0; i < Math.min(numsA.length, numsB.length); i++) { if (numsA[i] !== numsB[i]) return numsA[i] - numsB[i]; }
+            return numsA.length - numsB.length;
+          });
+          trace.y = Array.from(new Set(rawY));
+          let yMap = new Map();
+          trace.y.forEach((val, idx) => yMap.set(val, idx));
+          delete layout.yaxis.range;
+          layout.yaxis.tickmode = "array";
+          layout.yaxis.tickvals = Array.from(trace.y.keys());
+          layout.yaxis.ticktext = Array.from(trace.y.values());
+
+
+          console.log("xMap:", xMap);
+          console.log("yMap:", yMap);
+
           // Create empty array with sizes length[ length[...]=length_x ]=length_y
           trace.z = new Array(trace.y.length);
           for (var i = 0; i < trace.y.length; i++) {
@@ -423,45 +443,22 @@ PlotlyGraph.prototype.plot = function (params) {
             }
           }
 
-          // Creating lookup map for x-axis indices
-          let xIndexMap = new Map();
-          trace.x.forEach((val, idx) => {
-            let key = (val instanceof Date) ? val.getTime() : val;
-            xIndexMap.set(key, idx);
-          });
-
           // looping over values in data and filling array of z component (i.e., values that are represented by colors)
           for (let d = 0; d < data.length; d++) {
             let line = data[d];
-            
             // Resolve the x-value to match the key format used in the map
             let lookupKey;
-            if (trace_data.xcol == 'date') {
-              // Parse the raw string from CSV to a Date, then get numeric Time for lookup
-              let dateObj = self.parseToTimestamp(line[trace_data.xcol]);
-              lookupKey = dateObj ? dateObj.getTime() : null;
-            } else {
-              lookupKey = parseInt(line[trace_data.xcol]);
-            }
+            let xIdx, yIdx;
+            xIdx = xMap.get(line[trace_data.xcol]);
+            yIdx = yMap.get(line[trace_data.ycol]);
 
-            // Perform fast O(1) lookup
-            // (Replaces the slow: trace.x.map(Number).indexOf(+xval))
-            let j = xIndexMap.get(lookupKey);
-
-            // Find y index
-            let i = trace.y.indexOf(line[trace_data.ycol]);
-            
             // Only assign if valid indices found
-            if (j !== undefined && i !== -1) {
-              trace.z[i][j] = line[trace_data.zcol];
+            if (xIdx !== undefined && yIdx !== undefined) {
+              trace.z[yIdx][xIdx] = line[trace_data.zcol];
             }
           }
-          
-          // Fixing layout for heatmaps
-          delete layout.yaxis.range;
-          layout.yaxis.tickmode =  "array";
-          layout.yaxis.tickvals =  trace.y;
         } else if (trace.type == 'bar') {              // BARPLOT
+
 
           // Getting x values
           let xColKey = trace_data.xcol ?? self.graph_data.xcol;
@@ -470,20 +467,20 @@ PlotlyGraph.prototype.plot = function (params) {
             trace.x = data.map(function (x) { return x[xColKey].toString() });
           } else if (trace_data.xcol != 'date' && (self.graph_data.xcol && self.graph_data.xcol != 'date')) {
             // This is the regular non-category (strings), non-date case, so we parse it as a float.
-            trace.x = data.map(function (x) { 
+            trace.x = data.map(function (x) {
               let val = parseFloat(x[self.graph_data.xcol]);
               // If parsing fails (NaN), return fillNA. Otherwise, return the parsed number.
-              return isNaN(val) ? self.graph_data.fillNA : val; 
+              return isNaN(val) ? self.graph_data.fillNA : val;
             });
           } else {
             // This is the date case. We use timestamps that are more efficient, so we need to set the type to 'date'
             trace.x = data.map(function (x) { return self.parseToTimestamp(x[xColKey]) });
             layout.xaxis.type = 'date';
           }
-          
+
           // Parsing values and min/max when present
           values = data.map(function (y) {
-            let val = typeof y[trace_data.ycol] == 'string'? y[trace_data.ycol].split(";") : [ y[trace_data.ycol] ];
+            let val = typeof y[trace_data.ycol] == 'string' ? y[trace_data.ycol].split(";") : [y[trace_data.ycol]];
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
@@ -500,15 +497,15 @@ PlotlyGraph.prototype.plot = function (params) {
             }
           })
           trace.y = values.map(function (y) { return y.y });
-          
-          if (typeof trace_data.width != 'undefined' ) {
-            trace.width = data.map(function (d)  { return parseFloat(d[trace_data.width]) });
+
+          if (typeof trace_data.width != 'undefined') {
+            trace.width = data.map(function (d) { return parseFloat(d[trace_data.width]) });
           }
 
           self.minmax = (typeof values[0]?.min === 'number') ? true : false; // if first value of min is a number, all the others (and also max values) should be
           if (self.minmax) {
             trace.min = values.map(function (y) { return y.min });
-            trace.max = values.map(function (y) { return y.max });  
+            trace.max = values.map(function (y) { return y.max });
           }
           if (self.minmax) {
             var plus = trace.y.map((v, i) => trace.max[i] - v)
@@ -522,36 +519,36 @@ PlotlyGraph.prototype.plot = function (params) {
             }
           }
           if (trace_data.basecol) {
-            trace.base = data.map(function (d)  { return self.parseToTimestamp(d[trace_data.basecol]) });
+            trace.base = data.map(function (d) { return self.parseToTimestamp(d[trace_data.basecol]) });
             layout.xaxis.type = 'date';
           }
           trace.orientation = trace_data.orientation ?? 'v';
           trace.marker = trace_data.marker ?? {};
           // Defining colors for different groups
           if (trace_data.colorby) {
-            let groups = data.map(function (d)  { return d[trace_data.colorby] });
-            trace.marker.color = trace.x.map(function (v,i) {
-              return trace_data.color[groups[i]%trace_data.color.length]
-            });  
+            let groups = data.map(function (d) { return d[trace_data.colorby] });
+            trace.marker.color = trace.x.map(function (v, i) {
+              return trace_data.color[groups[i] % trace_data.color.length]
+            });
           } else if (trace_data.colorcol) {
-            trace.marker.color = data.map(function (d)  { return d[trace_data.colorcol] });
+            trace.marker.color = data.map(function (d) { return d[trace_data.colorcol] });
             // Storing original colors in a separate array to be able to recover them when clicking
             trace.marker._originalColors = [...trace.marker.color]
             // Adding line around bars to be 0, to be able to change on hover later on
             trace.marker.line = {
-              width: Array.from({length: trace.marker.color.length}, (v) => 0),
+              width: Array.from({ length: trace.marker.color.length }, (v) => 0),
               color: 'black'
             };
           }
 
           // Creating hovertemplate if given on config
           if (trace_data.onhover) {
-            self.prepare_hoverinfo(trace,trace_data,data);
+            self.prepare_hoverinfo(trace, trace_data, data);
           }
-          
+
           // Updating layout for bar plots hover mode
           layout.hovermode = 'closest'
-          if ((self.graph_data?.layout?.hovermode == 'left')||(self.graph_data?.layout?.hovermode == 'right')) {
+          if ((self.graph_data?.layout?.hovermode == 'left') || (self.graph_data?.layout?.hovermode == 'right')) {
             // In this case, the hover info is not shown, and 
             // a listener is to be added for the 'plotly_hover' event 
             // and there, the data is added to a div on the left or right.
@@ -561,8 +558,8 @@ PlotlyGraph.prototype.plot = function (params) {
           // Hiding spikes
           delete layout.xaxis.rangemode;
           delete layout.xaxis.spikesnap;
-          layout.xaxis.showspikes =  false;
-          layout.yaxis.showspikes =  false;
+          layout.xaxis.showspikes = false;
+          layout.yaxis.showspikes = false;
           // Adding autorange for vertical bars, as fixed range from min to max 
           // cuts the first and last bar/bar group
           if (trace.orientation == 'v') {
@@ -573,7 +570,7 @@ PlotlyGraph.prototype.plot = function (params) {
           // to be used later for comparison
           if (Array.isArray(self.graph_data.highlight)) {
             for (const item of self.graph_data.highlight) {
-              trace[item] = data.map(function (d)  { return d[item] });
+              trace[item] = data.map(function (d) { return d[item] });
             }
           }
         } else if (self.graph_data.slider) { // PLOT WITH A SLIDER
@@ -584,7 +581,7 @@ PlotlyGraph.prototype.plot = function (params) {
           let step_counter = 0;
           let previous_step;
           // Check if slider values need to be obtained or use from previous traces
-          let get_slider_values = slider_steps.length>0 ? false : true;
+          let get_slider_values = slider_steps.length > 0 ? false : true;
           const grouped_data = data.reduce((acc, obj) => {
             const step = obj[self.graph_data.slider];
             const jobid = obj['jobid'];
@@ -595,7 +592,7 @@ PlotlyGraph.prototype.plot = function (params) {
                 step_counter++;
               }
               // Checking if step needs to be skipped
-              if ((typeof self.graph_data.step === 'undefined')||(step_counter%parseInt(self.graph_data.step)!=1)) {
+              if ((typeof self.graph_data.step === 'undefined') || (step_counter % parseInt(self.graph_data.step) != 1)) {
                 return acc;
               }
               // Storing current step
@@ -625,191 +622,191 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Looping over the different values defined for the "slider"
           Object.keys(grouped_data)
-          .sort((a, b) => parseInt(a) - parseInt(b))
-          .forEach((key,index,grouped_data_keys) => {
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .forEach((key, index, grouped_data_keys) => {
 
-            // One possibility of adding steps is to change the x and y points, and their colors for each step.
-            // Due to plotly weird convention, the values obtained in trace cannot be used in the steps.
-            // In the trace, the different curves must be given as, for example:
-            // {
-            //   x: [1, 2, 3],
-            //   y: [2, 1, 3],
-            //   type:   "scatter",
-            //   mode:   "markers",
-            //   marker: {
-            //             size: 20,
-            //             color: "blue"
-            //           }
-            // }
-            // For the args (first arg) in each step of the slider, however, it must be:
-            // {
-            //   x: [[1, 2, 3]],
-            //   y: [[1, 2, 3]],
-            //   marker: [{
-            //             size: 20,
-            //             color: "red"
-            //           }]
-            //  }
-            // Note that in this case, each value is an array. Not only that, but the number of elements in the arrays
-            // of the args values cannot be smaller than the number of traces originally, otherwise it is not shown.
-            //
-            // The above functionality does not work well in plotly, as described here: https://github.com/plotly/plotly.js/issues/7293
-            //
-            // Another possbility is to add all the traces at first, and the steps will then just change their visibility
-            // We are following this option for the moment. It is however, quite slow.
-            //
-            // One last possibility is to add only the traces for the current time, and use the 'plotly_sliderchange'
-            // event to update the graphs ourselves. This way, we can add only the traces that are needed for that particular 
-            // key/step, and hopefully the update is not too slow.
+              // One possibility of adding steps is to change the x and y points, and their colors for each step.
+              // Due to plotly weird convention, the values obtained in trace cannot be used in the steps.
+              // In the trace, the different curves must be given as, for example:
+              // {
+              //   x: [1, 2, 3],
+              //   y: [2, 1, 3],
+              //   type:   "scatter",
+              //   mode:   "markers",
+              //   marker: {
+              //             size: 20,
+              //             color: "blue"
+              //           }
+              // }
+              // For the args (first arg) in each step of the slider, however, it must be:
+              // {
+              //   x: [[1, 2, 3]],
+              //   y: [[1, 2, 3]],
+              //   marker: [{
+              //             size: 20,
+              //             color: "red"
+              //           }]
+              //  }
+              // Note that in this case, each value is an array. Not only that, but the number of elements in the arrays
+              // of the args values cannot be smaller than the number of traces originally, otherwise it is not shown.
+              //
+              // The above functionality does not work well in plotly, as described here: https://github.com/plotly/plotly.js/issues/7293
+              //
+              // Another possbility is to add all the traces at first, and the steps will then just change their visibility
+              // We are following this option for the moment. It is however, quite slow.
+              //
+              // One last possibility is to add only the traces for the current time, and use the 'plotly_sliderchange'
+              // event to update the graphs ourselves. This way, we can add only the traces that are needed for that particular 
+              // key/step, and hopefully the update is not too slow.
 
-            // Check if the key exists; if not, initialize array that will hold the traces for this step
-            if (!traces_slider_obj[key]) {
-              // Adding empty traces for each yaxis in layout, such that the plots are generated every time
-              traces_slider_obj[key] = Object.keys(layout)
-                .filter(key => /^yaxis(\d+)?$/.test(key))
-                .map(key => {
-                  const yaxisName = key === 'yaxis' ? 'y' : key.replace('yaxis', 'y');
-                  const xaxisName = key === 'yaxis' ? 'x' : key.replace('yaxis', 'x');
-                  return {
-                    name: 'empty',
-                    type: 'scatter',
-                    yaxis: yaxisName,
-                    xaxis: xaxisName,
-                    y: [],
-                    x: []
-                  };
-                });
-            }
-
-            // Starting a new step (that will include many traces - one for each jobid)
-            step = {};
-
-            // Building up traces, one for each jobid, containing current point and previous points (if configured)
-            Object.keys(grouped_data[key])
-            .forEach(jobid => {
-              // Starting a new trace (one per jobid)
-              let steptrace = {...trace_default};
-
-              steptrace.type = trace_data.mode ?? 'scatter';
-              steptrace.mode = trace_data.mode ?? 'lines+markers';
-              // steptrace.showlegend = trace_data.showlegend ?? false;
-              // steptrace.legendgroup = trace_data.legendgroup ?? trace_data.name;
-
-              if (!self.graph_data.include_previous_steps) {
-                self.graph_data.include_previous_steps = 0
+              // Check if the key exists; if not, initialize array that will hold the traces for this step
+              if (!traces_slider_obj[key]) {
+                // Adding empty traces for each yaxis in layout, such that the plots are generated every time
+                traces_slider_obj[key] = Object.keys(layout)
+                  .filter(key => /^yaxis(\d+)?$/.test(key))
+                  .map(key => {
+                    const yaxisName = key === 'yaxis' ? 'y' : key.replace('yaxis', 'y');
+                    const xaxisName = key === 'yaxis' ? 'x' : key.replace('yaxis', 'x');
+                    return {
+                      name: 'empty',
+                      type: 'scatter',
+                      yaxis: yaxisName,
+                      xaxis: xaxisName,
+                      y: [],
+                      x: []
+                    };
+                  });
               }
-              // Current + previous steps (if it is configured to be added)
-              steptrace.x = []
-              steptrace.y = []
-              steptrace.color = []
-              steptrace.size = []
-              steptrace.customdata = []
-              for (let i = self.graph_data.include_previous_steps; i >= 0; i--) {
-                if (((index - i)>=0)&&(grouped_data[grouped_data_keys[index - i]][jobid])){
-                  // If this jobid exist (to check if it exists in the previous keys), add its value
-                  
-                  // Getting x values
-                  if ((layout.xaxis.type !== 'date')&&( self.graph_data.xcol && self.graph_data.xcol != 'date' )) {
-                    steptrace.x.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
-                  } else {
-                    steptrace.x.push(self.parseToTimestamp(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
-                    layout.xaxis.type = 'date';
-                  }
-                  steptrace.y.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][trace_data.ycol]));
-                  steptrace.color.push(i===0?grouped_data[grouped_data_keys[index - i]][jobid]['color']:'gray');
-                  steptrace.size.push(i===0?15:5);
 
-                  // Creating hovertemplate if given on config
-                  if (trace_data.onhover) {
-                    // Geting data from grouped_data[key][jobid] in the correct format in customdata
-                    // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-                    steptrace.customdata.push(trace_data.onhover.map(entry => {
-                      // Extract the key and value (since each entry is a single key-value pair object)
-                      const [hoverkey, value] = Object.entries(entry)[0];
-                    
-                      if (value['factor']) {
-                        // If a factor is given, parse as a float and multiply by that factor
-                        return parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]) * value['factor']
-                      } else if ((value['type'])&&(value['type']==='date')){
-                        // If the value is type 'date', parse it
-                        return self.parseToDate(grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]).toLocaleString('sv-SE')
+              // Starting a new step (that will include many traces - one for each jobid)
+              step = {};
+
+              // Building up traces, one for each jobid, containing current point and previous points (if configured)
+              Object.keys(grouped_data[key])
+                .forEach(jobid => {
+                  // Starting a new trace (one per jobid)
+                  let steptrace = { ...trace_default };
+
+                  steptrace.type = trace_data.mode ?? 'scatter';
+                  steptrace.mode = trace_data.mode ?? 'lines+markers';
+                  // steptrace.showlegend = trace_data.showlegend ?? false;
+                  // steptrace.legendgroup = trace_data.legendgroup ?? trace_data.name;
+
+                  if (!self.graph_data.include_previous_steps) {
+                    self.graph_data.include_previous_steps = 0
+                  }
+                  // Current + previous steps (if it is configured to be added)
+                  steptrace.x = []
+                  steptrace.y = []
+                  steptrace.color = []
+                  steptrace.size = []
+                  steptrace.customdata = []
+                  for (let i = self.graph_data.include_previous_steps; i >= 0; i--) {
+                    if (((index - i) >= 0) && (grouped_data[grouped_data_keys[index - i]][jobid])) {
+                      // If this jobid exist (to check if it exists in the previous keys), add its value
+
+                      // Getting x values
+                      if ((layout.xaxis.type !== 'date') && (self.graph_data.xcol && self.graph_data.xcol != 'date')) {
+                        steptrace.x.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
                       } else {
-                        // Otherwise, return the value itself
-                        return grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]
+                        steptrace.x.push(self.parseToTimestamp(grouped_data[grouped_data_keys[index - i]][jobid][self.graph_data.xcol]));
+                        layout.xaxis.type = 'date';
                       }
-                      // return value['factor'] ? parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]) * value['factor'] : grouped_data[grouped_data_keys[index - i]][jobid][hoverkey];
-                    }));
+                      steptrace.y.push(parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][trace_data.ycol]));
+                      steptrace.color.push(i === 0 ? grouped_data[grouped_data_keys[index - i]][jobid]['color'] : 'gray');
+                      steptrace.size.push(i === 0 ? 15 : 5);
+
+                      // Creating hovertemplate if given on config
+                      if (trace_data.onhover) {
+                        // Geting data from grouped_data[key][jobid] in the correct format in customdata
+                        // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
+                        steptrace.customdata.push(trace_data.onhover.map(entry => {
+                          // Extract the key and value (since each entry is a single key-value pair object)
+                          const [hoverkey, value] = Object.entries(entry)[0];
+
+                          if (value['factor']) {
+                            // If a factor is given, parse as a float and multiply by that factor
+                            return parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]) * value['factor']
+                          } else if ((value['type']) && (value['type'] === 'date')) {
+                            // If the value is type 'date', parse it
+                            return self.parseToDate(grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]).toLocaleString('sv-SE')
+                          } else {
+                            // Otherwise, return the value itself
+                            return grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]
+                          }
+                          // return value['factor'] ? parseFloat(grouped_data[grouped_data_keys[index - i]][jobid][hoverkey]) * value['factor'] : grouped_data[grouped_data_keys[index - i]][jobid][hoverkey];
+                        }));
+                      }
+                    }
                   }
+                  steptrace.name = jobid
+                  steptrace.marker = {
+                    color: steptrace.color,
+                    size: steptrace.size,
+                  }
+                  steptrace.line = { width: 3, color: 'gray', simplify: false };
+
+                  // Preparing the hover template
+                  if (trace_data.onhover) {
+                    i = 0
+                    for (const entry of trace_data.onhover) {
+                      const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
+                      // Add information on new line, when there's already some info there
+                      steptrace.hovertemplate = steptrace.hovertemplate ? steptrace.hovertemplate + "<br>" : '';
+                      steptrace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format'] ?? ''}}${value['units'] ?? ''}`;
+                      i++
+                    }
+                  }
+                  // Adding this steptrace to the current key/step
+                  traces_slider_obj[key].push(steptrace)
+                });
+
+              if (get_slider_values) {
+                // If no lines (shapes) are to added, only traces are modified (method: restyle)
+                let method = 'restyle';
+                let args = [{}, {}]; // Empty arguments, as we are now using `execute: false` and we update the plot ourselves
+                shapes.push(layout.shapes ?? [])
+                if (self.graph_data.vertical_line) {
+                  // If vertical lines (shapes) are to be added, both traces and layout need to be modified (method: update)
+                  shapes[shapes.length - 1].push(...shapes[shapes.length - 1], {
+                    type: 'line',
+                    x0: self.parseToDate(key),
+                    y0: 0,
+                    x1: self.parseToDate(key),
+                    yref: 'paper',
+                    y1: 1,
+                    line: {
+                      color: 'gray',
+                      width: 1.5,
+                      dash: 'dot',
+                    }
+                  })
+                  // method = 'update' // change method to 'update' and add layout change below
+                  // args.push(
+                  //   {shapes: shapes_with_lines} // adding lines as shapes to layout
+                  // )
                 }
-              }
-              steptrace.name = jobid
-              steptrace.marker = {
-                color: steptrace.color,
-                size: steptrace.size,
-              }
-              steptrace.line = { width: 3, color: 'gray', simplify: false};
-              
-              // Preparing the hover template
-              if (trace_data.onhover) {
-                i = 0
-                for (const entry of trace_data.onhover) {
-                  const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
-                  // Add information on new line, when there's already some info there
-                  steptrace.hovertemplate = steptrace.hovertemplate ? steptrace.hovertemplate + "<br>" : '';
-                  steptrace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;
-                  i++
+
+                step = {
+                  label: self.parseToDate(key).toLocaleString('sv-SE'),
+                  value: key,
+                  method: method,
+                  args: args,
+                  execute: false,
                 }
+
+                // Adding vertical line for the first step that is shown
+                if ((index === numsteps - 1) && (self.graph_data.vertical_line)) {
+                  layout.shapes = shapes[shapes.length - 1]
+                }
+
+                steps.push(step)
               }
-              // Adding this steptrace to the current key/step
-              traces_slider_obj[key].push(steptrace)
             });
-
-            if (get_slider_values) {
-              // If no lines (shapes) are to added, only traces are modified (method: restyle)
-              let method =  'restyle';
-              let args = [{},{}]; // Empty arguments, as we are now using `execute: false` and we update the plot ourselves
-              shapes.push(layout.shapes??[])
-              if (self.graph_data.vertical_line) {
-                // If vertical lines (shapes) are to be added, both traces and layout need to be modified (method: update)
-                shapes[shapes.length-1].push(...shapes[shapes.length-1],{
-                  type: 'line',
-                  x0: self.parseToDate(key),
-                  y0: 0,
-                  x1: self.parseToDate(key),
-                  yref: 'paper',
-                  y1: 1,
-                  line: {
-                    color: 'gray',
-                    width: 1.5,
-                    dash: 'dot',
-                  }
-                })
-                // method = 'update' // change method to 'update' and add layout change below
-                // args.push(
-                //   {shapes: shapes_with_lines} // adding lines as shapes to layout
-                // )
-              }
-
-              step = {
-                label: self.parseToDate(key).toLocaleString('sv-SE'),
-                value: key,
-                method: method,
-                args: args,
-                execute: false,
-              }
-
-              // Adding vertical line for the first step that is shown
-              if ((index === numsteps - 1)&&(self.graph_data.vertical_line)) {
-                layout.shapes = shapes[shapes.length-1]
-              }
-
-              steps.push(step)
-            }
-          });
 
         } else {                                    // SCATTER PLOT 
           // If it's not a heatmap not a bar, we consider it is a scatter plot
-          trace.line = mergeDeep({ width: 1, shape: 'hvh', color: trace_data.color ?? 'black' },trace_data.line??{});
+          trace.line = mergeDeep({ width: 1, shape: 'hvh', color: trace_data.color ?? 'black' }, trace_data.line ?? {});
           trace.mode = trace_data.mode ?? 'lines';
           trace.showlegend = trace_data.showlegend ?? true;
           trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
@@ -833,7 +830,7 @@ PlotlyGraph.prototype.plot = function (params) {
           }
           // Parsing values and min/max when present
           values = data.map(function (y) {
-            let val = typeof y[trace_data.ycol] == 'string'? y[trace_data.ycol].split(";") : [ y[trace_data.ycol] ];
+            let val = typeof y[trace_data.ycol] == 'string' ? y[trace_data.ycol].split(";") : [y[trace_data.ycol]];
             if (val.length == 3) {
               return { min: +val[0] * factor, y: +val[1] * factor, max: +val[2] * factor };
             } else {
@@ -854,7 +851,7 @@ PlotlyGraph.prototype.plot = function (params) {
           self.minmax = (values.length > 0 && typeof values[0].min === 'number') ? true : false; // if first value of min is a number, all the others (and also max values) should be
           if (self.minmax) {
             trace.min = values.map(function (y) { return y.min });
-            trace.max = values.map(function (y) { return y.max });  
+            trace.max = values.map(function (y) { return y.max });
           }
           trace.stackgroup = trace_data.stackgroup ? trace_data.stackgroup : null
 
@@ -864,14 +861,14 @@ PlotlyGraph.prototype.plot = function (params) {
             color: trace_data.color ?? trace.y,
             colorscale: trace_data.color ?? 'Jet',
           };
-  
+
           let minmax = {};
           // If min/max is present and nnodes>1 (or ngpus>1 for GPU tabs), change hover info and prepare information for background curves
           // Show min/max also when nnodes is undefined (e.g., in Project view)
           const nnodes = params ? params['#Nodes'] : undefined;
           const ngpus = params ? (params['#GPUs'] ?? 4) : 4;
           const activeTabId = $("#graph_selection ul li.active").attr("id") || "";
-          if ((self.minmax == true) && (((nnodes === undefined) || (nnodes > 1)) || (activeTabId.includes("GPU") && ngpus > 1) || (self.graph_data.xcol != 'date')) ) {
+          if ((self.minmax == true) && (((nnodes === undefined) || (nnodes > 1)) || (activeTabId.includes("GPU") && ngpus > 1) || (self.graph_data.xcol != 'date'))) {
             trace.hovertemplate = [];
             for (let i = 0; i < trace.x.length; i++) {
               trace.hovertemplate.push(trace.min[i].toFixed(2) + ' / <b>' + trace.y[i].toFixed(2) + '</b> / ' + trace.max[i].toFixed(2));
@@ -883,7 +880,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
           // Creating hovertemplate if given on config
           if (trace_data.onhover) {
-            self.prepare_hoverinfo(trace,trace_data,data)
+            self.prepare_hoverinfo(trace, trace_data, data)
           }
 
           // If a map is given for the values:
@@ -906,7 +903,7 @@ PlotlyGraph.prototype.plot = function (params) {
               mode: 'lines',
               showlegend: false
             })
-            
+
             // Push Min trace second (it fills the area back to the Max trace)
             backgroundTraces.push({
               x: trace.x,
@@ -930,7 +927,7 @@ PlotlyGraph.prototype.plot = function (params) {
           // Looping through keywords and substituting each
           if (matches[key]) {
             matches[key].forEach((match) => {
-              new_annotation[key] = new_annotation[key].replace("#"+match+"#", Math[match](...trace.y).toFixed(1))
+              new_annotation[key] = new_annotation[key].replace("#" + match + "#", Math[match](...trace.y).toFixed(1))
             });
             // Adding annotation for this trace and going to the next line for possible values of other traces
             new_annotation[key] = new_annotation[key] + "<br>"
@@ -939,9 +936,9 @@ PlotlyGraph.prototype.plot = function (params) {
 
         // Getting min and max values of y for each y axis to adjust ranges below
         // (min and max for x are adjusted below)
-        if (((self.minmax)&&(trace.min))||(trace.y)) {
+        if (((self.minmax) && (trace.min)) || (trace.y)) {
           ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
-          ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));  
+          ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
         }
 
         // Add traces if this data does not contain a slider, as in that case, all the traces were added already
@@ -962,9 +959,9 @@ PlotlyGraph.prototype.plot = function (params) {
     if (self.graph_data.slider) {
       // Transforming object that stored all traces for each timestamp into an array of arrays
       traces_slider = Object.keys(traces_slider_obj)
-          .map(Number)                            // convert keys to numbers
-          .sort((a, b) => a - b)                  // sort in ascending order
-          .map(key => traces_slider_obj[key]);    // map sorted keys to their arrays
+        .map(Number)                            // convert keys to numbers
+        .sort((a, b) => a - b)                  // sort in ascending order
+        .map(key => traces_slider_obj[key]);    // map sorted keys to their arrays
       // Getting the last step to plot first
       if (traces_slider.length) {
         traces = traces_slider[traces_slider.length - 1]
@@ -983,7 +980,7 @@ PlotlyGraph.prototype.plot = function (params) {
       if (isScatter && isStacked && pointCount > self.WEBGL_THRESHOLD) {
         // We can't use scattergl, but we can force simplification
         trace.line = trace.line || {};
-        trace.line.simplify = true; 
+        trace.line.simplify = true;
       } else if (isScatter && pointCount > self.WEBGL_THRESHOLD) {
         trace.type = 'scattergl';
         if (trace.line) trace.line.simplify = true;
@@ -1032,10 +1029,10 @@ PlotlyGraph.prototype.plot = function (params) {
     if (layout.xaxis.rangeslider) {
       layout.xaxis.rangeslider.range = range;
       layout.xaxis.rangeslider.autorange = false;
-    }  
+    }
   }
 
-  if (!layout.grid){
+  if (!layout.grid) {
     // If yaxis is used in traces
     if (yaxis2) {
       layout.yaxis2.overlaying = 'y'
@@ -1068,7 +1065,7 @@ PlotlyGraph.prototype.plot = function (params) {
       // Increase the ratio by 0.1 so that your range maximums are extended just
       // far enough to not cut off any part of your highest value
       // console.log('dtickratio', ydtick_ratio, Object.values(ydtick_ratio))
-      global_dtick_ratio = Math.max(...Object.values(ydtick_ratio))+0.1
+      global_dtick_ratio = Math.max(...Object.values(ydtick_ratio)) + 0.1
 
       // Taking into account that graphs may have either no points or only values at 0, 
       // such that ydtick = 0, and ydtick_ratio and global_dtick_ratio = NaN
@@ -1100,25 +1097,25 @@ PlotlyGraph.prototype.plot = function (params) {
 
 
   // Adding a slider if that's defined, and the actions when changing the slider or clicking the buttons
-  if ((self.graph_data.slider)&&(!self.empty)) {
+  if ((self.graph_data.slider) && (!self.empty)) {
     // Adding our own update of the graph when the slider is changed, due to slowness of using
     // all traces at once, and bugs updating the traces when passing them in the steps (see long comment above)
     var slider_change = function (e) {
       // Updating shapes in layout
       layout.shapes = shapes[e.step._index]
-      layout.xaxis.range = [ self.graph_data.vertical_line?layout.shapes[0].x0:Math.min(...traces_slider[e.step._index].flatMap(trace => trace.x)),Math.max(...traces_slider[e.step._index].flatMap(trace => trace.x)) ]
+      layout.xaxis.range = [self.graph_data.vertical_line ? layout.shapes[0].x0 : Math.min(...traces_slider[e.step._index].flatMap(trace => trace.x)), Math.max(...traces_slider[e.step._index].flatMap(trace => trace.x))]
       // Resettting autorange to false, as after zoom it may be changed to true (must be xaxis, which is used in 'matched' for all graphs)
       layout.xaxis.autorange = false
       // Updating the graph, as the slider update has problems
       Plotly.react(self.id, traces_slider[e.step._index], layout, self.config);
-    
+
       // Updating range to fix double click or 'reset axis'
       graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0]
       graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1]
     }
 
     layout.sliders = [{
-      active: numsteps-1,
+      active: numsteps - 1,
       pad: {
         t: 30
       },
@@ -1140,7 +1137,7 @@ PlotlyGraph.prototype.plot = function (params) {
     // Adding previous and next buttons
     layout.updatemenus = [{
       showactive: false,
-      pad: {t: 60, l: 30},
+      pad: { t: 60, l: 30 },
       type: 'buttons',
       xanchor: 'right',
       yanchor: 'top',
@@ -1150,12 +1147,12 @@ PlotlyGraph.prototype.plot = function (params) {
       font: {
         family: "FontAwesome",
         size: 12
-      },  
+      },
       buttons: [{
         label: "&#xf048;",
         args: [],
         execute: false
-      },{
+      }, {
         label: "&#xf051;",
         args: [],
         execute: false
@@ -1169,11 +1166,11 @@ PlotlyGraph.prototype.plot = function (params) {
       else
         --index
 
-      if(traces_slider[index]) {
+      if (traces_slider[index]) {
         layout.sliders[0].active = index
         // Updating shapes in layout
         layout.shapes = shapes[index]
-        layout.xaxis.range = [ self.graph_data.vertical_line?layout.shapes[0].x0:Math.min(...traces_slider[index].flatMap(trace => trace.x)),Math.max(...traces_slider[index].flatMap(trace => trace.x)) ]
+        layout.xaxis.range = [self.graph_data.vertical_line ? layout.shapes[0].x0 : Math.min(...traces_slider[index].flatMap(trace => trace.x)), Math.max(...traces_slider[index].flatMap(trace => trace.x))]
         // Resettting autorange to false, as after zoom it may be changed to true (must be xaxis, which is used in 'matched' for all graphs)
         layout.xaxis.autorange = false
 
@@ -1218,7 +1215,7 @@ PlotlyGraph.prototype.plot = function (params) {
     // Removing listeners before adding new ones
     graphDiv[0].removeListener('plotly_sliderchange', slider_change);
     graphDiv[0].removeListener('plotly_buttonclicked', change_step);
-    graphDiv[0].removeListener('plotly_click', mark_job);  
+    graphDiv[0].removeListener('plotly_click', mark_job);
 
     graphDiv[0]
       .on('plotly_sliderchange', slider_change)
@@ -1227,28 +1224,28 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 
   // Checking if info div is to be added to the left (for hoverinfo or calendar)
-  if ((self.graph_data.layout.calendar == 'left')||(self.graph_data.layout.hovermode == 'left')) {
+  if ((self.graph_data.layout.calendar == 'left') || (self.graph_data.layout.hovermode == 'left')) {
     // Check if graph already has a .info sibling on the left, and if not, create it
-    if(!graphDiv.prevAll('.info').length > 0) {
+    if (!graphDiv.prevAll('.info').length > 0) {
       let hoverdiv = $('<div>').addClass('info')
-                                .addClass(self.id);
+        .addClass(self.id);
       hoverdiv.insertBefore(graphDiv)
     }
   }
   // Checking if info div is to be added to the right (for hoverinfo or calendar)
-  if ((self.graph_data.layout.calendar == 'right')||(self.graph_data.layout.hovermode == 'right')) {
+  if ((self.graph_data.layout.calendar == 'right') || (self.graph_data.layout.hovermode == 'right')) {
     // Check if graph already has a .info sibling on the right, and if not, create it
-    if(!graphDiv.nextAll('.info').length > 0) {
+    if (!graphDiv.nextAll('.info').length > 0) {
       let hoverdiv = $('<div>').addClass('info')
-                                .addClass(self.id);
+        .addClass(self.id);
       hoverdiv.insertAfter(graphDiv)
     }
   }
 
   // Adding listener to add data to the info div
-  if ((self.graph_data.layout.hovermode == 'left')||(self.graph_data.layout.hovermode == 'right')) {
+  if ((self.graph_data.layout.hovermode == 'left') || (self.graph_data.layout.hovermode == 'right')) {
     // Adding listener to hover to add data to 'info' div
-    if (($(`.info.${self.id}`).length>0)&&(graphDiv.children().length>0)) {
+    if (($(`.info.${self.id}`).length > 0) && (graphDiv.children().length > 0)) {
       let saved_info = '';
       // Creatign 'close' button, to clean up the info when clicked
       let closeBtn = $('<span class="close-btn"><i class="fa fa-times"></i></span>');
@@ -1258,7 +1255,7 @@ PlotlyGraph.prototype.plot = function (params) {
       if (self.graph_data.layout.hovermode == 'left') {
         // Selecting the div on the left of graphDiv
         infoDiv = graphDiv.prev('.info');
-      } else  {
+      } else {
         // Selecting the div on the right of graphDiv
         infoDiv = graphDiv.next('.info');
       }
@@ -1267,20 +1264,20 @@ PlotlyGraph.prototype.plot = function (params) {
       if (hoverinfo.length === 0) {
         // Create a new div to hold hoverinfo
         hoverinfo = $('<div>').addClass('hoverinfo');
-  
+
         // Prepend the calendar to the container without removing its current elements
         infoDiv.append(hoverinfo);
       }
 
-      var print_hoverinfo = function(e) { 
-        if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
+      var print_hoverinfo = function (e) {
+        if ((e.points[0].data.hovertemplatecustom) && (e.points[0].data.hovertemplatecustom.length > 0)) {
           // console.log('e.points[0].customdata',e.points[0].customdata)
           // console.log( e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index]) )
           hoverinfo.html(e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index]));
         }
       }
-      var stick_hoverinfo = function(e) {
-        if ((e.points[0].data.hovertemplatecustom)&&(e.points[0].data.hovertemplatecustom.length>0)) {
+      var stick_hoverinfo = function (e) {
+        if ((e.points[0].data.hovertemplatecustom) && (e.points[0].data.hovertemplatecustom.length > 0)) {
           // Storing the information of the clicked box
           saved_info = e.points[0].data.hovertemplatecustom.replace(/%\{customdata\[(\d+)\]\}/g, (_, index) => e.points[0].customdata[index])
           // Adding text and close button
@@ -1288,10 +1285,10 @@ PlotlyGraph.prototype.plot = function (params) {
           hoverinfo.html(saved_info).prepend(closeBtn);
         }
       }
-      var clean_hoverinfo = function(e) {
-        if (saved_info.length>0) {
+      var clean_hoverinfo = function (e) {
+        if (saved_info.length > 0) {
           hoverinfo.html(saved_info).prepend(closeBtn);
-          closeBtn.on('click', function() {
+          closeBtn.on('click', function () {
             // Clearning up saved_info and info div
             saved_info = '';
             $(this).parent().empty();
@@ -1303,7 +1300,7 @@ PlotlyGraph.prototype.plot = function (params) {
 
       // Removing listeners before adding new ones
       graphDiv[0].removeListener('plotly_hover', print_hoverinfo);
-      graphDiv[0].removeListener('plotly_click', stick_hoverinfo);  
+      graphDiv[0].removeListener('plotly_click', stick_hoverinfo);
       graphDiv[0].removeListener('plotly_unhover', clean_hoverinfo);
 
       graphDiv[0]
@@ -1314,13 +1311,13 @@ PlotlyGraph.prototype.plot = function (params) {
   }
 
   // Adding calendar if layout.calendar = 'left' or 'right'
-  if ((self.graph_data.layout.calendar == 'left')||(self.graph_data.layout.calendar == 'right')) {
+  if ((self.graph_data.layout.calendar == 'left') || (self.graph_data.layout.calendar == 'right')) {
     // Checking if calendar is going to be put on the same div as info
     let infoDiv;
     if (self.graph_data.layout.calendar == 'left') {
       // Selecting the div on the left of graphDiv
       infoDiv = graphDiv.prev('.info');
-    } else  {
+    } else {
       // Selecting the div on the right of graphDiv
       infoDiv = graphDiv.next('.info');
     }
@@ -1334,7 +1331,7 @@ PlotlyGraph.prototype.plot = function (params) {
     }
 
     // Restricting dates on the calendar
-    if (layout.xaxis?.range?.length>0) {
+    if (layout.xaxis?.range?.length > 0) {
       calendar.datepicker("option", "minDate", self.parseToDate(layout.xaxis.range[0]));
       calendar.datepicker("option", "maxDate", self.parseToDate(layout.xaxis.range[1]));
     }
@@ -1349,8 +1346,8 @@ PlotlyGraph.prototype.plot = function (params) {
       text: layout.yaxis.title
     }
   }
-  if ((layout?.yaxis?.title)&&(typeof layout?.yaxis?.title?.font === 'undefined')) {
-    layout.yaxis.title.font = { 
+  if ((layout?.yaxis?.title) && (typeof layout?.yaxis?.title?.font === 'undefined')) {
+    layout.yaxis.title.font = {
       family: 'sans-serif',
       size: 12,
     }
@@ -1360,8 +1357,8 @@ PlotlyGraph.prototype.plot = function (params) {
       text: layout.xaxis.title
     }
   }
-  if ((layout?.xaxis?.title)&&(typeof layout?.xaxis?.title?.font === 'undefined')) {
-    layout.xaxis.title.font = { 
+  if ((layout?.xaxis?.title) && (typeof layout?.xaxis?.title?.font === 'undefined')) {
+    layout.xaxis.title.font = {
       family: 'sans-serif',
       size: 12,
     }
@@ -1374,7 +1371,7 @@ PlotlyGraph.prototype.plot = function (params) {
   Plotly.react(self.id, traces, layout, self.config).then(_ => {
 
     // Fixing zoom when double clicking or clicking on the 'reset axis' modebar button
-    if ((graphDiv.length>0)&&(typeof layout?.xaxis?.range != 'undefined')) {
+    if ((graphDiv.length > 0) && (typeof layout?.xaxis?.range != 'undefined')) {
       graphDiv[0]._fullLayout.xaxis._rangeInitial0 = layout.xaxis.range[0];
       graphDiv[0]._fullLayout.xaxis._rangeInitial1 = layout.xaxis.range[1];
     }
@@ -1392,19 +1389,19 @@ PlotlyGraph.prototype.plot = function (params) {
       }
     }
     // Removing listeners before adding new ones
-    graphDiv[0].removeAllListeners('plotly_update');  
+    graphDiv[0].removeAllListeners('plotly_update');
 
     graphDiv[0].on('plotly_update', moveSlider)
 
     // When a list for highlighing is given and the graph is not empty
     // Add the 'hover' and 'click' listeners to highlight the bars
-    if (Array.isArray(self.graph_data.highlight)&&(!self.empty)) {
+    if (Array.isArray(self.graph_data.highlight) && (!self.empty)) {
 
       let timerhover = null
       let timerunhover = null
       let timerevent = null
       let accumulatedIndices = null
-      
+
       // Set all marker linewidths to 0
       function resetBarWidth(traces) {
         // Reset all marker.line.width values to 0 for every trace
@@ -1427,7 +1424,7 @@ PlotlyGraph.prototype.plot = function (params) {
         });
       }
 
-      var grayOthers = function(traces, curveNumber, accumulatedIndices) {
+      var grayOthers = function (traces, curveNumber, accumulatedIndices) {
         // If mouse if pressed, make all other curves gray
         console.log(self.mousePressed)
         if (self.mousePressed) {
@@ -1444,12 +1441,12 @@ PlotlyGraph.prototype.plot = function (params) {
               }
             }
           });
-        }                
+        }
       }
 
       // Function to be called on hover to highlight a bar (increasing edge linewidth)
-      var highlight = function(e) {
-        if(timerevent)
+      var highlight = function (e) {
+        if (timerevent)
           clearTimeout(timerevent)
 
         // Wrapping over a timeout to cancel intermediate hover events
@@ -1471,7 +1468,7 @@ PlotlyGraph.prototype.plot = function (params) {
             }, []);
             // indices store all the indices of the traces that have the same value
             // of the hovered element to be highlighted
-            indices.forEach(idx => accumulatedIndices.add(idx));  
+            indices.forEach(idx => accumulatedIndices.add(idx));
           }
 
           // Reseting bar linewidths to 0 to clean up
@@ -1486,15 +1483,15 @@ PlotlyGraph.prototype.plot = function (params) {
           // If mousePressed, this means that the mouse was clicked and 
           // now it's hovered on a bar. In this case, the accumularedIndices should have
           // colors, but all others should be grayed out
-          grayOthers(traces,e.points[0].curveNumber,accumulatedIndices)
+          grayOthers(traces, e.points[0].curveNumber, accumulatedIndices)
 
           Plotly.update(self.id, traces, layout);
 
         }, 100)
       }
 
-      var unhighlight = function() {
-        if(timerevent)
+      var unhighlight = function () {
+        if (timerevent)
           clearTimeout(timerevent)
 
         timerevent = setTimeout(_ => {
@@ -1531,15 +1528,15 @@ PlotlyGraph.prototype.plot = function (params) {
         .on("plotly_relayout", data => { // Trigerring mouseup and mousedown events
           console.log("relayout triggered!")
           let bars = document.querySelectorAll(".barlayer .bars .points .point path")
-          for(let i = 0; i < bars.length; i++) {
+          for (let i = 0; i < bars.length; i++) {
             bars[i].onmousemove = e => {
               console.log("Mousemove!")
-              if(graphDiv[0]._fullLayout._lasthover)
+              if (graphDiv[0]._fullLayout._lasthover)
                 graphDiv[0]._fullLayout._lasthover.dispatchEvent(new MouseEvent("mousemove", e))
             }
             bars[i].onmouseout = e => {
               console.log("Mouseout!")
-              if(graphDiv[0]._fullLayout._lasthover)
+              if (graphDiv[0]._fullLayout._lasthover)
                 graphDiv[0]._fullLayout._lasthover.dispatchEvent(new MouseEvent("mouseout", e))
             }
             bars[i].onmousedown = e => {
@@ -1547,7 +1544,7 @@ PlotlyGraph.prototype.plot = function (params) {
               // grayOthers(traces)
               // Plotly.update(self.id, traces, layout);
             }
-            bars[i].onmouseup = e => {          
+            bars[i].onmouseup = e => {
               console.log("Mouseup!")
               // resetColors(traces)
               // Plotly.update(self.id, traces, layout);
@@ -1623,7 +1620,7 @@ PlotlyGraph.prototype.plot = function (params) {
  * @param {string} xcol - The key in the data objects representing the X-axis value.
  * @param {string} layoutXType - The Plotly layout type for the X-axis ('category', 'date', or undefined).
  */
-PlotlyGraph.prototype.sortDataByX = function(data, xcol, layoutXType) {
+PlotlyGraph.prototype.sortDataByX = function (data, xcol, layoutXType) {
   // If no data or no x-column, nothing to sort
   if (!data || data.length < 2 || !xcol) return;
 
@@ -1656,11 +1653,11 @@ PlotlyGraph.prototype.sortDataByX = function(data, xcol, layoutXType) {
     // Parse floats to ensure "2" < "10" (numeric) instead of "10" < "2" (string)
     let va = parseFloat(a[xcol]);
     let vb = parseFloat(b[xcol]);
-    
+
     // Handle NaNs (push them to end)
     if (isNaN(va)) return 1;
     if (isNaN(vb)) return -1;
-    
+
     return va - vb;
   });
 };
@@ -1669,7 +1666,7 @@ PlotlyGraph.prototype.sortDataByX = function(data, xcol, layoutXType) {
  * Function to check and store the primary mouse button state
  * to be used with mousedown/mouseup events on the highlighting of jobs
  */
-PlotlyGraph.prototype.setPrimaryButtonState = function(e) {
+PlotlyGraph.prototype.setPrimaryButtonState = function (e) {
   let self = this
   var flags = e.buttons !== undefined ? e.buttons : e.which;
   self.mousePressed = (flags & 1) === 1;
@@ -1683,16 +1680,16 @@ PlotlyGraph.prototype.setPrimaryButtonState = function(e) {
  */
 PlotlyGraph.prototype.selectDate = function (dateText, inst) {
   // TODO
-  console.log('select date',dateText, inst,$(this))
+  console.log('select date', dateText, inst, $(this))
   return
 }
 
 /* Conversion functions */
 PlotlyGraph.prototype.msToHHMMSS = function (mseconds) {
-  return this.sToHHMMSS(mseconds/1000)
+  return this.sToHHMMSS(mseconds / 1000)
 }
 PlotlyGraph.prototype.sToHHMMSS = function (seconds) {
-  return this.FracToHHMMSS(seconds/3600)
+  return this.FracToHHMMSS(seconds / 3600)
 }
 PlotlyGraph.prototype.FracToHHMMSS = function (frac) {
   // Calculate hours, minutes, seconds using Math.floor
@@ -1701,15 +1698,15 @@ PlotlyGraph.prototype.FracToHHMMSS = function (frac) {
   let min = Math.floor(rest * 60);
   rest = rest * 60 - min;
   let sec = Math.floor(rest * 60);
-  return `${hours>0?hours.toString()+'h':''}${hours>0?min.toString().padStart(2, '0'):min.toString()}m${sec.toString().padStart(2, '0')}s`;
+  return `${hours > 0 ? hours.toString() + 'h' : ''}${hours > 0 ? min.toString().padStart(2, '0') : min.toString()}m${sec.toString().padStart(2, '0')}s`;
 }
 
 /* Creating hovertemplate */
-PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
+PlotlyGraph.prototype.prepare_hoverinfo = function (trace, trace_data, data) {
   let self = this;
   // Geting data in the correct format in customcustom data
   // [ [first_item_info_1,first_item_info_2,first_item_info_3], [second_item_info_1,second_item_info_2,second_item_info_3], ...]
-  trace.customdata = data.map(function (d)  {
+  trace.customdata = data.map(function (d) {
     return trace_data.onhover.map(entry => {
       // Extract the key and value (since each entry is a single key-value pair object)
       // This is used instead of a regular object to be able to keep the order entered in the configuration
@@ -1719,7 +1716,7 @@ PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
       if (value['factor']) {
         // If a factor is given, parse as a float and multiply by that factor
         ret = parseFloat(d[hoverkey]) * value['factor']
-      } else if ((value['type'])&&(value['type']==='date')){
+      } else if ((value['type']) && (value['type'] === 'date')) {
         // If the value is type 'date', parse it
         ret = self.parseToDate(d[hoverkey]).toLocaleString('sv-SE')
       } else {
@@ -1743,22 +1740,22 @@ PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
   for (const entry of trace_data.onhover) {
     const [key, value] = Object.entries(entry)[0]; // Extract the single key-value pair
     // Add information on new line, when there's already some info there
-    if ((self.graph_data?.layout?.hovermode == 'left')||(self.graph_data?.layout?.hovermode == 'right')) {
+    if ((self.graph_data?.layout?.hovermode == 'left') || (self.graph_data?.layout?.hovermode == 'right')) {
       // If the hover information is to be shown on the left or right of the graph
-      if (i==0) {
+      if (i == 0) {
         trace.hovertemplatecustom = '<table><tbody>'
       }
-      trace.hovertemplatecustom += `<tr><td><strong>${value['name']}:</strong></td><td>%{customdata[${i}]${value['format']??''}}${value['units']??''}</td></tr>` ;  
-      if (i==trace_data.onhover.length-1) {
+      trace.hovertemplatecustom += `<tr><td><strong>${value['name']}:</strong></td><td>%{customdata[${i}]${value['format'] ?? ''}}${value['units'] ?? ''}</td></tr>`;
+      if (i == trace_data.onhover.length - 1) {
         trace.hovertemplatecustom += '</tbody></table>'
       }
     } else {
       // If the hover information is to be shown on top of the graph (usual way)
-      if (i==0) {
+      if (i == 0) {
         trace.hovertemplate = trace.hovertemplate ? trace.hovertemplate + "<br>" : '';
       }
-      trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format']??''}}${value['units']??''}` ;  
-      if (i<trace_data.onhover.length) {
+      trace.hovertemplate += `${value['name']}: %{customdata[${i}]${value['format'] ?? ''}}${value['units'] ?? ''}`;
+      if (i < trace_data.onhover.length) {
         trace.hovertemplate += '<br>'
       }
     }
@@ -1768,10 +1765,10 @@ PlotlyGraph.prototype.prepare_hoverinfo = function (trace,trace_data,data) {
 
 
 /* Move slider according to given translation */
-PlotlyGraph.prototype.move_slider = function (id,translation) {
+PlotlyGraph.prototype.move_slider = function (id, translation) {
   let self = this;
   let slider = $(".rangeslider-container", `#${id}`)
-  if (! self.sliderpos) {
+  if (!self.sliderpos) {
     let regex = /\(([^)]+)\)/
     let translate = regex.exec(translation)[1].split(",");
     let position = regex.exec(slider.attr("transform"))[1].split(",");
@@ -1795,7 +1792,7 @@ PlotlyGraph.prototype.resize = function () {
  * @param {str} input either timestamp or date in a string
  * @returns new Date object
  */
-PlotlyGraph.prototype.parseToDate = function(input) {
+PlotlyGraph.prototype.parseToDate = function (input) {
   // Convert the input to a string, whether it starts as a number or string.
   const strInput = input.toString();
 
@@ -1822,9 +1819,9 @@ PlotlyGraph.prototype.parseToDate = function(input) {
  * @param {str|num} input either timestamp or date in a string
  * @returns {number} Unix milliseconds
  */
-PlotlyGraph.prototype.parseToTimestamp = function(input) {
+PlotlyGraph.prototype.parseToTimestamp = function (input) {
   if (input === null || input === undefined) return null;
-  
+
   // If it's already a number
   if (typeof input === 'number') {
     return input.toString().split('.')[0].length === 10 ? input * 1000 : input;
@@ -1852,14 +1849,14 @@ PlotlyGraph.prototype.parseToTimestamp = function(input) {
  * @param {number} ts Unix timestamp in milliseconds
  * @returns {string} Formatted local date-time string
  */
-PlotlyGraph.prototype.toLocalISO = function(ts) {
+PlotlyGraph.prototype.toLocalISO = function (ts) {
   if (isNaN(ts) || ts === null) return null;
   const date = new Date(ts);
   const pad = (n) => n.toString().padStart(2, '0');
   const ms = date.getMilliseconds().toString().padStart(3, '0');
-  
+
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ` +
-         `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${ms}`;
+    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.${ms}`;
 };
 
 
@@ -1885,7 +1882,7 @@ function mergeDeep(...objects) {
         prev[key] = mergeDeep(pVal, oVal);
       }
       else {
-        prev[key] = JSON.parse(JSON.stringify(oVal)) ;
+        prev[key] = JSON.parse(JSON.stringify(oVal));
       }
     });
 
@@ -1894,10 +1891,10 @@ function mergeDeep(...objects) {
 }
 
 
-function sync_relayout(e,graphs) {
+function sync_relayout(e, graphs) {
   if (Object.entries(e).length == 0) { return; }
 
-  graphs.forEach( (graph) => {
+  graphs.forEach((graph) => {
     let div = $("#" + graph.id)[0];
     let x = div.layout.xaxis;
     let update = {};
@@ -1934,7 +1931,7 @@ function couple_hover(e, id, graphs) {
 
 function hide_hover(graphs) {
   // Looping over all divs with empty hover info
-  graphs.forEach( (graph) => {
+  graphs.forEach((graph) => {
     Plotly.Fx.hover(graph.id, [{}]);
   });
 }

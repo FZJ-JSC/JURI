@@ -112,6 +112,17 @@ View.prototype.show = function () {
     return;
   }));
 
+  self.deferrer.push(
+    $.getJSON("juri_config/ui-config.json", function (uiJson) {
+      self.uiConfig = uiJson || {};
+    }).fail(function() {
+      // Fallback to json/ui-config.json if juri_config/ui-config.json doesn't exist
+      $.getJSON("json/ui-config.json", function (uiJson) {
+        self.uiConfig = uiJson || {};
+      });
+    })
+  );
+
   // When ref and config json files have been loaded, proceed with the loading/configuration
   $.when.apply($, self.deferrer).done(function () {
     // Restarting deferrer as the current ones are done
@@ -293,6 +304,11 @@ View.prototype.show = function () {
             if (self.navdata.data.permission == "support") {
               self.add_presentation();
             }
+            /*NA edit: adding chatbot button & functionality */
+            if (self.navdata) {   // only after successful login
+              if (self.uiConfig && self.uiConfig.llviewai.enableChatBot) { addChatbotLogic(self); }
+            }
+            /*NA edit ends*/
 
             // Add logo
             $('#logo').prepend($('<img>',{src: self.navdata.logo, alt:"LLview logo", height: $("#header").height()-5, width: 72}))
@@ -2482,6 +2498,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             default_colorscale: self.default_colorscale,
             url_data: self.url_data,
             used_colorscales: self.used_colorscales, // cached colorscales
+            aiReportEnabled: self.uiConfig && self.uiConfig.llviewai.enableAIReports? true : false,
             // Add any other properties from `self` that other helpers might need here.
           };
 
