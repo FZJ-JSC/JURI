@@ -376,7 +376,7 @@ function addChatbotHtml(self) {
         This is an AI-based Chatbot, it can make mistakes. 
         Always verify the information it provides with official documentation or support channels. 
         If in doubt, contact <a href="mailto:${self.uiConfig.llviewai.chatBotSupportEmail}">${self.uiConfig.llviewai.chatBotSupportEmail}</a>.
-        Underlying LLM supplied by <a href="${self.uiConfig.llviewai.chatBotLLMProvider.url}" target="_blank" rel="noopener">${self.uiConfig.llviewai.chatBotLLMProvider.name}</a>
+        Underlying LLM supplied by <a href="${self.uiConfig.llviewai.chatBotLLMProvider.url}" target="_blank" rel="noopener">${self.uiConfig.llviewai.chatBotLLMProvider.name}</a>.
         </span>
       </div>
       <div class="chat-body d-flex flex-column h-100">
@@ -481,4 +481,7 @@ function addChatbotLogic(self) {
       e.preventDefault(); sendChat();
     }
   });
+  $('#chatbotInput').on('input', function() {
+    $('#chatbotSendBtn').prop('disabled', !$(this).val().trim());
+  }).trigger('input');
 }
