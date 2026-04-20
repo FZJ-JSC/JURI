@@ -51,6 +51,8 @@ a {
   /*border-bottom: 1px solid #fff;*/
   padding: 0;   
   height: 37px;
+  /* Forcing menu to show up above loading screen, but below alert */
+  z-index: 1950; 
 }
 
 #institution_logo {

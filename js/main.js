@@ -236,6 +236,9 @@ View.prototype.show = function () {
           // to allow modifier keys
           self.initGlobalEventHandlers();
 
+          // Apply hover behavior to the navigation
+          self.add_dropmenu_hover();
+
           // Title from configuration (including eventual logo)
 
           // System name or list
@@ -2237,33 +2240,33 @@ View.prototype.download_config = function () {
  * Show dropmenus on hover
  */
 View.prototype.add_dropmenu_hover = function () {
-  // Select all dropdown and add hover
-  $('.dropdown').hover(function() {
+  // Select all dropdown and add hover (preventing duplicates with .off)
+  $('.dropdown').off('mouseenter mouseleave').hover(function() {
     // When hovering in and the menu is not open, click on it and remove focus
     if(!$(this).hasClass('show')) {
       $('.dropdown-toggle', this).trigger('click').blur();
     }
   },
-    function() {
-      // When hovering out and the menu is open, click on it and remove focus
-      if($(this).hasClass('show')) { 
-        $('.dropdown-toggle', this).trigger('click').blur();
-      }
-    });
+  function() {
+    // When hovering out and the menu is open, click on it and remove focus
+    if($(this).hasClass('show')) { 
+      $('.dropdown-toggle', this).trigger('click').blur();
+    }
+  });
 
-  // Select all dropup and add hover
-  $('.dropup').hover(function() {
+  // Select all dropup and add hover (preventing duplicates with .off)
+  $('.dropup').off('mouseenter mouseleave').hover(function() {
     // When hovering in and the menu is not open, click on it and remove focus
     if(!$(this).hasClass('show')) { 
       $('.dropdown-toggle', this).trigger('click').blur();
     }
   },
-    function() {
-      // When hovering out and the menu is open, click on it and remove focus
-      if($(this).hasClass('show')) { 
-        $('.dropdown-toggle', this).trigger('click').blur();
-      }
-    });
+  function() {
+    // When hovering out and the menu is open, click on it and remove focus
+    if($(this).hasClass('show')) { 
+      $('.dropdown-toggle', this).trigger('click').blur();
+    }
+  });
 }
 
 
