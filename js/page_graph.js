@@ -66,10 +66,12 @@ View.prototype.Graph.prototype.create_graphs = function () {
     self.graphs.push(new PlotlyGraph(graph_data));
     // Creating plots and turning on synchronization
     this.graphs.at(-1).plot();
-    // Synchronizing zoom between different graphs
-    graph_div[0].on("plotly_relayout", (ed) => { this.relayout(ed); });
-    // Creating hover event listener to couple hover information across divs
-    graph_div[0].on('plotly_hover', (ed) => { this.couple_hover(ed, id); });
+    if (self.config.sync_graphs !== false) {
+      // Synchronizing zoom between different graphs
+      graph_div[0].on("plotly_relayout", (ed) => { this.relayout(ed); });
+      // Creating hover event listener to couple hover information across divs
+      graph_div[0].on('plotly_hover', (ed) => { this.couple_hover(ed, id); });
+    }
     // Creating mouse leave event listener to hide hover over all graphs
     graph_div.find(".nsewdrag").on("mouseleave", (ed) => { this.hide_hover(ed); });    
     // Adding data
