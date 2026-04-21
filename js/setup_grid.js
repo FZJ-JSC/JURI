@@ -69,7 +69,7 @@ function init_grid() {
         },
         
         // Tells ag-Grid this is numerical data
-        dataTypeMatcher: (value) => typeof value === "number",
+        // dataTypeMatcher: (value) => typeof value === "number",
       }
     },
 
