@@ -146,7 +146,11 @@ function resize() {
   
   // Set the correct height to main content
   $("#main_content").height(availableHeight);
-  // $("#pageWrapper").height(availableHeight+mainContentMargins);
+
+  // Calculate the total available height for the wrapper itself 
+  // (Window minus Header minus Footer) and apply it to #pageWrapper
+  const wrapperHeight = $(window).height() - headerHeight - footerHeight;
+  $("#chatSidebar").height(wrapperHeight);
 
   // Adjust table sticky headers
   const firstTrHeight = $("#main_content thead tr:first").height() || 0;

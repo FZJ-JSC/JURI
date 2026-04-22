@@ -1160,9 +1160,8 @@ footer.container-fluid {
   display:flex;
   position:relative;
   --sidebar-width:0px;
-  height:100%;
 }
-#pageWrapper>main{
+#pageWrapper > main{
   /*flex:1 1 0;*/
   flex:1;
   min-width:10px;
