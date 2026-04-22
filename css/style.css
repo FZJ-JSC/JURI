@@ -1006,11 +1006,10 @@ footer.container-fluid {
 #tabs_scroll {
   grid-row: 2; /* Second row */
   position: sticky;
-  top: 0;
   z-index: 10;
   /* overflow-x:auto; */
   overflow-y: hidden;
-  top: -10px;
+  top: 0;
   background-color: #fff;
   transform: rotateX(180deg); 
   margin-right: 15px;

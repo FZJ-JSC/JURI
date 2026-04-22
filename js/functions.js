@@ -129,23 +129,26 @@ function resize() {
     view.footersize = max_footer_height;
   }
 
-  // Get the height of the new wrapper 
-  // (outerHeight(true) automatically includes that margin-top)
-  const topInfoHeight = $("#top_info_area").outerHeight(true) || 0;
-  
   // Safely get the heights of the other layout elements
+  // outerHeight(true) includes margins, outerHeight() does not include margins
+  const topInfoHeight = $("#top_info_area").outerHeight(true) || 0;
   const headerHeight = $("#header").outerHeight() || 0;
   const footerHeight = $("footer").outerHeight() || 0;
-  const tabsHeight = $("#tabs_scroll").outerHeight() || 0;
+  const tabsHeight = $("#tabs_scroll").outerHeight(true) || 0; // Changed to (true) to include potential margin
 
-  // Calculate actual available space, subtracting the info boxes (and margin) here
-  const availableHeight = $(window).height() - headerHeight - tabsHeight - footerHeight - topInfoHeight - 10;
+  // Dynamically get the top and bottom margins of main_content
+  const mainMarginTop = parseInt($("#main_content").css("margin-top"), 10) || 0;
+  const mainMarginBottom = parseInt($("#main_content").css("margin-bottom"), 10) || 0;
+  const mainContentMargins = mainMarginTop + mainMarginBottom;
+
+  // Calculate actual available space 
+  const availableHeight = $(window).height() - headerHeight - tabsHeight - footerHeight - topInfoHeight - mainContentMargins;
   
   // Set the correct height to main content
   $("#main_content").height(availableHeight);
-  $("#pageWrapper").height(availableHeight +10 );
+  // $("#pageWrapper").height(availableHeight+mainContentMargins);
 
-  // Adjust table sticky headers (Logic remains the same, just slightly cleaned up)
+  // Adjust table sticky headers
   const firstTrHeight = $("#main_content thead tr:first").height() || 0;
   $("#main_content thead tr.filter th").css("top", firstTrHeight);
   
@@ -154,8 +157,6 @@ function resize() {
 
   // Resize myGrid
   if ($("#myGrid").length) {
-    // Because we correctly subtracted the info boxes from availableHeight above,
-    // we don't need the crazy inline math anymore. myGrid just fills the space!
     $("#myGrid").height(availableHeight);
     
     if (typeof view !== 'undefined' && view.gridApi) {
@@ -163,9 +164,10 @@ function resize() {
     }
   }
 
-
-  for (let i = 0; i < view.resize_function.length; ++i) {
-    view.resize_function[i]();
+  if (typeof view !== 'undefined' && view.resize_function) {
+    for (let i = 0; i < view.resize_function.length; ++i) {
+      view.resize_function[i]();
+    }
   }
 }
 
