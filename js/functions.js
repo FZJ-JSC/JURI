@@ -130,7 +130,7 @@ function resize() {
   }
 
   // Get the height of the new wrapper 
-  // (outerHeight(true) automatically includes that margin-top: 4px you were trying to manually add before)
+  // (outerHeight(true) automatically includes that margin-top)
   const topInfoHeight = $("#top_info_area").outerHeight(true) || 0;
   
   // Safely get the heights of the other layout elements
@@ -138,13 +138,12 @@ function resize() {
   const footerHeight = $("footer").outerHeight() || 0;
   const tabsHeight = $("#tabs_scroll").outerHeight() || 0;
 
-  // Calculate actual available space 
-  // Now we actually subtract the info boxes here, exactly as your original comment intended!
+  // Calculate actual available space, subtracting the info boxes (and margin) here
   const availableHeight = $(window).height() - headerHeight - tabsHeight - footerHeight - topInfoHeight - 10;
   
   // Set the correct height to main content
   $("#main_content").height(availableHeight);
-  $('#pageWrapper').height(availableHeight +10 );
+  $("#pageWrapper").height(availableHeight +10 );
 
   // Adjust table sticky headers (Logic remains the same, just slightly cleaned up)
   const firstTrHeight = $("#main_content thead tr:first").height() || 0;
