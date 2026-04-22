@@ -113,14 +113,32 @@ View.prototype.show = function () {
   }));
 
   self.deferrer.push(
-    $.getJSON("juri_config/ui-config.json", function (uiJson) {
-      self.uiConfig = uiJson || {};
-    }).fail(function() {
-      // Fallback to json/ui-config.json if juri_config/ui-config.json doesn't exist
-      $.getJSON("json/ui-config.json", function (uiJson) {
-        self.uiConfig = uiJson || {};
-      });
-    })
+    $.getJSON("ui-config.json")
+      .then(function (uiJson) {
+        uiJson = uiJson || {};
+        // Check if there is an include key pointing to another file
+        if (uiJson.include) {
+          // Return the inner promise so the deferrer waits for this second request
+          return $.getJSON(uiJson.include)
+            .then(function (includedJson) {
+              // Merge includedJson into uiJson. 
+              // Keys in includedJson will overwrite keys in uiJson.
+              self.uiConfig = Object.assign({}, uiJson, includedJson || {});
+            })
+            .catch(function () {
+              // Fallback to the original config if the included file fails to load
+              console.warn("Failed to load included UI config: " + uiJson.include);
+              self.uiConfig = uiJson;
+            });
+        } else {
+          // No include key, just use the loaded config
+          self.uiConfig = uiJson;
+        }
+      })
+      .catch(function () {
+        // Fallback to empty object if json/ui-config.json doesn't exist or is invalid
+        self.uiConfig = {};
+      })
   );
 
   // When ref and config json files have been loaded, proceed with the loading/configuration
@@ -309,7 +327,7 @@ View.prototype.show = function () {
             }
             /*NA edit: adding chatbot button & functionality */
             if (self.navdata) {   // only after successful login
-              if (self.uiConfig && self.uiConfig.llviewai.enableChatBot) { addChatbotLogic(self); }
+              if (self.uiConfig?.llviewai?.enableChatBot) { addChatbotLogic(self); }
             }
             /*NA edit ends*/
 
@@ -576,6 +594,7 @@ View.prototype.get_system_status = async function (statusfile,systemname) {
     'JURECA-DC': 'JURECA DC',
     'JURECA': 'JURECA DC',
     'JUWELS BOOSTER': 'JUWELS Booster',
+    'JUPITER': 'JUPITER',
     'JUWELS': 'JUWELS Cluster',
     'JEDI': 'JEDI',
     'DEEP': 'DEEP',
@@ -2501,7 +2520,7 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             default_colorscale: self.default_colorscale,
             url_data: self.url_data,
             used_colorscales: self.used_colorscales, // cached colorscales
-            aiReportEnabled: self.uiConfig && self.uiConfig.llviewai.enableAIReports? true : false,
+            aiReportEnabled: self.uiConfig?.llviewai?.enableAIReports ?? false,
             // Add any other properties from `self` that other helpers might need here.
           };
 

@@ -1152,40 +1152,40 @@ footer.container-fluid {
 }
 
 #chatbotMessages{
-    flex:1 1 0;                 /* grow‑shrink‑basis = fill what’s left */
-    overflow-y:auto;           /* scroll only this part */
-    min-height:0;               /* needed for flex children */
+  flex:1 1 0;                 /* grow‑shrink‑basis = fill what’s left */
+  overflow-y:auto;           /* scroll only this part */
+  min-height:0;               /* needed for flex children */
 }
 
 #pageWrapper{
-    display:flex;
-    position:relative;
-    min-height:calc(100vh-56px-40px);
-   --sidebar-width:0px;
+  display:flex;
+  position:relative;
+  --sidebar-width:0px;
+  height:100%;
 }
 #pageWrapper>main{
-    /*flex:1 1 0;*/
-    flex:1;
-    min-width:10px;
-    overflow:auto;
-    height:100%;
+  /*flex:1 1 0;*/
+  flex:1;
+  min-width:10px;
+  overflow:auto;
+  height:100%;
 }
 #main_content{
-    width:100%;
-    box-sizing:border-box;
+  width:100%;
+  box-sizing:border-box;
 }
 .chat-sidebar{
-    width:var(--sidebar-width);
-    max-width:var(--sidebar-width);
-    overflow:hidden;
-    background:#fff;
-    border-left:1px solid #ddd;
-    display:flex;
-    flex-direction:column;
-    transition:width .3s ease,max-width .3s ease;
-    order:2;
-    z-index:50;
-    border-left: 5px solid var(--fzj-color-blue);
+  width:var(--sidebar-width);
+  max-width:var(--sidebar-width);
+  overflow:hidden;
+  background:#fff;
+  border-left:1px solid #ddd;
+  display:flex;
+  flex-direction:column;
+  transition:width .3s ease,max-width .3s ease;
+  order:2;
+  z-index:50;
+  border-left: 5px solid var(--fzj-color-blue);
 }
 
 /*body.no-select #chatResizer{pointer-events:auto;}*/
@@ -1197,19 +1197,18 @@ footer.container-fluid {
 #attachContainer.active{background-color:var(--fzj-color-green); color:#3b3b3b; font-style: normal;}
 
 /*NA: style for the chatbot button*/ 
- #chatbotBtn {
-    position:absolute;
-    top:50%;
-    transform:translateY(-50%);
-    /*bottom:30em;*/
-    right:var(--sidebar-width);
-    z-index:40;
-    background: var(--fzj-color-blue); color: #fff; border:none; border-radius:5%;
-    width:1.8rem; height:6rem; font-size:1.5rem; cursor:pointer;
-    transition:right .3s ease,max-width .3s ease;
-    border-radius:15px 0 0 15px;
-
- }
+#chatbotBtn {
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  /*bottom:30em;*/
+  right:var(--sidebar-width);
+  z-index:40;
+  background: var(--fzj-color-blue); color: #fff; border:none; border-radius:5%;
+  width:1.8rem; height:6rem; font-size:1.5rem; cursor:pointer;
+  transition:right .3s ease,max-width .3s ease;
+  border-radius:15px 0 0 15px;
+}
 
 /*NA: styles for the chatbotBtn start*/
 .ai-chat-btn {
