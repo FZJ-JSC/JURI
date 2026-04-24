@@ -146,15 +146,23 @@ async function generate_ai_report(pdfilepath, userPrompt = '') {
     body: form
   });
 
+
+  const loadingDiv = newWindow.document.querySelector('.loading');
   if (!resp.ok) {
     console.error('API Error:', resp.status, resp.statusText);
+    if (loadingDiv) loadingDiv.remove();
+      contentDiv.innerHTML = `<div style="color:red; font-weight:bold;"> Something went wrong 
+      while generating the AI report. Please try again later. <br/><br/>
+      If the problem persists, contact 
+      <a href="mailto:${view.uiConfig.llviewai.aiReportSupportEmail}">${view.uiConfig.llviewai.aiReportSupportEmail}</a> for assistance. 
+      </div>`;
     throw new Error(`API Error: ${resp.statusText}`);
   }
 
   const jsonResult = await resp.json();
   console.log('API response:', jsonResult);
 
-  const loadingDiv = newWindow.document.querySelector('.loading');
+  //const loadingDiv = newWindow.document.querySelector('.loading');
   if (loadingDiv) loadingDiv.remove();
   contentDiv.innerHTML = `<pre>${jsonResult.content}</pre>`;
   //const content = jsonResult.choices[0].message.content;
@@ -351,7 +359,11 @@ async function sendChat() {
     });
     console.log("API Reponse:", resp);
 
-    if (!resp.ok) throw new Error('Network response was not ok');
+    if (!resp.ok){ 
+      $msgContainer.append($('<div>').addClass('bot-message').html(`<span style="color:red; font-weight:bold;">Something went wrong while
+         communicating with the chatbot. Please try again later.<br/><br/> </span>`));
+      throw new Error('Network response was not ok');
+    }
     const jsonRes = await resp.json();
     // Append the reply to the messages container
     $msgContainer.append($('<div>').addClass('bot-message').html(markdownToHtml(jsonRes.content)));

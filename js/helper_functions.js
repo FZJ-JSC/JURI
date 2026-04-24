@@ -257,7 +257,7 @@ function create_report_link(params,type,project,user) {
     let url = `data/${((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')}projects/${projectname}/${username}/${((typeof filename !== 'undefined')?filename:'#')}`;
     if (type == "aireport") {
       //result = `<a href="#" onclick="generate_ai_report('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
-      if(view.uiConfig && view.uiConfig.llviewai.enableAIReports){
+      if(view.uiConfig?.llviewai?.enableAIReports){
         result = `<a href="#" onclick="showAiReportDialog('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
       }
       else{
