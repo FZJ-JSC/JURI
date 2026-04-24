@@ -462,7 +462,7 @@ Handlebars.registerHelper('aireport_link', function(grp,user,filename) {
   let result = "";
   if ( (filename) && (filename!='-') ) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
-    if(view.uiConfig && view.uiConfig.llviewai.enableAIReports){
+    if(view.uiConfig?.llviewai?.enableAIReports){
       result = `<a href=# onclick="showAiReportDialog('${url}'); return false;" ><span class="fa fa-lightbulb-o" title="Generate AI Report" aria-label="Generate AI Report"/></a>`;
     }
     else{
