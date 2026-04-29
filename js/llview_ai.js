@@ -149,7 +149,7 @@ async function generate_ai_report(pdfilepath, userPrompt = '') {
 
   const loadingDiv = newWindow.document.querySelector('.loading');
   if (!resp.ok) {
-    console.error('API Error:', resp.status, resp.statusText);
+    //console.error('API Error:', resp.status, resp.statusText);
     if (loadingDiv) loadingDiv.remove();
       contentDiv.innerHTML = `<div style="color:red; font-weight:bold;"> Something went wrong 
       while generating the AI report. Please try again later. <br/><br/>
@@ -160,7 +160,7 @@ async function generate_ai_report(pdfilepath, userPrompt = '') {
   }
 
   const jsonResult = await resp.json();
-  console.log('API response:', jsonResult);
+  //console.log('API response:', jsonResult);
 
   //const loadingDiv = newWindow.document.querySelector('.loading');
   if (loadingDiv) loadingDiv.remove();
@@ -306,7 +306,7 @@ async function generate_ai_report(pdfilepath, userPrompt = '') {
       if (pendingUrl) {
         const noteInput = document.getElementById('ai‑note');
         const note = noteInput ? noteInput.value.trim() : '';
-        console.log('User note:', note);
+        //console.log('User note:', note);
         // call the *original* function that actually produces the report
         generate_ai_report(pendingUrl, note);
       }
@@ -319,7 +319,7 @@ async function generate_ai_report(pdfilepath, userPrompt = '') {
 
 async function sendChat() {
   // Clear input and append user message to chat
-  console.log("Sending message...");
+  //console.log("Sending message...");
   const $input = $('#chatbotInput');
   const $msgContainer = $('#chatbotMessages');
   let message = $input.val().trim();
@@ -346,8 +346,12 @@ async function sendChat() {
     if(symb.hasClass('fa-check')) symb.addClass('fa-plus').removeClass('fa-check');
 
   }
-  console.log(`Sending message${extra}:`, message);
+  //console.log(`Sending message${extra}:`, message);
   const sysname = new URL(window.location.href).pathname.split('/')[1];
+
+  // Clear the input field
+  $input.val('');
+  $('#chatbotSendBtn').prop('disabled', !$input.val().trim());
 
   try {
     const resp = await fetch(`${api_url}/chat/chatbot?system=${sysname}`, {
@@ -357,7 +361,7 @@ async function sendChat() {
       },
       body: JSON.stringify({ messages: [{ role: "user", content: message }] })
     });
-    console.log("API Reponse:", resp);
+    //console.log("API Reponse:", resp);
 
     if (!resp.ok){ 
       $msgContainer.append($('<div>').addClass('bot-message').html(`<span style="color:red; font-weight:bold;">Something went wrong while
@@ -367,8 +371,6 @@ async function sendChat() {
     const jsonRes = await resp.json();
     // Append the reply to the messages container
     $msgContainer.append($('<div>').addClass('bot-message').html(markdownToHtml(jsonRes.content)));
-    // Clear the input field
-    $input.val('');
     // Scroll to bottom so newest reply is visible
     $msgContainer.scrollTop($msgContainer[0].scrollHeight);
   }
