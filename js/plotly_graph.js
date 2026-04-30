@@ -270,9 +270,6 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
     });
 };
 
-Math.sum = (...a) => Array.prototype.reduce.call(a, (a, b) => a + b)
-Math.avg = (...a) => Math.sum(...a) / a.length;
-Math.last = (...a) => a.at(-1);
 
 /* This function checks if "show_pattern" is given inside argument 'object'. If it is not
 given, it returns true. If it is given, it returns true when the given pattern matches
@@ -922,17 +919,18 @@ PlotlyGraph.prototype.plot = function (params) {
         } // End of scatter plots configurations
 
         // Looping through different annotations that contain substitution keywords
-        Object.keys(matches).forEach((key) => {
-          new_annotation[key] = new_annotation[key] + layout.annotations[key].text
-          // Looping through keywords and substituting each
-          if (matches[key]) {
-            matches[key].forEach((match) => {
-              new_annotation[key] = new_annotation[key].replace("#" + match + "#", Math[match](...trace.y).toFixed(1))
-            });
-            // Adding annotation for this trace and going to the next line for possible values of other traces
-            new_annotation[key] = new_annotation[key] + "<br>"
-          }
-        });
+        // These annotations are substituted per trace (that is, each trace will give a new line)
+        // Object.keys(matches).forEach((key) => {
+        //   new_annotation[key] = new_annotation[key] + layout.annotations[key].text
+        //   // Looping through keywords and substituting each
+        //   if (matches[key]) {
+        //     matches[key].forEach((match) => {
+        //       new_annotation[key] = new_annotation[key].replace("#" + match + "#", Math[match](...trace.y).toFixed(1))
+        //     });
+        //     // Adding annotation for this trace and going to the next line for possible values of other traces
+        //     new_annotation[key] = new_annotation[key] + "<br>"
+        //   }
+        // });
 
         // Getting min and max values of y for each y axis to adjust ranges below
         // (min and max for x are adjusted below)
@@ -951,6 +949,32 @@ PlotlyGraph.prototype.plot = function (params) {
         delete layout.xaxis.tick0;
       }
     }
+
+    // Looping through different annotations that contain substitution keywords
+    // These annotations are globally substituted (one single line per graph)
+    Object.keys(matches).forEach((key) => {
+      new_annotation[key] = layout.annotations[key].text;
+
+      if (matches[key]) {
+        // Substitution is skipped entirely when no trace contains data,
+        // leaving all placeholders visible in the rendered annotation.
+        const hasData = traces.some(t => t.y?.length > 0);
+        if (!hasData) return;
+
+        matches[key].forEach((match) => {
+          const value = Math[match](...traces);
+
+          // The placeholder is left intact when a specific value is unavailable,
+          // making the missing value visible in the rendered annotation.
+          if (value !== undefined) {
+            const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
+            new_annotation[key] = new_annotation[key].replace("#" + match + "#", formatted);
+          }
+        });
+
+        new_annotation[key] += "<br>";
+      }
+    });
 
     // Prepends all min/max background areas so they are drawn behind the main lines
     traces = [...backgroundTraces, ...traces];
@@ -1935,3 +1959,190 @@ function hide_hover(graphs) {
     Plotly.Fx.hover(graph.id, [{}]);
   });
 }
+
+
+//=== Functions to handle Math for annotations ===
+
+// References to native Math methods are preserved before overriding,
+// so the original behaviour is accessible internally.
+const _nativeMin = Math.min;
+const _nativeMax = Math.max;
+
+/**
+ * Determines whether the spread arguments represent an array of trace objects
+ * rather than plain numeric values. A trace is identified by the presence of
+ * a `.y` array on the first argument.
+ *
+ * @param {any[]} args - Arguments passed to a Math extension function.
+ * @returns {boolean}
+ */
+function _isTraces(args) {
+  return args.length > 0
+    && args[0] !== null
+    && typeof args[0] === 'object'
+    && Array.isArray(args[0].y);
+}
+
+/**
+ * Collects all y-values from every trace into a single flat array.
+ * null is returned when no values are found, signalling that no data
+ * is available for computation.
+ *
+ * @param {Object[]} traces - Array of Plotly trace objects.
+ * @returns {number[]|null}
+ */
+function _allY(traces) {
+  const vals = traces.flatMap(t => t.y ?? []);
+  return vals.length > 0 ? vals : null;
+}
+
+/**
+ * Collects the last y-value from each trace that contains data.
+ * null is returned when no non-empty trace is found.
+ *
+ * @param {Object[]} traces - Array of Plotly trace objects.
+ * @returns {number[]|null}
+ */
+function _lastValues(traces) {
+  const vals = traces
+    .filter(t => t.y?.length > 0)
+    .map(t => t.y.at(-1));
+  return vals.length > 0 ? vals : null;
+}
+
+// --- Math extensions ---
+// Each function accepts either plain numeric arguments (existing behaviour)
+// or an array of trace objects spread as arguments (multi-trace behaviour).
+// undefined is returned whenever no data is available, so callers can
+// distinguish a missing value from a computed zero.
+
+/**
+ * Returns the minimum value across all arguments or all trace y-values.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.min = (...a) => {
+  if (_isTraces(a)) {
+    const y = _allY(a);
+    return y ? _nativeMin(...y) : undefined;
+  }
+  return _nativeMin(...a);
+};
+
+/**
+ * Returns the maximum value across all arguments or all trace y-values.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.max = (...a) => {
+  if (_isTraces(a)) {
+    const y = _allY(a);
+    return y ? _nativeMax(...y) : undefined;
+  }
+  return _nativeMax(...a);
+};
+
+/**
+ * Returns the sum of all arguments or all trace y-values.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.sum = (...a) => {
+  if (_isTraces(a)) {
+    const y = _allY(a);
+    return y ? y.reduce((acc, b) => acc + b, 0) : undefined;
+  }
+  return a.reduce((acc, b) => acc + b, 0);
+};
+
+/**
+ * Returns the arithmetic mean of all arguments or all trace y-values.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.avg = (...a) => {
+  if (_isTraces(a)) {
+    const y = _allY(a);
+    return y ? y.reduce((acc, b) => acc + b, 0) / y.length : undefined;
+  }
+  return a.reduce((acc, b) => acc + b, 0) / a.length;
+};
+
+/**
+ * Returns the last value in the argument list or, for multiple traces,
+ * the last y-value of the last non-empty trace. When a single unambiguous
+ * last value is needed across multiple traces, last_sum / last_avg /
+ * last_min / last_max should be preferred instead.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.last = (...a) => {
+  if (_isTraces(a)) {
+    const lasts = _lastValues(a);
+    return lasts ? lasts.at(-1) : undefined;
+  }
+  return a.at(-1);
+};
+
+/**
+ * Returns the sum of the last y-value from each trace.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.last_sum = (...a) => {
+  const lasts = _isTraces(a) ? _lastValues(a) : [a.at(-1)];
+  return lasts ? lasts.reduce((acc, b) => acc + b, 0) : undefined;
+};
+
+/**
+ * Returns the arithmetic mean of the last y-value from each trace.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.last_avg = (...a) => {
+  const lasts = _isTraces(a) ? _lastValues(a) : [a.at(-1)];
+  return lasts ? lasts.reduce((acc, b) => acc + b, 0) / lasts.length : undefined;
+};
+
+/**
+ * Returns the minimum of the last y-value from each trace.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.last_min = (...a) => {
+  const lasts = _isTraces(a) ? _lastValues(a) : [a.at(-1)];
+  return lasts ? _nativeMin(...lasts) : undefined;
+};
+
+/**
+ * Returns the maximum of the last y-value from each trace.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.last_max = (...a) => {
+  const lasts = _isTraces(a) ? _lastValues(a) : [a.at(-1)];
+  return lasts ? _nativeMax(...lasts) : undefined;
+};
+
+/**
+ * Returns the total number of y-values across all arguments or all trace y-values.
+ *
+ * @param {...(number|Object)} a - Numbers or Plotly trace objects.
+ * @returns {number|undefined}
+ */
+Math.count = (...a) => {
+  if (_isTraces(a)) {
+    const y = _allY(a);
+    return y ? y.length : undefined;
+  }
+  return a.length;
+};
