@@ -328,7 +328,7 @@ async function sendChat() {
   $msgContainer.append($('<div>').addClass('user-message').text(message));
   $input.val('');
   $msgContainer.scrollTop($msgContainer[0].scrollHeight);
-  const chatbot_api_url = self.uiConfig && self.uiConfig.llviewai.chatBotEndpoint ? self.uiConfig.llviewai.chatBotEndpoint : '/api/llview-ai';
+  const chatbot_api_url = view.uiConfig && view.uiConfig.llviewai.chatBotEndpoint ? view.uiConfig.llviewai.chatBotEndpoint : '/api/llview-ai';
   const api_url = chatbot_api_url.replace(/\/+$/, ''); // remove trailing slash if any
   let extra = '';
   if (!message) return; // ignore empty messages
@@ -337,9 +337,25 @@ async function sendChat() {
     const csvC = get_table_data();
 
     if (csvC) {
-      message += `\n\n[Attached CSV data]\n${csvC}`;
+      const maxRows = view.uiConfig?.llviewai?.TableAttachmentMaxRows? view.uiConfig.llviewai.TableAttachmentMaxRows : 500;
+      const visibleLength = get_visible_table_length();
+      if (visibleLength > maxRows) {
+        alert(`The table contains ${visibleLength} rows. To ensure optimal performance, only the first ${maxRows} rows will be attached to the message.`);
+        const truncated = csvC.split('\n').slice(0, 1 + maxRows).join('\n'); // keep header + maxRows data rows
+        $msgContainer.append($('<div>').addClass('bot-message').html(`
+          <span style="color:orange; font-weight:bold;">Warning: 
+          Attached table is very large, only the
+          first ${maxRows} rows will be included which might lead to incomplete analysis. 
+          Please filter the table to reduce the number of rows below ${maxRows}. <br/><br/> </span>`));
+        message += `\n\n[Attached CSV data]\n${truncated}`;
+      }
+      else{
+        message += `\n\n[Attached CSV data]\n${csvC}`;
+      }
+
     } else {
       message += `\n\n[Attachment requested but no grid data available]`;
+      $msgContainer.append($('<div>').addClass('bot-message').html(`<span style="color:orange; font-weight:bold;">Warning: Attachment requested but no tabular data available.<br/><br/> </span>`));
     }
     extra = ' (with attachment)';
     attach.removeClass('active');
@@ -378,6 +394,7 @@ async function sendChat() {
 }
 
 function addChatbotHtml(self) {
+  const maxRows = self.uiConfig?.llviewai?.TableAttachmentMaxRows || 500;
   const chatbothtml = `
      <aside id="chatSidebar" class="chat-sidebar">
       <div class="chat-header d-flex justify-content-between align-items-center p-2 text-white"
@@ -397,7 +414,10 @@ function addChatbotHtml(self) {
         <div id="chatbotMessages"
              class="flex-grow-1 overflow-auto p-3"
              style="background:#f8f9fa;"></div>`+ (self.uiConfig && self.uiConfig.llviewai.enableTableAttachment? `
-  <div id="attachContainer" class="d-flex align-items-center"> 
+  <div id="attachContainer" class="d-flex align-items-center" 
+    title="Attach the currently viewed table data to the message.
+    Filter the table to reduce the number of rows below ${maxRows}." style="cursor:pointer; padding:5px;
+    "> 
     <span id="attachSymbol" class="fa fa-plus" style="font-size:1.2rem; margin-right:5px;"></span>
     <span id="attachLabel"> Attach Viewed Table Data</span>
   </div>` : ``) + `

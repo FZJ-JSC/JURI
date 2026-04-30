@@ -163,6 +163,16 @@ function get_table_data() {
   return "";
 }
 
+function get_visible_table_length() {
+  if ($("#main_content table").length) {
+    const $tbl = $("#main_content table");
+    return $tbl.find("tbody tr:visible").length
+  } else if (view.gridApi) {
+    return view.gridApi.getDisplayedRowCount();
+  }
+  return 0;
+}
+
 function enable_table_download() {
   if (! $("#download_link").length) {
     let download_link = $("<a>").attr("aria-label","Download as CSV").attr("id","download_link").append($("<span>").addClass("fa fa-download").attr("title","Download as CSV")).click(function(){download_table(); return false;});
