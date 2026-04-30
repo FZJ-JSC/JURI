@@ -368,6 +368,8 @@ async function sendChat() {
   // Clear the input field
   $input.val('');
   $('#chatbotSendBtn').prop('disabled', !$input.val().trim());
+  const $mainMsgRef = $('<div>').addClass('bot-message').appendTo($msgContainer);
+  $mainMsgRef.html(`<span><span class="fa fa-spinner fa-spin"></span> Waiting for response...</span>`);
 
   try {
     const resp = await fetch(`${api_url}/chat/chatbot?system=${sysname}`, {
@@ -380,13 +382,13 @@ async function sendChat() {
     //console.log("API Reponse:", resp);
 
     if (!resp.ok){ 
-      $msgContainer.append($('<div>').addClass('bot-message').html(`<span style="color:red; font-weight:bold;">Something went wrong while
-         communicating with the chatbot. Please try again later.<br/><br/> </span>`));
+      $mainMsgRef.html(`<span style="color:red; font-weight:bold;">Something went wrong while
+         communicating with the chatbot. Please try again later.<br/><br/> </span>`);
       throw new Error('Network response was not ok');
     }
     const jsonRes = await resp.json();
     // Append the reply to the messages container
-    $msgContainer.append($('<div>').addClass('bot-message').html(markdownToHtml(jsonRes.content)));
+    $mainMsgRef.html(markdownToHtml(jsonRes.content));
     // Scroll to bottom so newest reply is visible
     $msgContainer.scrollTop($msgContainer[0].scrollHeight);
   }
