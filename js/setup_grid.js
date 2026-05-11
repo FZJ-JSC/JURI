@@ -100,6 +100,9 @@ function init_grid() {
       filter: 'agTextColumnFilter',       // Default filter by text
       resizable: true,                    // Allow resize of this column
       floatingFilter: true,               // Activate the floating filter
+      // Ensures the menu icon natively resides in the header instead of beside the floating text box
+      suppressFloatingFilterButton: true, 
+      suppressHeaderMenuButton: false,    
       cellClass: 'text-center',           // Default class of cells
       flex: 1,                            // Set flex cells that will fill the space
       filterParams: {
