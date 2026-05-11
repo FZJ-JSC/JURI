@@ -13,20 +13,7 @@
   line-height: inherit !important;
 }
 
-.ag-theme-balham {
-  /* --ag-header-height: 30px; */
-  --ag-cell-horizontal-padding: 1px;
-  --ag-header-foreground-color: white;
-  --ag-header-background-color: var(--fzj-color-blue);
-  --ag-selected-row-background-color: var(--fzj-color-yellow);
-  --ag-odd-row-background-color: var(--fzj-color-gray);
-  /* --ag-header-cell-hover-foreground-color: black; */
-  /* --ag-header-cell-hover-background-color: var(--fzj-color-lightblue); */
-  /* --ag-header-cell-moving-background-color: var(--fzj-color-red); */
-}
-
-
-.ag-theme-balham .ag-ltr .ag-cell {
+.ag-ltr .ag-cell {
   /* display: table; */
   border-right: 1px solid rgba(189, 195, 199, 0.58);
 }
@@ -50,6 +37,7 @@
   vertical-align: middle;
 }
 
+
 /* .ag-cell {
   height: 100%;
   display: grid;
@@ -61,16 +49,16 @@
   /* white-space: nowrap;
   text-wrap: wrap; */
 
-.ag-theme-balham .ag-header {
+.ag-header {
   --ag-icon-font-color: white;
   /* font-family: cursive; */
 }
-/* .ag-theme-balham .ag-header-group-cell {
+/* .ag-header-group-cell {
   font-weight: bold;
   font-size: 22px;
 } */
 
-.ag-theme-balham .ag-header-cell {
+.ag-header-cell {
   font-weight: bold;
   /* font-size: 18px; */
 }
@@ -89,12 +77,54 @@
 }
 
 .ag-floating-filter-input {
-  color: black;
-  /* font-family: cursive; */
+  position: relative;
+  overflow: visible;
 }
 
+/* The header filter button is hidden by default and revealed only on hover.
+   When a filter is active the button remains visible without requiring hover. */
+.ag-header-cell-filter-button {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.ag-header-cell:hover .ag-header-cell-filter-button,
+.ag-header-cell-filtered .ag-header-cell-filter-button {
+  opacity: 1;
+  pointer-events: auto;
+}
 
-.ag-header-row-column-filter  {
+/* Right padding is added to prevent filter text from sliding under the × button */
+.ag-floating-filter .ag-input-field-input {
+  padding-right: 16px !important;
+}
+
+/* The × button is overlaid on the right side of the floating filter input */
+.floating-filter-clear-btn {
+  display: none;
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0 2px;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--fzj-color-blue);
+  opacity: 0.6;
+  z-index: 2;
+}
+.floating-filter-clear-btn:hover {
+  opacity: 1;
+}
+.floating-filter-clear-btn.is-active {
+  display: block;
+}
+
+.ag-header-row-filter  {
   background-color: var(--fzj-color-gray);   
 }
 

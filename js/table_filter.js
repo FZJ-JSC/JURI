@@ -327,7 +327,10 @@ function clear_filter(column) {
                                   "quickFilterText",
                                   document.getElementById("filter-text-box").value,
                                 );
+      // Clearing table from options
       $('#optionstable input').prop('checked', false);
+      // Clearing the buttons (C/F/R)
+      $(".filter-toggle > button[id^=filter_]").removeClass('active')
       return;
     }
     let group = view.gridApi.getColumnGroup(column);

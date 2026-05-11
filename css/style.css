@@ -52,7 +52,7 @@ a {
   padding: 0;   
   height: 37px;
   /* Forcing menu to show up above loading screen, but below alert */
-  z-index: 1950; 
+  z-index: 1050; 
 }
 
 #institution_logo {
@@ -302,7 +302,7 @@ a {
   margin-bottom: 15px;
   position: fixed;
   top: 0;
-  z-index: 2000;
+  z-index: 1060;
   width: 100vw;
   border-radius: 0rem 0rem 0.3rem 0.3rem;
 }
@@ -628,7 +628,7 @@ main:has(> #tabs_scroll ~ #main_content_old_temp) > #main_content_old_temp {
   bottom: 0;
   background-color: #fff;
   color: var(--fzj-color-blue);
-  z-index: 1900;
+  z-index: 1040;
   text-align: center;
   font-size: 1.2rem;
   vertical-align: middle;

@@ -11,7 +11,29 @@
 */
 
 function init_grid() {
+
+  /**
+   * The Balham theme is configured here using the Theming API (starting on ag-grid v35).
+   * CSS variable references are passed as strings so custom palette
+   * variables defined elsewhere in the application are respected.
+   * The --ag-header-foreground-color property is renamed headerTextColor
+   * in the new API 
+   * (see: https://www.ag-grid.com/javascript-data-grid/theming-migration/#properties-with-a-direct-replacement).
+   */
+  const myTheme = agGrid.themeBalham.withParams({
+    cellHorizontalPadding: 1,
+    headerTextColor: 'white',
+    headerBackgroundColor: 'var(--fzj-color-blue)',
+    selectedRowBackgroundColor: 'var(--fzj-color-yellow)',
+    oddRowBackgroundColor: 'var(--fzj-color-gray)',
+    headerRowBorder: { style: 'solid', width: 1, color: 'var(--fzj-color-gray)' },
+    headerColumnBorder: { style: 'solid', width: 1, color: 'var(--fzj-color-gray)' },
+    pinnedColumnBorder: { style: 'solid', width: 1, color: 'var(--fzj-color-gray)' },
+  });
+
   const gridOptions = {
+    theme: myTheme,
+    // columnMenu: 'legacy',
     rowData: view.contexts[view.page_context],
     columnDefs: view.columnDefs,
     initialState: view.gridState[view.clicked_page]??null, // Recovering state, if existing
@@ -78,8 +100,6 @@ function init_grid() {
       filter: 'agTextColumnFilter',       // Default filter by text
       resizable: true,                    // Allow resize of this column
       floatingFilter: true,               // Activate the floating filter
-      suppressFloatingFilterButton: true, // Hide the filter button beside the floating filter
-      suppressHeaderMenuButton:false,     // Show (false) or hide (true) the filter menu from the header
       cellClass: 'text-center',           // Default class of cells
       flex: 1,                            // Set flex cells that will fill the space
       filterParams: {
@@ -116,31 +136,34 @@ function init_grid() {
     // NOTE: The autoSizeStrategy is commented out, as it was "overwriting" the manual resizing done in resizeGrid()
     // autoSizeStrategy: {                 // Automatically resize cells...
     //   type: 'fitCellContents'           // ...to fit contents
-    //   // type: 'fitGridWidth',             // ...to fit GridWidth
+    //   // type: 'fitGridWidth',           // ...to fit GridWidth
     //   // defaultMinWidth: 100
     // },
 
-    // suppressColumnVirtualisation: true, // Supress column virtualisation to take into account non-visible columns in resizing columns, for example
-    // suppressRowVirtualisation: true, // Supress row virtualisation to take into account non-visible rows in resizing columns, for example
-    headerHeight: 25,                   // Height of header row
-    floatingFiltersHeight: 25,          // Header of floating filter row
-    rowHeight: 25,                      // Default height of rows
-    rowSelection: 'single',             // Select the entire row when clicking (a single one is allowed to be selected)
-    suppressRowClickSelection: view.footer_graph_config?false:true, // Disable row selection when there's no footer
-    rowMultiSelectWithClick: true,      // Allow row de-selection
-    onRowSelected: onRowSelected,       // Function to run when a row is selected
-    onModelUpdated: onChange,           // To run when displayed rows have changed. Triggered after sort, filter or tree expand / collapse events.
+    // suppressColumnVirtualisation: true,  // Supress column virtualisation to take into account non-visible columns in resizing columns, for example
+    // suppressRowVirtualisation: true,     // Supress row virtualisation to take into account non-visible rows in resizing columns, for example
+    headerHeight: 25,                       // Height of header row
+    floatingFiltersHeight: 25,              // Header of floating filter row
+    rowHeight: 25,                          // Default height of rows
+    rowSelection: { 
+      mode: 'singleRow',                    // Select the entire row when clicking (a single one is allowed to be selected)
+      enableClickSelection: view.footer_graph_config?true:false, // Enable row selection when there's a footer
+      enableSelectionWithoutKeys: true,     // Allow row de-selection
+      checkboxes: false,                    // Configure where checkboxes are displayed.
+    },
+    onRowSelected: onRowSelected,           // Function to run when a row is selected
+    onModelUpdated: onChange,               // To run when displayed rows have changed. Triggered after sort, filter or tree expand / collapse events.
     navigateToNextCell: navigateToNextCell, // To navigate using arrow keys
-    onFilterChanged: onFilterChanged,   // To run after filtering 
-    onSortChanged: onSortChanged,       // To run after sorting
-    onVirtualColumnsChanged: resizeGrid,  // To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
-    onColumnVisible: resizeGrid,          // To run when a column, or group of columns, was hidden / shown.
-    onColumnGroupOpened: resizeGrid,      // A column group was opened / closed.
-    // onFirstDataRendered: onFirstData,   // Fired the first time data is rendered into the grid. 
-    // onGridReady: onGridReady,           // When the grid is ready
-    onStateUpdated: onStateUpdated,     // Grid state has been updated.
+    onFilterChanged: onFilterChanged,       // To run after filtering 
+    onSortChanged: onSortChanged,           // To run after sorting
+    onVirtualColumnsChanged: onStateUpdated,// To run when the list of rendered columns changed (only columns in the visible scrolled viewport are rendered by default).
+    onColumnVisible: onStateUpdated,        // To run when a column, or group of columns, was hidden / shown.
+    onColumnGroupOpened: resizeGrid,        // A column group was opened / closed.
+    onFirstDataRendered: onFirstData,       // Fired the first time data is rendered into the grid. 
+    // onGridReady: onGridReady,            // When the grid is ready
+    onStateUpdated: onStateUpdated,         // Grid state has been updated.
     // onRowDataUpdated: onGridReady,
-    // suppressCellFocus: true,            // Turn off cell focus (if turning on, can't move selection with arrows)
+    // suppressCellFocus: true,             // Turn off cell focus (if turning on, can't move selection with arrows)
     // onSelectionChanged: onSelectionChanged, // Function to run when selected row has changed
 
     // rowClassRules: {           // It is also possible to apply rules for entire rows
@@ -180,19 +203,6 @@ function init_grid() {
     view.add_filter_options($('#filter'),view.page_data.options);
 
   }
-  
-  // Adding a 'clear filter' for the given column
-  clear_column_filter_link = $('<a>').css('display','flex')
-                                     .attr('aria-label','Clear column filter')
-                                     .attr('data-toggle','tooltip')
-                                     .attr('data-original-title','Clear column filter')
-                                     .attr('title','')
-  clear_column_filter_link.click(function(e) {
-                                  e.stopPropagation(); // Stopping the event to propagate to the sort
-                                  // Gets the column Header from the sibling, transform to 'Name' and clear the filter of the specific column
-                                  clear_filter(view.headerToName[view.clicked_page][$(this).siblings( ".ag-header-cell-text" ).text()])
-                                });
-  $('.ag-filter-icon').wrap(clear_column_filter_link);
 
   // view.gridApi.setColumnsVisible(view.gridApi.getColumnGroup('GPU').getLeafColumns(), false)
   // const colDefs = view.gridApi.getColumnDefs();
@@ -218,7 +228,7 @@ function init_grid() {
 
 function onStateUpdated(event) {
   // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
-  if ((typeof event.sources == 'array')&&(!['scroll','filter','columnSizing'].includes(event.sources[0]))) {
+  if (Array.isArray(event.sources) && (!['scroll','filter','columnSizing'].includes(event.sources[0]))) {
     resizeGrid()
   }
 }
@@ -227,6 +237,7 @@ function onStateUpdated(event) {
  * Resize Grid according to the number of columns and window width
  */
 function resizeGrid() {
+  // console.log('resize1',(new Error()).stack?.split("\n")[1]?.trim().split(" ")[1]) 
   let content_width = $('#main_content').width();
   let num_displayed_cols = view.gridApi.getAllDisplayedColumns().length;
   if ((num_displayed_cols*93 > content_width)) {
@@ -235,6 +246,7 @@ function resizeGrid() {
     view.gridApi.sizeColumnsToFit();
     // view.gridApi.sizeColumnsToFit({defaultMinWidth: content_width/num_displayed_cols});
   }
+  init_floating_filter_clear_buttons();
 }
 
 function navigateToNextCell(params) {
@@ -291,6 +303,12 @@ function get_filter_string(value) {
 
 
 function onFilterChanged(event) {
+  update_floating_filter_clear_buttons();
+
+  if (!view.initial_data) {
+    return;
+  }
+
   view.initial_data.filter = {}
   Object.entries(view.gridApi.getFilterModel()).forEach(([key,value]) => {
     let filter;
@@ -351,9 +369,54 @@ function add_filter_placeholder() {
   });
 }
 
-// function onFirstData() {
-//   view.gridApi.resetColumnState();
-// }
+/**
+ * An × button is injected into each floating filter cell so active filters
+ * can be cleared without opening the filter popup. Columns that already
+ * have a button are skipped so the function is safe to call repeatedly.
+ */
+function init_floating_filter_clear_buttons() {
+  $('.ag-floating-filter').each(function() {
+    let container = $(this).find('.ag-floating-filter-input');
+    if (!container.length || container.find('.floating-filter-clear-btn').length > 0) return;
+
+    let colId = $(this).attr('col-id');
+    let btn = $('<button>')
+      .addClass('floating-filter-clear-btn')
+      .attr('aria-label', 'Clear filter')
+      .attr('data-toggle', 'tooltip')
+      .attr('data-placement', 'bottom')
+      .attr('data-original-title', 'Clear filter')
+      .html('&times;');
+
+    btn.on('click', function(e) {
+      e.stopPropagation();
+      $(this).tooltip('hide');
+      view.gridApi.setColumnFilterModel(colId, null).then(() => {
+        view.gridApi.onFilterChanged();
+      });
+    });
+
+    // The button is appended before tooltip init so Bootstrap reads the correct DOM state
+    $(this).append(btn);
+    btn.tooltip({ container: 'body' });
+  });
+}
+/**
+ * The × button visibility is synced with the current filter model.
+ * Columns with an active filter show the button; others hide it.
+ */
+function update_floating_filter_clear_buttons() {
+  let filterModel = view.gridApi.getFilterModel();
+  $('.ag-floating-filter').each(function() {
+    let colId = $(this).attr('col-id');
+    $(this).find('.floating-filter-clear-btn').toggleClass('is-active', !!filterModel[colId]);
+  });
+}
+
+function onFirstData() {
+  init_floating_filter_clear_buttons();
+  // view.gridApi.resetColumnState();
+}
 
 function onChange(event) {
   if (!view.gridApi) {
@@ -448,7 +511,6 @@ class NumberFloatingFilterComponent {
         params.parentFilterInstance(instance => {
           instance.onFloatingFilterChanged('greaterThanOrEqual', this.currentValue);
           this.eFilterInput.value = original;
-          if (typeof onFilterChanged === "function") onFilterChanged();
         });  
       } else if (this.eFilterInput.value.startsWith('<=')) {
         let original = this.eFilterInput.value;
@@ -458,7 +520,6 @@ class NumberFloatingFilterComponent {
         params.parentFilterInstance(instance => {
           instance.onFloatingFilterChanged('lessThanOrEqual', this.currentValue);
           this.eFilterInput.value = original;
-          if (typeof onFilterChanged === "function") onFilterChanged();
         });  
       } else if (this.eFilterInput.value.startsWith('>')) {
         // Storing original value to recover at the end (as onFloatingFilterChanged changes the value to the number)
@@ -473,8 +534,6 @@ class NumberFloatingFilterComponent {
           instance.onFloatingFilterChanged('greaterThan', this.currentValue);
           // Rewriting the original value with '>' sign
           this.eFilterInput.value = original
-          // Storing the values on the URL by applying the function onFilterChanged
-          onFilterChanged()
         });  
       } else if (this.eFilterInput.value.startsWith('<')) {
         // Storing original value to recover at the end (as onFloatingFilterChanged changes the value to the number)
@@ -489,24 +548,23 @@ class NumberFloatingFilterComponent {
           instance.onFloatingFilterChanged('lessThan', this.currentValue);
           // Rewriting the original value with '>' sign
           this.eFilterInput.value = original
-          // Storing the values on the URL by applying the function onFilterChanged
-          onFilterChanged()
         });  
-      } else if (this.eFilterInput.value.includes('-')) {
-        // Storing original value to recover at the end (as onFloatingFilterChanged changes the value to the number)
-        let original = this.eFilterInput.value
-        let [from, to] = this.eFilterInput.value.split('-')
-        if (!from || !to) {return;}
+      } else if (this.eFilterInput.value.includes(' - ')) {
+        let original = this.eFilterInput.value;
+        let [from, to] = this.eFilterInput.value.split(' - '); // Prevents breaking on negative numbers like -5
+        
+        if (!from || !to) return;
+        
         params.parentFilterInstance(instance => {
-          // instance.onFloatingFilterChanged('equals', this.currentValue);
-          instance.setTypeFromFloatingFilter('inRange');
-          instance.eValuesFrom[0].setValue(Number(from));
-          instance.eValuesTo[0].setValue(Number(to));
-          instance.onUiChanged(true);
-          // Rewriting the original value with '>' sign
-          this.eFilterInput.value = original
-          // Storing the values on the URL by applying the function onFilterChanged
-          onFilterChanged()
+          instance.setModel({
+            filterType: 'number',
+            type: 'inRange',
+            filter: Number(from),
+            filterTo: Number(to)
+          });
+          params.api.onFilterChanged();
+          
+          this.eFilterInput.value = original;
         });
       } else {
         this.currentValue = Number(this.eFilterInput.value);
@@ -575,7 +633,7 @@ class NumberFloatingFilterComponent {
       if (!(e instanceof ClipboardEvent)) { return; }
       const text = e.clipboardData?.getData('text');
 
-      if (text && text.split('').some((c) => {if (c instanceof string) !pattern.test(c)})) {
+      if (text && text.split('').some(c => !pattern.test(c))) {
         e.preventDefault();
       }
     });
@@ -591,9 +649,15 @@ class NumberFloatingFilterComponent {
  * This custom filter engine replaces the native filter entirely so 
  * timestamps can be strictly compared down to the second. A native-looking UI 
  * is rendered in the hamburger menu, utilizing exact ag-Grid DOM structures 
- * to inherit the active theme perfectly.
+ * to inherit the active theme.
  */
 class DateTimeParentFilter {
+  /**
+   * Initializes the filter configuration.
+   * 
+   * @param {Object} params - The ag-Grid filter params configuration object.
+   * @returns {void}
+   */
   init(params) {
     this.params = params;
     this.filterModel = null;
@@ -601,41 +665,88 @@ class DateTimeParentFilter {
   }
 
   /**
-   * A native-looking filter menu is constructed using identical ag-Grid markup
+   * Constructs the native-looking filter menu utilizing ag-Grid markup,
+   * injecting robust V33 fallback styling to prevent layout collapses during lazy-loading.
+   * 
+   * @returns {void}
    */
   buildGui() {
-    // The main wrapper is built strictly using native classes without manual sizing constraints
     this.eGuiWrapper = $('<div>').addClass('ag-filter')[0];
-    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed')[0];
+    
+    // Explicit flex properties guarantee structural integrity even if ag-Grid's core CSS isn't fully loaded
+    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed').css({
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      boxSizing: 'border-box'
+    })[0];
+    
     let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper');
 
     let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
     let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
-    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
-                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false');
     
-    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals');
+    // Fallback flex properties ensure the element retains dimensions to correctly calculate dropdown bounds
+    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
+                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false')
+                                   .css({
+                                     display: 'flex',
+                                     alignItems: 'center',
+                                     justifyContent: 'space-between',
+                                     width: '100%',
+                                     minHeight: 'var(--ag-list-item-height, 30px)',
+                                     boxSizing: 'border-box',
+                                     cursor: 'pointer',
+                                     border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
+                                     borderRadius: 'var(--ag-border-radius, 4px)',
+                                     backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
+                                     padding: '0 var(--ag-widget-horizontal-spacing, 8px)'
+                                   });
+    
+    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals').css({
+      flex: '1 1 auto',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    });
+    
     let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
                          .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
 
     this.selectWrapper.append(this.eDisplayField, icon);
     selectContainer.append(selectLabel, this.selectWrapper);
 
-    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation');
+    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation').css({
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'var(--ag-widget-vertical-spacing, 8px)',
+      marginTop: 'var(--ag-widget-vertical-spacing, 8px)'
+    });
 
-    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false');
+    const inputStyleFallback = {
+      width: '100%',
+      boxSizing: 'border-box',
+      minHeight: 'var(--ag-list-item-height, 30px)',
+      border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
+      borderRadius: 'var(--ag-border-radius, 4px)',
+      backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
+      padding: '0 var(--ag-widget-horizontal-spacing, 8px)',
+      color: 'var(--ag-text-color, inherit)'
+    };
+
+    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false').css({ width: '100%' });
     let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
     this.eInput1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...')[0];
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...').css(inputStyleFallback)[0];
     input1Wrapper.append(this.eInput1);
     input1Container.append(input1Label, input1Wrapper);
 
-    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true')[0];
+    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true').css({ width: '100%' })[0];
     let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
     this.eInput2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To')[0];
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To').css(inputStyleFallback)[0];
     input2Wrapper.append(this.eInput2);
     $(this.eInput2Container).append(input2Label, input2Wrapper);
 
@@ -644,23 +755,21 @@ class DateTimeParentFilter {
     $(this.eGui).append(bodyWrapper);
     $(this.eGuiWrapper).append(this.eGui);
 
-    // The popup wrapper is appended directly to the body to prevent layout clipping
-    this.ePopup = $('<div>').addClass('ag-theme-balham ag-popup').css({
-      display: 'none'
-    })[0];
+    this.ePopup = $('<div>').addClass('ag-popup').css({ display: 'none' })[0];
     
-    // Fixed positioning is used so the popup maps perfectly to viewport coordinates
+    // Explicitly uses variables matching ag-Grid V33 theming framework conventions
     this.eList = $('<div>').addClass('ag-list ag-select-list ag-ltr ag-popup-child ag-popup-positioned-under')
                            .attr('role', 'listbox').css({
-                             position: 'fixed', background: 'white',
-                             border: '1px solid var(--ag-borders-color, #bdc3c7)',
-                             boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999
+                             position: 'fixed', 
+                             background: 'var(--ag-menu-background-color, var(--ag-background-color, #ffffff))',
+                             border: '1px solid var(--ag-border-color, #babfc7)',
+                             boxShadow: 'var(--ag-popup-shadow, 0 1px 4px rgba(0,0,0,0.2))',
+                             borderRadius: 'var(--ag-border-radius, 4px)',
+                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999,
+                             padding: 'var(--ag-widget-vertical-spacing, 4px) 0'
                            })[0];
     $(this.ePopup).append(this.eList);
-    $('body').append(this.ePopup);
 
-    // Event propagation is halted on the detached popup so ag-Grid is unaware of interactions
     $(this.ePopup).on('mousedown mouseup click touchstart', (e) => {
       e.stopPropagation();
     });
@@ -677,10 +786,17 @@ class DateTimeParentFilter {
 
     this.currentType = 'equals';
 
-    // The dropdown options are generated and click events are assigned
     Object.entries(this.options).forEach(([val, label]) => {
       let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
-                           .html(`<span>${label}</span>`);
+                           .html(`<span>${label}</span>`)
+                           .css({
+                              padding: 'var(--ag-widget-vertical-spacing, 6px) var(--ag-widget-horizontal-spacing, 12px)',
+                              cursor: 'pointer',
+                              color: 'var(--ag-data-color, var(--ag-text-color, #181d1f))',
+                              display: 'flex',
+                              alignItems: 'center',
+                              lineHeight: 'normal'
+                           });
       item.on('click', (e) => {
         e.stopPropagation();
         this.currentType = val;
@@ -689,12 +805,11 @@ class DateTimeParentFilter {
         this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
         this.onChange();
       });
-      item.on('mouseenter', () => item.css('background-color', 'var(--ag-row-hover-color, #f5f7f7)'));
+      item.on('mouseenter', () => item.css('background-color', 'var(--ag-menu-option-active-background-color, var(--ag-row-hover-color, rgba(0,0,0,0.05)))'));
       item.on('mouseleave', () => item.css('background-color', 'transparent'));
       $(this.eList).append(item);
     });
 
-    // The popup display is toggled on click and positioned explicitly via screen coordinates
     this.selectWrapper.on('click', (e) => {
       e.stopPropagation();
       let isExpanded = this.selectWrapper.hasClass('ag-picker-expanded');
@@ -703,14 +818,30 @@ class DateTimeParentFilter {
         $(this.ePopup).hide();
         this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
       } else {
-        // Viewport bounding rectangle guarantees exact screen positioning for the fixed element
+        // Appending strictly to `.ag-root-wrapper` automatically ensures all v33 Theme CSS Variables cascade properly
+        if (!this.ePopup.parentNode || this.ePopup.parentNode.tagName === 'BODY') {
+            let rootWrapper = $(this.eGuiWrapper).closest('.ag-root-wrapper');
+            if (rootWrapper.length > 0) {
+                rootWrapper.append(this.ePopup);
+            } else {
+                $('body').append(this.ePopup);
+                let themeParent = $(this.eGuiWrapper).closest('[class*="ag-theme-"]');
+                if (themeParent.length > 0) {
+                    let cls = themeParent.attr('class').split(' ').find(c => c.startsWith('ag-theme-'));
+                    if (cls) $(this.ePopup).addClass(cls);
+                }
+            }
+        }
+
         let rect = this.selectWrapper[0].getBoundingClientRect();
         
+        // Guard against unpredictable width collapses
+        let calculatedWidth = Math.max(rect.width, 180);
         $(this.eList).css({
           top: rect.bottom + 'px',
           left: rect.left + 'px',
-          width: rect.width + 'px',
-          minWidth: rect.width + 'px'
+          width: calculatedWidth + 'px',
+          minWidth: calculatedWidth + 'px'
         });
         
         $(this.ePopup).show();
@@ -718,7 +849,6 @@ class DateTimeParentFilter {
       }
     });
 
-    // The event target is verified as a DOM Node to prevent crashes on window blur events
     this.closeDropdown = (e) => {
       if (!e.target || !(e.target instanceof Node)) {
         $(this.ePopup).hide();
@@ -736,7 +866,6 @@ class DateTimeParentFilter {
     document.addEventListener('mousedown', this.closeDropdown, true);
     window.addEventListener('blur', this.closeDropdown);
 
-    // Changes in the inputs trigger a sync with the grid
     this.onChange = () => {
       let type = this.currentType;
       let val1 = this.eInput1.value.trim();
@@ -784,7 +913,9 @@ class DateTimeParentFilter {
   }
 
   /**
-   * The cursor is automatically placed in the input box when the menu is opened
+   * Automates focusing behavior to input fields on open event.
+   * 
+   * @returns {void}
    */
   afterGuiAttached() {
     if (this.eInput1) {
@@ -792,10 +923,21 @@ class DateTimeParentFilter {
     }
   }
 
+  /**
+   * Retrieves the wrapper element containing all child nodes.
+   * 
+   * @returns {HTMLElement}
+   */
   getGui() {
     return this.eGuiWrapper;
   }
 
+  /**
+   * Evaluates if a specified row passes the defined date boundaries.
+   * 
+   * @param {Object} params - The row evaluation context.
+   * @returns {boolean} 
+   */
   doesFilterPass(params) {
     if (!this.filterModel) return true;
 
@@ -816,7 +958,15 @@ class DateTimeParentFilter {
     
     if (!fromTime || !cellTime) return true;
     
-    if (this.filterModel.type === 'equals') return cellTime === fromTime;
+    if (this.filterModel.type === 'equals') {
+      if (this.filterModel.dateTo) {
+        let toTime = toTimestamp(this.filterModel.dateTo);
+        if (!toTime) return cellTime === fromTime;
+        return cellTime >= fromTime && cellTime <= toTime;
+      }
+      return cellTime === fromTime;
+    }
+    
     if (this.filterModel.type === 'greaterThan') return cellTime > fromTime;
     if (this.filterModel.type === 'greaterThanOrEqual') return cellTime >= fromTime;
     if (this.filterModel.type === 'lessThan') return cellTime < fromTime;
@@ -830,10 +980,20 @@ class DateTimeParentFilter {
     return true;
   }
 
+  /**
+   * Validates if a specific filter action is currently active.
+   * 
+   * @returns {boolean}
+   */
   isFilterActive() {
     return this.filterModel != null;
   }
 
+  /**
+   * Outputs the formatted data filter model applied by the user.
+   * 
+   * @returns {Object|null}
+   */
   getModel() {
     if (!this.filterModel) return null;
     return {
@@ -846,6 +1006,12 @@ class DateTimeParentFilter {
     };
   }
 
+  /**
+   * Allows external programmatic overrides matching grid load state.
+   * 
+   * @param {Object|null} model - The injected model override values.
+   * @returns {void}
+   */
   setModel(model) {
     this.filterModel = model;
     
@@ -869,7 +1035,7 @@ class DateTimeParentFilter {
 
     let raw = model.rawUserInput || '';
     if (model.type === 'inRange') {
-      let parts = raw.split('-');
+      let parts = raw.split(' - ');
       this.eInput1.value = parts[0] ? parts[0].trim() : '';
       this.eInput2.value = parts[1] ? parts[1].trim() : '';
     } else if (model.type === 'contains') {
@@ -879,6 +1045,11 @@ class DateTimeParentFilter {
     }
   }
 
+  /**
+   * Gracefully removes global dom observers to avoid memory leaking.
+   * 
+   * @returns {void}
+   */
   destroy() {
     document.removeEventListener('mousedown', this.closeDropdown, true);
     window.removeEventListener('blur', this.closeDropdown);
@@ -899,49 +1070,47 @@ class DateTimeParentFilter {
  * Class DateFloatingFilterComponent
  * 
  * The default ag-Grid date picker is replaced with a smart text-based input field. 
- * This allows dates, times, and complex operators (like >=, <=, >, <, and ranges) 
- * to be quickly typed using pure text.
- * 
- * User text is explicitly translated into exact temporal boundaries:
- * - Day Exact:  "2026-04-07"    -> InRange (2026-04-07 00:00:00 to 2026-04-07 23:59:59)
- * - Day >=:     ">= 2026-04-07" -> GreaterThanOrEqual (2026-04-07 00:00:00)
- * - Day >:      "> 2026-04-07"  -> GreaterThan (2026-04-07 23:59:59)
- * - Day <=:     "<= 2026-04-07" -> LessThanOrEqual (2026-04-07 23:59:59)
- * - Day <:      "< 2026-04-07"  -> LessThan (2026-04-07 00:00:00)
- * - string:     "04-07"         -> contains the string
+ * This allows dates, times, and complex operators to be quickly typed using pure text.
  */
 let uniqueDateIdCounter = 0; 
 
 class DateFloatingFilterComponent {
   
+  /**
+   * Constructs components encapsulating standard grid logic.
+   * 
+   * @param {Object} params - The ag-Grid generic floating filter definitions.
+   * @returns {void}
+   */
   init(params) {
     this.params = params;
     
     this.eGui = $('<div>').addClass('ag-floating-filter-input').attr('role', 'presentation');
-    let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field');
-    let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper');
+    let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field').css({ width: '100%', boxSizing: 'border-box' });
+    let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').css({ width: '100%', boxSizing: 'border-box' });
     
     let input = $('<input>').addClass('ag-input-field-input ag-text-field-input')
                             .attr('type', 'text')
-                            // .attr('placeholder', 'YYYY-MM-DD or >...') 
                             .attr('id', `ag-custom-date-${uniqueDateIdCounter++}-input`)
-                            .attr('autocomplete', 'off');
+                            .attr('autocomplete', 'off')
+                            .css({ width: '100%', boxSizing: 'border-box' });
     
     eWrapper.append(input);
     div.append(eWrapper);
     this.eGui.append(div);
     this.eFilterInput = this.eGui.find('input')[0];
 
+    // Theme Variables updated gracefully where available targeting body injection overlays
     this.customTooltip = $('<div>')
         .css({
             position: 'absolute', 
             zIndex: '999999',      
-            backgroundColor: 'rgba(0, 0, 0, 0.85)', 
-            color: '#ffffff',                       
+            backgroundColor: 'var(--ag-tooltip-background-color, rgba(0, 0, 0, 0.85))', 
+            color: 'var(--ag-tooltip-text-color, #ffffff)',                       
             border: 'none',                         
             padding: '8px 12px',                    
-            borderRadius: '4px',                    
-            boxShadow: '0px 4px 8px rgba(0,0,0,0.2)',
+            borderRadius: 'var(--ag-border-radius, 4px)',                    
+            boxShadow: 'var(--ag-popup-shadow, 0px 4px 8px rgba(0,0,0,0.2))',
             display: 'none',       
             width: 'max-content',
             fontSize: '12px',
@@ -1003,10 +1172,6 @@ class DateFloatingFilterComponent {
           params.parentFilterInstance(instance => {
             instance.setModel(parsedModel);
             params.api.onFilterChanged(); 
-            
-            if (typeof onFilterChanged === "function") {
-                onFilterChanged();
-            }
           });
         }
       }, 500); 
@@ -1015,6 +1180,12 @@ class DateFloatingFilterComponent {
     this.eFilterInput.addEventListener('input', onInputBoxChanged);
   }
 
+  /**
+   * Detects and synchronizes any model modifications back down to internal filter scopes.
+   * 
+   * @param {Object} parentModel - Modified filter data model object.
+   * @returns {void}
+   */
   onParentModelChanged(parentModel) {
     let activeModels = this.params.api.getFilterModel();
     let myColId = this.params.column.getColId();
@@ -1065,10 +1236,20 @@ class DateFloatingFilterComponent {
     }
   }
 
+  /**
+   * Retrieves dom entry nodes targeting the grid framework component injector.
+   * 
+   * @returns {HTMLElement}
+   */
   getGui() {
     return this.eGui[0];
   }
 
+  /**
+   * Deallocates dynamic custom objects to avert DOM accumulation.
+   * 
+   * @returns {void}
+   */
   destroy() {
     if (this.customTooltip) {
       this.customTooltip.remove();
@@ -1087,6 +1268,12 @@ class DateFloatingFilterComponent {
  * to be filtered using human-readable time strings perfectly synced with the floating text box.
  */
 class TimeIntervalParentFilter {
+  /**
+   * Initializes the parent node structural framework.
+   * 
+   * @param {Object} params - The component constructor framework configurations.
+   * @returns {void}
+   */
   init(params) {
     this.params = params;
     this.filterModel = null;
@@ -1094,41 +1281,86 @@ class TimeIntervalParentFilter {
   }
 
   /**
-   * A native-looking filter menu is constructed using identical ag-Grid markup
+   * Dynamically constructs DOM identical to v33 standards injecting structural invariants natively.
+   * 
+   * @returns {void}
    */
   buildGui() {
-    // The main wrapper is built strictly using native classes without manual sizing constraints
     this.eGuiWrapper = $('<div>').addClass('ag-filter')[0];
-    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed')[0];
+    
+    // Core flex requirements embedded sequentially against lazy load failures
+    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed').css({
+      display: 'flex',
+      flexDirection: 'column',
+      width: '100%',
+      boxSizing: 'border-box'
+    })[0];
+    
     let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper');
 
     let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
     let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
-    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
-                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false');
     
-    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals');
+    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
+                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false')
+                                   .css({
+                                     display: 'flex',
+                                     alignItems: 'center',
+                                     justifyContent: 'space-between',
+                                     width: '100%',
+                                     minHeight: 'var(--ag-list-item-height, 30px)',
+                                     boxSizing: 'border-box',
+                                     cursor: 'pointer',
+                                     border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
+                                     borderRadius: 'var(--ag-border-radius, 4px)',
+                                     backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
+                                     padding: '0 var(--ag-widget-horizontal-spacing, 8px)'
+                                   });
+    
+    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals').css({
+      flex: '1 1 auto',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    });
+    
     let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
                          .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
 
     this.selectWrapper.append(this.eDisplayField, icon);
     selectContainer.append(selectLabel, this.selectWrapper);
 
-    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation');
+    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation').css({
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 'var(--ag-widget-vertical-spacing, 8px)',
+      marginTop: 'var(--ag-widget-vertical-spacing, 8px)'
+    });
 
-    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false');
+    const inputStyleFallback = {
+      width: '100%',
+      boxSizing: 'border-box',
+      minHeight: 'var(--ag-list-item-height, 30px)',
+      border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
+      borderRadius: 'var(--ag-border-radius, 4px)',
+      backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
+      padding: '0 var(--ag-widget-horizontal-spacing, 8px)',
+      color: 'var(--ag-text-color, inherit)'
+    };
+
+    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false').css({ width: '100%' });
     let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
     this.eInput1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...')[0];
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...').css(inputStyleFallback)[0];
     input1Wrapper.append(this.eInput1);
     input1Container.append(input1Label, input1Wrapper);
 
-    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true')[0];
+    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true').css({ width: '100%' })[0];
     let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
     this.eInput2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To')[0];
+                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To').css(inputStyleFallback)[0];
     input2Wrapper.append(this.eInput2);
     $(this.eInput2Container).append(input2Label, input2Wrapper);
 
@@ -1137,23 +1369,21 @@ class TimeIntervalParentFilter {
     $(this.eGui).append(bodyWrapper);
     $(this.eGuiWrapper).append(this.eGui);
 
-    // The popup wrapper is appended directly to the body to prevent layout clipping
-    this.ePopup = $('<div>').addClass('ag-theme-balham ag-popup').css({
-      display: 'none'
-    })[0];
+    this.ePopup = $('<div>').addClass('ag-popup').css({ display: 'none' })[0];
     
-    // Fixed positioning is used so the popup maps perfectly to viewport coordinates
+    // Explicit V33 tokens replacing legacy inline configurations
     this.eList = $('<div>').addClass('ag-list ag-select-list ag-ltr ag-popup-child ag-popup-positioned-under')
                            .attr('role', 'listbox').css({
-                             position: 'fixed', background: 'white',
-                             border: '1px solid var(--ag-borders-color, #bdc3c7)',
-                             boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
-                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999
+                             position: 'fixed', 
+                             background: 'var(--ag-menu-background-color, var(--ag-background-color, #ffffff))',
+                             border: '1px solid var(--ag-border-color, #babfc7)',
+                             boxShadow: 'var(--ag-popup-shadow, 0 1px 4px rgba(0,0,0,0.2))',
+                             borderRadius: 'var(--ag-border-radius, 4px)',
+                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999,
+                             padding: 'var(--ag-widget-vertical-spacing, 4px) 0'
                            })[0];
     $(this.ePopup).append(this.eList);
-    $('body').append(this.ePopup);
 
-    // Event propagation is halted on the detached popup so ag-Grid is unaware of interactions
     $(this.ePopup).on('mousedown mouseup click touchstart', (e) => {
       e.stopPropagation();
     });
@@ -1169,10 +1399,17 @@ class TimeIntervalParentFilter {
 
     this.currentType = 'equals';
 
-    // The dropdown options are generated and click events are assigned
     Object.entries(this.options).forEach(([val, label]) => {
       let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
-                           .html(`<span>${label}</span>`);
+                           .html(`<span>${label}</span>`)
+                           .css({
+                              padding: 'var(--ag-widget-vertical-spacing, 6px) var(--ag-widget-horizontal-spacing, 12px)',
+                              cursor: 'pointer',
+                              color: 'var(--ag-data-color, var(--ag-text-color, #181d1f))',
+                              display: 'flex',
+                              alignItems: 'center',
+                              lineHeight: 'normal'
+                           });
       item.on('click', (e) => {
         e.stopPropagation();
         this.currentType = val;
@@ -1181,12 +1418,11 @@ class TimeIntervalParentFilter {
         this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
         this.onChange();
       });
-      item.on('mouseenter', () => item.css('background-color', 'var(--ag-row-hover-color, #f5f7f7)'));
+      item.on('mouseenter', () => item.css('background-color', 'var(--ag-menu-option-active-background-color, var(--ag-row-hover-color, rgba(0,0,0,0.05)))'));
       item.on('mouseleave', () => item.css('background-color', 'transparent'));
       $(this.eList).append(item);
     });
 
-    // The popup display is toggled on click and positioned explicitly via screen coordinates
     this.selectWrapper.on('click', (e) => {
       e.stopPropagation();
       let isExpanded = this.selectWrapper.hasClass('ag-picker-expanded');
@@ -1195,14 +1431,30 @@ class TimeIntervalParentFilter {
         $(this.ePopup).hide();
         this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
       } else {
-        // Viewport bounding rectangle guarantees exact screen positioning for the fixed element
+        // Appending strictly to `.ag-root-wrapper` automatically ensures all v33 Theme CSS Variables cascade properly
+        if (!this.ePopup.parentNode || this.ePopup.parentNode.tagName === 'BODY') {
+            let rootWrapper = $(this.eGuiWrapper).closest('.ag-root-wrapper');
+            if (rootWrapper.length > 0) {
+                rootWrapper.append(this.ePopup);
+            } else {
+                $('body').append(this.ePopup);
+                let themeParent = $(this.eGuiWrapper).closest('[class*="ag-theme-"]');
+                if (themeParent.length > 0) {
+                    let cls = themeParent.attr('class').split(' ').find(c => c.startsWith('ag-theme-'));
+                    if (cls) $(this.ePopup).addClass(cls);
+                }
+            }
+        }
+
         let rect = this.selectWrapper[0].getBoundingClientRect();
         
+        // Guard against unpredictable width collapses
+        let calculatedWidth = Math.max(rect.width, 180);
         $(this.eList).css({
           top: rect.bottom + 'px',
           left: rect.left + 'px',
-          width: rect.width + 'px',
-          minWidth: rect.width + 'px'
+          width: calculatedWidth + 'px',
+          minWidth: calculatedWidth + 'px'
         });
         
         $(this.ePopup).show();
@@ -1210,7 +1462,6 @@ class TimeIntervalParentFilter {
       }
     });
 
-    // The event target is verified as a DOM Node to prevent crashes on window blur events
     this.closeDropdown = (e) => {
       if (!e.target || !(e.target instanceof Node)) {
         $(this.ePopup).hide();
@@ -1228,7 +1479,6 @@ class TimeIntervalParentFilter {
     document.addEventListener('mousedown', this.closeDropdown, true);
     window.addEventListener('blur', this.closeDropdown);
 
-    // Changes in the inputs trigger a sync with the grid
     this.onChange = () => {
       let type = this.currentType;
       let val1 = this.eInput1.value.trim();
@@ -1270,7 +1520,9 @@ class TimeIntervalParentFilter {
   }
 
   /**
-   * The cursor is automatically placed in the input box when the menu is opened
+   * Targets input on instantiation directly to elevate usage convenience.
+   * 
+   * @returns {void}
    */
   afterGuiAttached() {
     if (this.eInput1) {
@@ -1278,10 +1530,21 @@ class TimeIntervalParentFilter {
     }
   }
 
+  /**
+   * Retrieves the UI bounding component to integrate it back into dom hierarchies.
+   * 
+   * @returns {HTMLElement}
+   */
   getGui() {
     return this.eGuiWrapper;
   }
 
+  /**
+   * Applies the core boolean calculation comparing mathematical data elements.
+   * 
+   * @param {Object} params - External row definition map.
+   * @returns {boolean}
+   */
   doesFilterPass(params) {
     if (!this.filterModel) return true;
 
@@ -1306,10 +1569,20 @@ class TimeIntervalParentFilter {
     return true;
   }
 
+  /**
+   * Assesses global active constraints internally to coordinate visual cues dynamically.
+   * 
+   * @returns {boolean}
+   */
   isFilterActive() {
     return this.filterModel != null;
   }
 
+  /**
+   * Delivers serialized active properties supporting grid extraction natively.
+   * 
+   * @returns {Object|null}
+   */
   getModel() {
     if (!this.filterModel) return null;
     return {
@@ -1321,6 +1594,12 @@ class TimeIntervalParentFilter {
     };
   }
 
+  /**
+   * Syncs and overwrites internal logic natively accommodating saved grids loading routines.
+   * 
+   * @param {Object|null} model - Input configuration map restoring logic.
+   * @returns {void} 
+   */
   setModel(model) {
     this.filterModel = model;
     
@@ -1344,7 +1623,7 @@ class TimeIntervalParentFilter {
 
     let raw = model.rawUserInput || '';
     if (model.type === 'inRange') {
-      let parts = raw.split('-');
+      let parts = raw.split(' - ');
       this.eInput1.value = parts[0] ? parts[0].trim() : '';
       this.eInput2.value = parts[1] ? parts[1].trim() : '';
     } else {
@@ -1352,6 +1631,11 @@ class TimeIntervalParentFilter {
     }
   }
 
+  /**
+   * Safely eliminates bindings manually avoiding heavy DOM footprints passively persisting.
+   * 
+   * @returns {void}
+   */
   destroy() {
     document.removeEventListener('mousedown', this.closeDropdown, true);
     window.removeEventListener('blur', this.closeDropdown);
@@ -1374,29 +1658,29 @@ class TimeIntervalParentFilter {
  * 
  * The default numeric floating filter is replaced with a smart text-based input field.
  * This allows raw seconds to be filtered using human-readable time strings.
- * 
- * SUPPORTED FORMATS:
- * - Exact Match:    "1d 2h 3m 4s" or "1h30m"
- * - Default (Sec):  "300" (Automatically parsed as 300 seconds)
- * - Inequalities:   "> 1h", "< 5m", ">= 1d", "<= 30s"
- * - In Range:       "10m - 1h" (MUST have spaces around the dash!)
  */
 let uniqueTimeIdCounter = 0; 
 
 class TimeIntervalFloatingFilterComponent {
   
+  /**
+   * Binds component structure correctly mapping logical functions.
+   * 
+   * @param {Object} params - External variable implementations map.
+   * @returns {void}
+   */
   init(params) {
     this.params = params; 
 
     this.eGui = $('<div>').addClass('ag-floating-filter-input').attr('role', 'presentation');
-    let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field');
-    let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper');
+    let div = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field').css({ width: '100%', boxSizing: 'border-box' });
+    let eWrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').css({ width: '100%', boxSizing: 'border-box' });
     
     let input = $('<input>').addClass('ag-input-field-input ag-text-field-input')
                             .attr('type', 'text')
-                            // .attr('placeholder', '1h30m or < 5m...') 
                             .attr('id', `ag-custom-time-${uniqueTimeIdCounter++}-input`)
-                            .attr('autocomplete', 'off');
+                            .attr('autocomplete', 'off')
+                            .css({ width: '100%', boxSizing: 'border-box' });
     
     eWrapper.append(input);
     div.append(eWrapper);
@@ -1407,12 +1691,12 @@ class TimeIntervalFloatingFilterComponent {
         .css({
             position: 'absolute', 
             zIndex: '999999',                       
-            backgroundColor: 'rgba(0, 0, 0, 0.85)', 
-            color: '#ffffff',                       
+            backgroundColor: 'var(--ag-tooltip-background-color, rgba(0, 0, 0, 0.85))', 
+            color: 'var(--ag-tooltip-text-color, #ffffff)',                       
             border: 'none',
             padding: '8px 12px',
-            borderRadius: '4px',
-            boxShadow: '0px 4px 8px rgba(0,0,0,0.2)',
+            borderRadius: 'var(--ag-border-radius, 4px)',
+            boxShadow: 'var(--ag-popup-shadow, 0px 4px 8px rgba(0,0,0,0.2))',
             display: 'none',                        
             width: 'max-content',
             fontSize: '12px',
@@ -1472,10 +1756,6 @@ class TimeIntervalFloatingFilterComponent {
           params.parentFilterInstance(instance => {
             instance.setModel(parsedModel);
             params.api.onFilterChanged(); 
-            
-            if (typeof onFilterChanged === "function") {
-              onFilterChanged();
-            }
           });
         }
       }, 500); 
@@ -1484,6 +1764,12 @@ class TimeIntervalFloatingFilterComponent {
     this.eFilterInput.addEventListener('input', onInputBoxChanged);
   }
 
+  /**
+   * Handles propagating updates generated externally mirroring properties internally identically.
+   * 
+   * @param {Object} parentModel - Configuration state object dynamically provided.
+   * @returns {void}
+   */
   onParentModelChanged(parentModel) {
     let activeModels = this.params.api.getFilterModel();
     let myColId = this.params.column.getColId();
@@ -1517,10 +1803,20 @@ class TimeIntervalFloatingFilterComponent {
     }
   }
 
+  /**
+   * Retrieves the raw compiled component UI element structure mapping.
+   * 
+   * @returns {HTMLElement} 
+   */
   getGui() {
     return this.eGui[0];
   }
 
+  /**
+   * Purges floating popups avoiding accumulation.
+   * 
+   * @returns {void}
+   */
   destroy() {
     if (this.customTooltip) {
       this.customTooltip.remove();
@@ -1533,6 +1829,9 @@ class TimeIntervalFloatingFilterComponent {
  * User input text is parsed into a mathematical Date filter object.
  * Partial dates (like "04-14") or invalid dates are detected and automatically 
  * trigger a 'contains' string search instead of strict mathematical bounds.
+ * 
+ * @param {string} val - Unformatted date payload entered dynamically.
+ * @returns {Object|null}
  */
 function parseDateFilterText(val) {
   if (!val) return null;
@@ -1562,8 +1861,6 @@ function parseDateFilterText(val) {
     let rawDate = val.replace(/^[><=]+\s*/, '').trim();
     let hasTime = rawDate.includes(':');
 
-    // Invalid or partial dates are detected to fallback to a 'contains' search.
-    // A strict check ensures it at least starts with a 4-digit year.
     let testDateStr = hasTime ? rawDate : `${rawDate} 00:00:00`;
     let testDate = new Date(testDateStr.replace(' ', 'T')).getTime();
 
@@ -1588,20 +1885,22 @@ function parseDateFilterText(val) {
         type = 'equals';
         dateFrom = rawDate;
       } else {
-        type = 'inRange';
+        type = 'equals'; 
         dateFrom = `${rawDate} 00:00:00`;
         dateTo = `${rawDate} 23:59:59`;
       }
     }
   }
 
-  // The raw string is injected so the URL generator can retrieve it later
   return { type, dateFrom, dateTo, rawUserInput: val };
 }
 
 /**
  * User input text is parsed into a mathematical TimeInterval filter object.
  * Returns null if the input is invalid or empty.
+ * 
+ * @param {string} val - Unformatted mathematical equation entered dynamically.
+ * @returns {Object|null}
  */
 function parseTimeFilterText(val) {
   if (!val) return null;
@@ -1634,6 +1933,5 @@ function parseTimeFilterText(val) {
 
   if (secFrom === null) return null;
 
-  // The raw string is injected so the URL generator can retrieve it later
   return { type, filter: secFrom, filterTo: secTo, rawUserInput: val };
 }
