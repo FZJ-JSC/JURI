@@ -231,19 +231,13 @@ View.prototype.show = function () {
         [], // initializers
         // Post-processing function after the navigation is ready
         function () {
-          if (false) {
-            // ****** Close button on alert ******
-            $("body").prepend("<div class='alert'><span class='closebtn'>&times;</span> Unfortunately, after the power outage on 08.03.2023, we lost one of our hard drives that contained monitoring information of JUSUF and DEEP. We are setting up a new server to restart monitoring, which will be ready on the next days. Sorry for the inconvenience.</div>");
-            var close = document.getElementsByClassName("closebtn");
-            var i;
-
-            for (i = 0; i < close.length; i++) {
-              close[i].onclick = function(){
-                var div = this.parentElement;
-                div.style.opacity = "0";
-                setTimeout(function(){ div.style.display = "none"; }, 600);
-              }
-            }
+          if ((true)&&(self.navdata.data.system == "jupiter")) {
+            // ***********************************
+            // Clean up cache for testing:
+            // localStorage.removeItem('alertDismissed');
+            
+            // Add alert with new functions:
+            self.initializeAnnouncementModal();
             // ***********************************
           }
 
@@ -581,6 +575,136 @@ View.prototype.initScrollableMenu = function() {
   });
 };
 
+
+
+
+/**
+ * Creates and displays a two-page announcement modal introducing
+ * new features: the consolidated Jobs tab and AI-powered reports.
+ * Page navigation is handled via arrows; closing is only available
+ * on the final page to ensure both features are seen.
+ *
+ * @returns {void}
+ */
+View.prototype.initializeAnnouncementModal = async function () {
+  // Checking if the alert has been previously dismissed by the user
+  if (localStorage.getItem('alertDismissed')) {
+    return;
+  }
+
+  // Creating the overlay container that grays out the background
+  const $overlay = $('<div class="alert-overlay"></div>');
+
+  // Building the modal with two pages
+  const $modal = $(`
+    <div class="alert-modal">
+      <div class="modal-page active" id="page-jobs">
+        <div style="font-size: 18px;">
+          <strong style="color: #8B0000;">New Feature:</strong> Jobs Tab
+        </div>
+        <p style="margin: 15px 0 10px 0; line-height: 1.5;">
+          Jobs have been consolidated into a single tab with improved performance.
+          All current and past jobs from the last three weeks are now available in one view.
+        </p>
+        <div style="margin-top: 15px;">
+          <strong style="font-size: 14px;">QuickFilter Shortcuts:</strong>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px; max-width: 250px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="filter-toggle-btn" style="color: rgb(0, 128, 0); min-width: 35px;">C</button>
+              <span style="font-size: 14px;">Completed</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="filter-toggle-btn" style="color: rgb(255, 0, 0); min-width: 35px;">F</button>
+              <span style="font-size: 14px;">Failed</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="filter-toggle-btn" style="color: rgb(0, 0, 255); min-width: 35px;">R</button>
+              <span style="font-size: 14px;">Running</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <button class="filter-toggle-btn" style="color: rgb(0, 0, 0); min-width: 35px;">+</button>
+              <span style="font-size: 14px;">More options</span>
+            </div>
+          </div>
+        </div>
+        <div class="modal-nav">
+          <div class="nav-placeholder"></div>
+          <button class="nav-arrow next" id="go-to-ai">
+            Next
+            <span class="fa fa-chevron-right"></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-page" id="page-ai">
+        <div style="font-size: 18px;">
+          <strong style="color: #8B0000;">New Feature:</strong> AI Reports
+        </div>
+        <p style="margin: 15px 0 10px 0; line-height: 1.5;">
+          Job reports are now analysed by AI to provide deeper insights and
+          actionable results. Look for the lightbulb icon in the table to access
+          AI-generated analysis for each job.
+        </p>
+        <div style="margin-top: 15px;">
+          <strong style="font-size: 14px;">AI Report Indicator:</strong>
+          <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px; max-width: 250px;">
+            <span class="fa fa-lightbulb-o ai-icon" style="font-size: 18px;"></span>
+            <span style="font-size: 14px;">
+              Located in a dedicated column on the right side of the Jobs table
+            </span>
+          </div>
+        </div>
+        <div class="modal-nav">
+          <button class="nav-arrow" id="go-to-jobs">
+            <span class="fa fa-chevron-left"></span>
+            Back
+          </button>
+          <span class="closebtn" data-toggle="tooltip" data-html="true" data-placement="bottom" data-original-title="Close and Dismiss">&times;</span>
+        </div>
+      </div>
+    </div>
+  `);
+
+  // Appending modal to overlay and overlay to page body
+  $overlay.append($modal);
+  $('body').append($overlay);
+
+  // Caching DOM references for navigation elements
+  const $pageJobs = $modal.find('#page-jobs');
+  const $pageAi = $modal.find('#page-ai');
+  const $closeBtn = $modal.find('.closebtn');
+
+  // Initializing tooltip on the close button (rendered only on second page)
+  $closeBtn.tooltip();
+
+  // Handler for navigating to AI Reports page
+  $modal.find('#go-to-ai').on('click', function() {
+    $pageJobs.removeClass('active');
+    $pageAi.addClass('active');
+  });
+
+  // Handler for navigating back to Jobs page
+  $modal.find('#go-to-jobs').on('click', function() {
+    $pageAi.removeClass('active');
+    $pageJobs.addClass('active');
+  });
+
+  // Handler for closing the modal (only available on second page)
+  $closeBtn.on('click', function() {
+    // Triggering fade-out animation on modal
+    $modal.addClass('hidden');
+
+    // Removing overlay after animation completes
+    setTimeout(function() {
+      $overlay.fadeOut(300, function() {
+        $(this).remove();
+      });
+
+      // Persisting dismissal in localStorage to prevent future displays
+      localStorage.setItem('alertDismissed', 'true');
+    }, 300);
+  });
+}
 
 /**
  * Reads the status of the system when a status file is given

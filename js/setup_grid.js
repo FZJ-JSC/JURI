@@ -229,11 +229,33 @@ function init_grid() {
 //   resizeGrid()
 // }
 
+
+// Add a timer variable right above the function
+let resizeDebounceTimer = null;
+/**
+ * Handles grid state updates such as scrolling, column visibility changes, and data loading.
+ * Always ensures custom DOM elements (like clear buttons) are synced with the virtualized grid.
+ * 
+ * @param {Object} event - The ag-Grid event object containing the source of the update.
+ * @returns {void}
+ */
 function onStateUpdated(event) {
-  // Autosizing columns to fit content when there are too many of them (except when it's a horizontal scroll that changes the virtual columns)
-  if (Array.isArray(event.sources) && (!['scroll','filter','columnSizing'].includes(event.sources[0]))) {
-    resizeGrid()
+  // Column virtualization destroys and recreates DOM elements on scroll.
+  // We must always re-inject and sync the clear buttons when the DOM updates.
+  init_floating_filter_clear_buttons();
+  update_floating_filter_clear_buttons();
+
+  // Ignore manual column resizing and filtering. 
+  // If the user is manually dragging a column width, we don't want to fight them and auto-resize it.
+  if (event && Array.isArray(event.sources) && ['filter', 'columnSizing'].includes(event.sources[0])) {
+    return;
   }
+
+  // Ensuring resizeGrid() only fires once the user has stopped scrolling for 50 milliseconds
+  clearTimeout(resizeDebounceTimer);
+  resizeDebounceTimer = setTimeout(() => {
+    resizeGrid();
+  }, 50);
 }
 
 /**
@@ -416,9 +438,15 @@ function update_floating_filter_clear_buttons() {
   });
 }
 
+/**
+ * Fired the first time data is rendered into the grid.
+ * Initializes the custom floating filter buttons and syncs their active visibility state.
+ * 
+ * @returns {void}
+ */
 function onFirstData() {
   init_floating_filter_clear_buttons();
-  // view.gridApi.resetColumnState();
+  update_floating_filter_clear_buttons();
 }
 
 function onChange(event) {

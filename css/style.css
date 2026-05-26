@@ -290,37 +290,6 @@ a {
 }
 /**** End auto-refresh counter ****/
 
-
-/*** Alert banner with button ***/
-.alert {
-  padding-left: 20px;
-  padding-right: 20px;
-  background-color: #f44336;
-  color: white;
-  opacity: 1;
-  transition: opacity 0.6s;
-  margin-bottom: 15px;
-  position: fixed;
-  top: 0;
-  z-index: 1060;
-  width: 100vw;
-  border-radius: 0rem 0rem 0.3rem 0.3rem;
-}
-.closebtn {
-  margin-left: 15px;
-  color: white;
-  font-weight: bold;
-  float: right;
-  font-size: 22px;
-  line-height: 20px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-.closebtn:hover {
-  color: black;
-}
-/*** End of Alert banner ***/
-
 #top_info_area {
   /* Assign the wrapper to the first row */
   grid-row: 1; 
@@ -1287,3 +1256,159 @@ footer.container-fluid {
   50% { opacity: 1; transform: scale(1.2); }
 }
 /*NA: styles for the chatbotBtn end*/
+
+
+/************** Modal overlay (grays out background) ***************/
+/* ----------------------------------------------------------------
+   Modal overlay - grays out the background
+---------------------------------------------------------------- */
+.alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ----------------------------------------------------------------
+   Modal box - centered white container with shadow
+---------------------------------------------------------------- */
+.alert-modal {
+  background-color: #f8f9fa;
+  color: #333;
+  padding: 30px 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  position: relative;
+  z-index: 1060;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* Hidden state for fade-out animation */
+.alert-modal.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------------
+   Page container - handles showing/hiding of pages
+---------------------------------------------------------------- */
+.modal-page {
+  display: none;
+}
+
+.modal-page.active {
+  display: block;
+}
+
+/* ----------------------------------------------------------------
+   Navigation arrows
+---------------------------------------------------------------- */
+.modal-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.nav-arrow {
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.nav-arrow:hover {
+  background-color: #e0e0e0;
+}
+
+.nav-arrow:focus {
+  outline: none;
+}
+
+.nav-arrow.next {
+  background-color: #8B0000;
+  color: white;
+  border-color: #8B0000;
+}
+
+.nav-arrow.next:hover {
+  background-color: #6b0000;
+}
+
+.nav-placeholder {
+  width: 80px;
+}
+
+/* ----------------------------------------------------------------
+   Close button styling (only shown on last page)
+---------------------------------------------------------------- */
+.closebtn {
+  color: #666;
+  font-weight: bold;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.3s;
+  position: absolute;
+  top: 10px;
+  right: 15px;
+}
+
+.closebtn:hover {
+  color: #333;
+  text-decoration: none;
+}
+
+/* ----------------------------------------------------------------
+   Filter toggle buttons - matching existing application styling
+---------------------------------------------------------------- */
+.filter-toggle-btn {
+  background-color: #f0f0f0;
+  border: none;
+  border: solid 0.5px lightgray;
+  border-radius: 0;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.filter-toggle-btn:hover {
+  background-color: #e0e0e0;
+}
+
+.filter-toggle-btn:focus {
+  outline: none;
+}
+
+.filter-toggle-btn:active,
+.filter-toggle-btn.active {
+  background-color: #bababa;
+  border: solid 0.5px #808080;
+}
+
+/* ----------------------------------------------------------------
+   AI Report lightbulb icon styling - matching application colors
+---------------------------------------------------------------- */
+.ai-icon {
+  color: #023d6b;
+  margin-right: 5px;
+}
+/********************* End of Alert modal ***************************/
