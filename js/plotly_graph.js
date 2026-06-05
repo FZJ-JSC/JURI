@@ -1915,31 +1915,31 @@ function mergeDeep(...objects) {
 }
 
 
-function sync_relayout(e, graphs) {
-  if (Object.entries(e).length == 0) { return; }
+let _syncing = false;
+async function sync_relayout(e, graphs) {
+  if (_syncing) return;
+  if (Object.keys(e).length === 0) return;
 
-  graphs.forEach((graph) => {
-    let div = $("#" + graph.id)[0];
-    let x = div.layout.xaxis;
-    let update = {};
-    if ("xaxis.autorange" in e && e["xaxis.autorange"] != x.autorange) {
-      update['xaxis.autorange'] = e["xaxis.autorange"];
-    }
-    if ("xaxis.autorange" in e && "rangeslider" in x) {
-      update['layout.xaxis.rangeslider.autorange'] = e["xaxis.autorange"];
-    }
-    if ("xaxis.range[0]" in e && e["xaxis.range[0]"] != x.range[0]) {
-      update['xaxis.range[0]'] = e["xaxis.range[0]"];
-    }
-    if ("xaxis.range[1]" in e && e["xaxis.range[1]"] != x.range[1]) {
-      update['xaxis.range[1]'] = e["xaxis.range[1]"];
-    }
-    if ("xaxis.range" in e && e["xaxis.range"] != x.range) {
-      update['xaxis.range'] = e["xaxis.range"];
-    }
-    /* Use ".update" instead of ".relayout" to avoid triggering the function again */
-    Plotly.update(div, {}, update);
-  });
+  const update = {};
+  if ("xaxis.autorange"  in e) update["xaxis.autorange"]  = e["xaxis.autorange"];
+  if ("xaxis.range[0]"   in e) update["xaxis.range[0]"]   = e["xaxis.range[0]"];
+  if ("xaxis.range[1]"   in e) update["xaxis.range[1]"]   = e["xaxis.range[1]"];
+  if ("xaxis.range"      in e) update["xaxis.range"]      = e["xaxis.range"];
+
+  if (Object.keys(update).length === 0) return;
+
+  _syncing = true;
+  try {
+    await Promise.all(
+      graphs.map(graph => {
+        const div = document.getElementById(graph.id);
+        /* Use ".update" instead of ".relayout" to avoid triggering the function again */
+        return Plotly.update(div, {}, update)
+      })
+    );
+  } finally {
+    _syncing = false;
+  }
 }
 
 // Function to get mouse event from one graph and trigger hover over the same x over all curves in other divs
