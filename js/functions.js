@@ -75,7 +75,7 @@ const sortByKeyOrder = (keyA, keyB, keyOrderArray) => {
  * Adapted from https://hasnode.byrayray.dev/convert-a-csv-to-a-javascript-array-of-objects-the-practical-guide
  * @param {string} text Contents of csv file
  * @param {string} delimiter delimiter used to split the lines
- * @returns {Array} Array of objects
+ * @returns {Array<Object>} Array of parsed objects
  */
 function csvToArr(text, delimiter) {
   let re = new RegExp(String.raw`(?<!\\)${delimiter}`, "g");
@@ -86,9 +86,27 @@ function csvToArr(text, delimiter) {
 
   const formedArr = rest.map((item) => {
     const object = {};
-    keys.forEach((key, index) => (object[key] = item.at(index).match(/^[+-]?\d+(\.\d+)?$/) ? parseFloat(item.at(index)) : item.at(index)));
+    keys.forEach((key, index) => {
+      const val = item.at(index);
+      
+      // Check if the value is a valid number format
+      if (val && val.match(/^[+-]?\d+(\.\d+)?$/)) {
+        const parsedNum = parseFloat(val);
+        
+        // Prevent precision loss for huge integers (like Flux Job IDs)
+        // If it lacks a decimal point and exceeds the safe limit, keep it as a string
+        if (!val.includes('.') && (parsedNum > Number.MAX_SAFE_INTEGER || parsedNum < Number.MIN_SAFE_INTEGER)) {
+          object[key] = val;
+        } else {
+          object[key] = parsedNum;
+        }
+      } else {
+        object[key] = val;
+      }
+    });
     return object;
   });
+
   return formedArr;
 }
 

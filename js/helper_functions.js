@@ -103,7 +103,7 @@ function cell_color(params,column) {
       color_obj = { 'color': '#008000', 'font-weight': 'bold' }
     } else if (params.value == "FAILED") {
       color_obj = { 'color': 'red', 'font-weight': 'bold' }
-    } else if (params.value == "RUNNING") {
+    } else if (params.value.toLowerCase().startsWith("run")) {
       color_obj = { 'color': 'blue', 'font-weight': 'bold' }
     } else {
       color_obj = { 'color': '#daa621', 'font-weight': 'bold' }
