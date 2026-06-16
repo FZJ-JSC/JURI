@@ -431,6 +431,9 @@ function addChatbotHtml(self) {
                   style="background-color:var(--fzj-color-blue);color:white;border-color:var(--fzj-color-blue);">
             Send
           </button>
+          <button id="chatbotClearBtn" class="btn w-100 mt-2 btn-secondary" style="background-color:var(--fzj-color-gray);color:darkgray; border-color:var(--fzj-color-blue);">
+            Clear
+          </button>
         </div>
       </div>
     </aside>`;
@@ -520,4 +523,9 @@ function addChatbotLogic(self) {
   $('#chatbotInput').on('input', function() {
     $('#chatbotSendBtn').prop('disabled', !$(this).val().trim());
   }).trigger('input');
+  // CLEAR
+  $('#chatbotClearBtn').on('click', function() {
+    $('#chatbotMessages').empty();
+    $('#chatbotInput').val('').trigger('input');
+  });
 }
