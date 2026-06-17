@@ -586,9 +586,12 @@ View.prototype.initScrollableMenu = function() {
  *
  * @returns {void}
  */
+const CURRENT_ALERT_VERSION = 'v2.4.5'; // Setting up a version for this announcement
 View.prototype.initializeAnnouncementModal = async function () {
-  // Checking if the alert has been previously dismissed by the user
-  if (localStorage.getItem('alertDismissed')) {
+
+  const dismissedVersion = localStorage.getItem('alertDismissed');
+  // Checking if the alert of this version has been previously dismissed by the user
+  if (dismissedVersion == CURRENT_ALERT_VERSION) {
     return;
   }
 
@@ -701,7 +704,7 @@ View.prototype.initializeAnnouncementModal = async function () {
       });
 
       // Persisting dismissal in localStorage to prevent future displays
-      localStorage.setItem('alertDismissed', 'true');
+      localStorage.setItem('alertDismissed', CURRENT_ALERT_VERSION);
     }, 300);
   });
 }

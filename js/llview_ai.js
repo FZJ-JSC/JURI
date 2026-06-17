@@ -451,12 +451,15 @@ function addChatbotLogic(self) {
   const $btn = $('#chatbotBtn');
   let dragging = false, dragged = false;
   let startX = 0, startWidth = 0;
-  
+  let animationFrameId = null; // Used to debounce layout thrashing
 
   $('#chatCloseBtn').on('click', () => {
     $wrapper
       .removeClass('sidebar-open')
       .css('--sidebar-width', '0px');
+    
+    // Give CSS transition time to finish before calling resize
+    setTimeout(resize, 300);
   });
 
   $('#attachContainer').on('click', () => {
@@ -469,45 +472,81 @@ function addChatbotLogic(self) {
   });
 
   $btn.on('mousedown', e => {
-    //if (!$wrapper.hasClass('sidebar-open')) return; // only start dragging if sidebar is open
     dragging = true;
     dragged = false;
     startX = e.clientX;
     startWidth = $sidebar.width();   // current width (0 when closed)
-    $('body').addClass('no-select'); // optional – prevents text selection while dragging
+    
+    // Temporarily kill CSS transitions so the manual drag doesn't lag
+    $sidebar.css('transition', 'none');
+    $btn.css('transition', 'none');
+    $('body').addClass('no-select');
     e.preventDefault();
   });
 
   $(document).on('mousemove', e => {
     if (!dragging) return;
-    const diff = startX - e.clientX;          // negative → enlarge, positive → shrink
+    
+    const diff = startX - e.clientX; // negative → enlarge, positive → shrink
     let newWidth = startWidth + diff;
-    if(Math.abs(diff) > 3){
-      dragged = true; // if moved more than 3px, consider it a drag (not just a click)
-     if(!$wrapper.hasClass('sidebar-open')) { $wrapper.addClass('sidebar-open');}
+    
+    if (Math.abs(diff) > 3) {
+      dragged = true; // moved more than 3px, consider it a drag
+      if (!$wrapper.hasClass('sidebar-open')) {
+        $wrapper.addClass('sidebar-open');
+      }
     } 
-    // enforce sensible limits
-    newWidth = Math.max(0, Math.min(1200, newWidth)); // 0‑1200 px min/max
-    if(newWidth < 10) { newWidth=0; $wrapper.removeClass('sidebar-open');} // if resized all the way to 0, consider it closed
-    $wrapper.css('--sidebar-width', newWidth + 'px'); // update CSS variable for any dependent styles
+    
+    // enforce limits
+    newWidth = Math.max(0, Math.min(1200, newWidth)); 
+    if (newWidth < 10) { 
+      newWidth = 0; 
+      $wrapper.removeClass('sidebar-open');
+    }
+
+    // Cancel any pending frame request to ensure we only paint the latest mouse position
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId);
+    }
+    
+    // requestAnimationFrame ensures this DOM write happens right before the next paint
+    animationFrameId = requestAnimationFrame(() => {
+      $wrapper.css('--sidebar-width', newWidth + 'px');
+      
+      // Call resize to keep the table/grid responsive while dragging
+      resize();
+    });
   });
 
   $(document).on('mouseup', function () {
     if (dragging) {
       dragging = false;
       $('body').removeClass('no-select');
+      
+      // Restore CSS transitions for click animations
+      $sidebar.css('transition', '');
+      $btn.css('transition', '');
+      
+      // Final resize call just in case
+      resize();
     }
   });
  
   $btn.on('click', e => {
-    if(dragged) { e.stopImmediatePropagation(); return;} // prevent click action if we just finished dragging
+    if(dragged) { 
+      e.stopImmediatePropagation(); 
+      return; 
+    } // prevent click action if we just finished dragging
+    
     if($wrapper.hasClass('sidebar-open')) {
       $wrapper.removeClass('sidebar-open').css('--sidebar-width', '0px');
-      
     } else {
       $wrapper.addClass('sidebar-open').css('--sidebar-width', '350px');
       $('#chatbotInput').focus();
     }
+    
+    // Give CSS transition time to finish before calling resize
+    setTimeout(resize, 300);
   });
 
   // SEND
