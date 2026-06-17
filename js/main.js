@@ -148,6 +148,25 @@ View.prototype.show = function () {
 
     // Processing configuration
     if (self.navdata.pages) {
+      // Filtering the configuration tree according to their visibility for the current URL parameters and role
+      self.navdata.pages = self.navdata.pages.filter(function filterTree(node) {
+        if (!self.checkVisibility(node)) return false;
+        
+        if (node.pages) {
+          node.pages = node.pages.filter(filterTree);
+          // Parent dropdown menus with zero visible subpages are automatically hidden
+          if (node.pages.length === 0) return false;
+        }
+        
+        if (node.tabs) {
+          node.tabs = node.tabs.filter(tab => self.checkVisibility(tab));
+          // Pages with zero visible tabs are automatically hidden
+          if (node.tabs.length === 0) return false;
+        }
+        
+        return true;
+      });
+
       self.navdata.pages.forEach(function (elem) {
         const items = elem.pages ?? [elem]; // Getting pages that are directly given or as subpages
 
@@ -576,6 +595,58 @@ View.prototype.initScrollableMenu = function() {
 };
 
 
+/**
+ * Checks if a given page or tab is authorized to be displayed based on the current URL parameters.
+ * If no 'visibility' key exists, it defaults to true (visible to everyone in this role).
+ * 
+ * @param {object} item The page or tab configuration object containing the 'visibility' key.
+ * @returns {boolean} True if the item should be rendered, False if it should be hidden.
+ */
+View.prototype.checkVisibility = function(item) {
+  let self = this;
+  
+  // If the page has no explicit visibility rules, it is public for this role
+  if (!item.visibility) {
+    return true;
+  }
+
+  // The 'visibility' block structure depends on the portal role (determined by Python generator)
+  // User Portal: { "projA": ["user1", "user2", "all"], "projB": ["all"] }
+  // Project Portal: ["projA", "projB"]
+  // Mentor Portal: ["mentor1", "mentor2"]
+  
+  const currentRole = self.navdata.data.permission;
+  const urlProject = self.url_data.project;
+  const urlUser = self.url_data.user;
+  const urlMentor = self.url_data.mentor;
+
+  if (currentRole === 'user') {
+    // Must match the current project, AND the current user must be in the list (or 'all')
+    if (!urlProject || !item.visibility[urlProject]) return false;
+    
+    const authorizedUsers = item.visibility[urlProject];
+    if (Array.isArray(authorizedUsers)) {
+      return authorizedUsers.includes('all') || authorizedUsers.includes(urlUser);
+    }
+  } 
+  else if (currentRole === 'project') {
+    // Must match the current project
+    if (!urlProject) return false;
+    if (Array.isArray(item.visibility)) {
+      return item.visibility.includes(urlProject);
+    }
+  } 
+  else if (currentRole === 'mentor') {
+    // Must match the current mentor
+    if (!urlMentor) return false;
+    if (Array.isArray(item.visibility)) {
+      return item.visibility.includes(urlMentor);
+    }
+  }
+
+  // Fallback for any unknown structure or role
+  return false;
+};
 
 
 /**

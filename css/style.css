@@ -1159,7 +1159,7 @@ footer.container-fluid {
 /*body:not(.no-select) #chatResizer{pointer-events:none;}*/
 /*.chat-sidebar:not(.open)+#chatResizer{display:none;}*/
 /*.chat-sidebar:not(.open){display:none;}*/
-#attachContainer{ cursor:pointer; color:#ced0cb; font-style: italic; padding: 5px;}
+#attachContainer{ cursor:pointer; color:#5d5f5c; font-style: italic; padding: 5px;}
 #attachContainer:hover{color:#000; font-style: normal;}
 #attachContainer.active{background-color:var(--fzj-color-green); color:#3b3b3b; font-style: normal;}
 
