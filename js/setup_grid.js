@@ -262,6 +262,7 @@ function onStateUpdated(event) {
  * Resize Grid according to the number of columns and window width
  */
 function resizeGrid() {
+  if(!view.gridApi) return
   // console.log('resize1',(new Error()).stack?.split("\n")[1]?.trim().split(" ")[1]) 
   let content_width = $('#main_content').width();
   let num_displayed_cols = view.gridApi.getAllDisplayedColumns().length;
