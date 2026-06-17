@@ -401,6 +401,16 @@ function add_filter_placeholder() {
  * have a button are skipped so the function is safe to call repeatedly.
  */
 function init_floating_filter_clear_buttons() {
+  // Clean up orphaned tooltips left in the body by AG Grid virtualization
+  // This breaks any memory leak chain.
+  $('.tooltip').each(function() {
+    let tooltipId = $(this).attr('id');
+    // If the grid deleted the button, the 'aria-describedby' link is gone
+    if (tooltipId && $(`[aria-describedby="${tooltipId}"]`).length === 0) {
+      $(this).remove(); // Safely delete the orphaned DOM node
+    }
+  });
+
   $('.ag-floating-filter').each(function() {
     let container = $(this).find('.ag-floating-filter-input');
     if (!container.length || container.find('.floating-filter-clear-btn').length > 0) return;
@@ -416,17 +426,22 @@ function init_floating_filter_clear_buttons() {
 
     btn.on('click', function(e) {
       e.stopPropagation();
-      $(this).tooltip('hide');
+      
+      // 'dispose' completely destroys the tooltip instance immediately, freeing memory.
+      $(this).tooltip('dispose'); 
+      
       view.gridApi.setColumnFilterModel(colId, null).then(() => {
         view.gridApi.onFilterChanged();
       });
     });
-
     // The button is appended before tooltip init so Bootstrap reads the correct DOM state
     $(this).append(btn);
+    
+    // Enable the Bootstrap tooltip
     btn.tooltip({ container: 'body' });
   });
 }
+
 /**
  * The × button visibility is synced with the current filter model.
  * Columns with an active filter show the button; others hide it.
