@@ -1644,8 +1644,8 @@ View.prototype.add_filter_options = function (filter,options) {
         .prepend(option_input)
       this_option.append(option_label)
         .append(`<br>`);
-      // Adding filter when input checkbox is clicked
-      $('#top_info_area').on('change', `#optionsdiv #${inputid}`, (e) => {
+      // Remove previous listener (if any) to prevent memory leak, then add the new one
+      $('#top_info_area').off('change', `#optionsdiv #${inputid}`).on('change', `#optionsdiv #${inputid}`, (e) => {
         let delimiter="||";
         if (e.target.checked) {
           self.add_filter(filter_entry,delimiter=delimiter);
@@ -2860,6 +2860,9 @@ View.prototype.applyTemplates = function (templates, initializers, postprocess) 
             // Destroy the OLD grid API that we stored earlier
             if (oldGridApi && typeof oldGridApi.destroy === 'function') {
               try {
+                // Wipe all tooltips from the body to prevent memory retention
+                $('.tooltip').remove(); 
+                
                 oldGridApi.destroy();
               } catch(e) {
                 console.error('Error destroying old AG Grid API:', e);
