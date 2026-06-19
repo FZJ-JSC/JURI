@@ -424,16 +424,17 @@ function init_floating_filter_clear_buttons() {
       .attr('data-original-title', 'Clear filter')
       .html('&times;');
 
-    btn.on('click', function(e) {
+    btn[0].addEventListener('click', function(e) {
       e.stopPropagation();
       
       // 'dispose' completely destroys the tooltip instance immediately, freeing memory.
       $(this).tooltip('dispose'); 
-      
+
       view.gridApi.setColumnFilterModel(colId, null).then(() => {
         view.gridApi.onFilterChanged();
       });
     });
+
     // The button is appended before tooltip init so Bootstrap reads the correct DOM state
     $(this).append(btn);
     
@@ -1100,6 +1101,8 @@ class DateTimeParentFilter {
   destroy() {
     document.removeEventListener('mousedown', this.closeDropdown, true);
     window.removeEventListener('blur', this.closeDropdown);
+    // Explicitly tell jQuery to wipe the memory cache for this component and all its children
+    if (this.eGuiWrapper) $(this.eGuiWrapper).remove();
     if (this.ePopup) $(this.ePopup).remove();
 
     if (this.params && this.params.api && this.params.column) {
@@ -1686,6 +1689,8 @@ class TimeIntervalParentFilter {
   destroy() {
     document.removeEventListener('mousedown', this.closeDropdown, true);
     window.removeEventListener('blur', this.closeDropdown);
+    // Explicitly tell jQuery to wipe the memory cache for this component and all its children
+    if (this.eGuiWrapper) $(this.eGuiWrapper).remove();
     if (this.ePopup) $(this.ePopup).remove();
 
     if (this.params && this.params.api && this.params.column) {

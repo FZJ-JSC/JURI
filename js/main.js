@@ -1063,8 +1063,18 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
       clearInterval(self.runningTimer.pop());
     }
 
+    // Destroying grid before emptying DOM to avoid memory leak
+    if (self.gridApi && typeof self.gridApi.destroy === 'function') {
+      try { self.gridApi.destroy(); } catch(e) {}
+    }
+
     // Remove old page data
     self.page_data = null;
+    
+    // Clearing footer graphs
+    if (self.footer_graph && typeof self.footer_graph.clear === 'function') {
+      self.footer_graph.clear();
+    }
     self.footer_graph = null;
     self.resize_function = [];
     self.graph = null;

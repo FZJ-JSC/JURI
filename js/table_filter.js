@@ -309,6 +309,16 @@ function unescapeSpecialCaseChar(string) {
  *                        Column name (not Header!) (for grid)
  */
 function clear_filter(column) {
+  // Check if we are in the middle of an auto-refresh (grid exists, but data was wiped)
+  if (view.gridApi && (!view.contexts || !view.contexts[view.page_context])) {
+    // Queue this action to run immediately after the new grid finishes loading
+    window.addEventListener("pageLoadComplete", function deferredClear() {
+      window.removeEventListener("pageLoadComplete", deferredClear); // Remove listener so it only runs once
+      clear_filter(column); // Run the filter clear on the new/updated grid
+    });
+    return; // Exit now so we don't crash the dying grid
+  }
+
   if($("#main_content table").length){
     // column_escaped = column.replace("(","\\(").replace(")","\\)").replace("/","\\/");
     $(`tr.filter th${column ? '.group_'+escapeSpecialCaseChar(column) : ""} input`).val("");
@@ -504,14 +514,21 @@ function filter_grid(filter) {
 function update_num_count(table) {
   let visible;
   let total;
+  
   if (table) {
     visible = $(table).find("tbody tr:visible").length;
-    total = $(table).find("tbody tr").length
+    total = $(table).find("tbody tr").length;
   } else if (view.gridApi) {
-    visible = view.gridApi.getDisplayedRowCount()
-    total = view.contexts[view.page_context].length
+    // Prevent crash if AG Grid recalculates while data is downloading
+    if (!view.contexts || !view.contexts[view.page_context]) {
+      $("#num_visible_rows").text("Updating entries...");
+      return 0;
+    }
+    visible = view.gridApi.getDisplayedRowCount();
+    total = view.contexts[view.page_context].length;
   }
-  $("#num_visible_rows").text("Showing "+visible+"/"+total+" entries");  
+  
+  $("#num_visible_rows").text("Showing " + visible + "/" + total + " entries");  
   return visible;
 }
 

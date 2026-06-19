@@ -127,7 +127,10 @@ View.prototype.FooterGraph.prototype.add_event_handler = function () {
     }
   }
 
-  $(document).keydown(scroll);
+  // Remove the old listener before adding the new one to prevent memory leaks
+  $(document).off("keydown.footer_graph");
+  $(document).on("keydown.footer_graph", scroll);
+  
   $("#main_content table tbody tr").addClass("clickable");
 }
 
@@ -448,6 +451,18 @@ View.prototype.FooterGraph.prototype.select_page = function (page) {
 
 /* Clear the footer graph area */
 View.prototype.FooterGraph.prototype.clear = function (page) {
+  let self = this;
+  
+  // Safely purge Plotly memory/WebGL contexts before emptying the DOM
+  if (self.graphs && self.graphs.length > 0) {
+    self.graphs.forEach(graph => {
+      // Check if it's a Plotly graph (Mermaid graphs won't have Plotly.purge)
+      if (graph.div && typeof Plotly !== 'undefined') {
+        try { Plotly.purge(graph.div[0]); } catch(e) { console.warn("Plotly purge failed", e); }
+      }
+    });
+  }
+  
   $("#graphs").empty();
 }
 
