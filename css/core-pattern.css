@@ -7,7 +7,7 @@
   font-weight: normal;
   font-style: normal;
   font-display: block;
-  unicode-range: U+0C00-0C01, U+0C10-0C11;
+  unicode-range: U+0C00-0C01, U+0C10-0C11, U+0C0-0C1,;
 }
   
 [class^="icon-"], [class*=" icon-"] {
@@ -24,3 +24,5 @@
 .icon-01::before { content: "\0C01"; }
 .icon-10::before { content: "\0C10"; }
 .icon-11::before { content: "\0C11"; }
+.icon-0::before { content: "\0C0"; }
+.icon-1::before { content: "\0C1"; }
