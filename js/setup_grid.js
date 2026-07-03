@@ -1104,15 +1104,6 @@ class DateTimeParentFilter {
     // Explicitly tell jQuery to wipe the memory cache for this component and all its children
     if (this.eGuiWrapper) $(this.eGuiWrapper).remove();
     if (this.ePopup) $(this.ePopup).remove();
-
-    if (this.params && this.params.api && this.params.column) {
-      let currentModel = this.params.api.getFilterModel();
-      let myColId = this.params.column.getColId();
-      if (currentModel[myColId]) {
-        delete currentModel[myColId];
-        this.params.api.setFilterModel(currentModel);
-      }
-    }
   }
 }
 
@@ -1237,10 +1228,7 @@ class DateFloatingFilterComponent {
    * @returns {void}
    */
   onParentModelChanged(parentModel) {
-    let activeModels = this.params.api.getFilterModel();
-    let myColId = this.params.column.getColId();
-    
-    if (!activeModels[myColId] || !parentModel || (parentModel.dateFrom == null && parentModel.type !== 'contains')) {
+    if (!parentModel || (parentModel.dateFrom == null && parentModel.type !== 'contains')) {
       this.eFilterInput.value = '';
       return;
     }
@@ -1692,15 +1680,6 @@ class TimeIntervalParentFilter {
     // Explicitly tell jQuery to wipe the memory cache for this component and all its children
     if (this.eGuiWrapper) $(this.eGuiWrapper).remove();
     if (this.ePopup) $(this.ePopup).remove();
-
-    if (this.params && this.params.api && this.params.column) {
-      let currentModel = this.params.api.getFilterModel();
-      let myColId = this.params.column.getColId();
-      if (currentModel[myColId]) {
-        delete currentModel[myColId];
-        this.params.api.setFilterModel(currentModel);
-      }
-    }
   }
 }
 
@@ -1823,10 +1802,7 @@ class TimeIntervalFloatingFilterComponent {
    * @returns {void}
    */
   onParentModelChanged(parentModel) {
-    let activeModels = this.params.api.getFilterModel();
-    let myColId = this.params.column.getColId();
-    
-    if (!activeModels[myColId] || !parentModel || parentModel.filter == null) {
+    if (!parentModel || parentModel.filter == null) {
       this.eFilterInput.value = '';
       return;
     }
