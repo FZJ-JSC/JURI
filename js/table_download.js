@@ -153,48 +153,44 @@ function download_table() {
   }
 }
 
-function get_table_to_download_as_pdf() {
-  const columns = view.gridApi.getAllDisplayedColumns();
-  const headerRow = columns.map((column) => {
-    const { field } = column.getColDef();
-    const sort = column.getSort();
-    const headerNameUppercase = field[0].toUpperCase() + field.slice(1);
-    const headerCell = { text: headerNameUppercase + (sort ? ` (${sort})` : ''), };
-    return headerCell;
-  });
-  const rowsToExport = [];
-  const getCellToExport = (column, row) => ({ text: view.gridApi.getCellValue(column, row) ?? '' });
-  view.gridApi.forEachNodeAfterFilterAndSort((rowNode) => {
-    const rowToExport = columns.map((column) => getCellToExport(column, rowNode));
-    rowsToExport.push(rowToExport);
-  });
-  return {
-    pageOrientation: 'landscape', // can also be 'portrait'
-    content: [
-      {
-        table: {
-          // the number of header rows
-          headerRows: 1,
-          // the width of each column, can be an array of widths
-          widths: `${100 / columns.length}%`,
-          // all the rows to display, including the header rows
-          body: [headerRow, ...rowsToExport],
-          // Header row is 40px, other rows are 15px
-          heights: (rowIndex) => (rowIndex === 0 ? 40 : 15),
-        },
-      },
-    ],
-  };
-}
-
 function download_table_pdf() {
-  if (view.gridApi) {
-    //const dtd = get_table_to_download_as_pdf();
-    //pdfMake.createPdf(dtd).download();
 
-    const csv = view.gridApi.getDataAsCsv();         
+  if (get_visible_table_length() > 1000) { 
+    alert("The table is too long to be downloaded as PDF. Please filter the table to reduce the number of rows <= 1000.");
+    return;
+  }
+  const csvData = get_table_data();
+  const displayedCols  = view.gridApi.getAllDisplayedColumns();
+  const rows = csvData
+    .trim().split('\n')
+    .map(line => { const cells = line.split(','); return cells.map(c => c.replace(/^"|"$/g, '')); })
+    .map((row, i) => {
+      if (i === 0) {
+        const out = [];
+        for (let idx = 0; idx < row.length; idx++) {
+          const txt = row[idx];
+          if(txt=="" && idx==0) { out.push({ text: '', style: 'tableHeader', '_colSpan': 1, 'alignment': 'center' }); continue; }
+          else if (txt == "") { out.push({});continue;}
+          let colSpan = 1, j = idx + 1;
+          while (j < row.length && (row[j]== "")) { colSpan++; j++; }
+          out.push({ text: txt, style: 'tableHeader', '_colSpan': colSpan,'alignment': 'center' });
+          for (let k = 1; k < colSpan; k++) { out.push({}); }
+          idx = j - 1; 
+        }
+        return out;
+      }
+      if (i === 1) { return row.map(txt => ({ text: txt, style: 'tableHeader', 'alignment': 'center'})); }
+      else { return row.map(txt => ({ text: txt, style: 'cell'})); }
+    });
 
-    const displayedCols  = view.gridApi.getAllDisplayedColumns();
+    //filter out last three cols if they are reports for html/pdf .. etc
+    const n = rows[0].length;
+    // in case ai reports are disabled, last 2, otherwise last 3 cols
+    if (rows[0][n-2].text == "Reports") { for (let i = 0; i < rows.length; i++) { rows[i].splice(n-2, 2); } }
+    else if (rows[0][n-3].text == "Reports") { for (let i = 0; i < rows.length; i++) { rows[i].splice(n-3, 3); } }
+
+    const colCount = rows[1].length;
+    const maxLen = new Array(colCount).fill(0);
 
     const scaleFactor = 0.6;                
     const fixedWidths = displayedCols.map(col => {
@@ -202,22 +198,19 @@ function download_table_pdf() {
       const pt = Math.round(px * 0.75);     
       return Math.max(30, Math.round(pt * scaleFactor)); // never smaller than ~30 pt
     }); 
-    
-    const rows = csv
-      .trim()                                    
-      .split('\n')
-      .map(line => {
-        const cells = line.split(',');
-        return cells.map(c => c.replace(/^"|"$/g, ''));
-      });
 
     const docDef = {
       pageOrientation: 'landscape',
+      pageSize: 'A3',
+      pageMargins: [10, 10, 10, 10],
       content: [
         {
+          layout: 'headerLineOnly', 
+          style: 'table',
           table: {
             headerRows: 2,
-            widths: fixedWidths, 
+            //widths: fixedWidths, 
+            widths: rows[1].map(() => '*'), // auto width for all columns 
             body: rows                      
           },
           layout: {
@@ -225,17 +218,18 @@ function download_table_pdf() {
             vLineWidth: () => 0.5,
             hLineColor: () => '#E0E0E0',
             vLineColor: () => '#E0E0E0',
-            fillColor: (rowIdx) => (rowIdx === 0 ? '#F5F5F5' : (rowIdx % 2 ? null : '#FAFAFA'))
+            fillColor: (rowIdx) => (rowIdx % 2 ? null : '#dfdddd'),
           }
         }
       ],
       styles: {
-        header: { bold: true, fontSize: 10 },
-        cell:   { fontSize: 9 }
+        cell:   { fontSize: 6 },
+        tableHeader: { bold: true, fontSize: 7, color: '#ffffff', fillColor: '#023d6b' },
+        table: { margin: [0, 0, 0, 0]}
       }
     };
-    pdfMake.createPdf(docDef).download();
-  }
+    pdfMake.createPdf(docDef).download(view.selected_page + '_LLview.pdf');
+
 }
 
 
@@ -263,7 +257,7 @@ function get_visible_table_length() {
 function enable_table_download() {
   if (! $("#download_link").length) {
     let download_link = $("<a>").attr("aria-label","Download as CSV").attr("id","download_link").append($("<span>").addClass("fa fa-download").attr("title","Download as CSV")).click(function(){download_table(); return false;});
-    let download_link_pdf = $("<a>").attr("aria-label","Download as PDF").attr("id","download_link_pdf").append($("<span>").addClass("fa fa-file-pdf-o").attr("title","Download as PDF")).click(function(){download_table_pdf(); return false;});
+    let download_link_pdf = $("<a>").attr("aria-label","Download as PDF").attr("id","download_link_pdf").append($("<span>").addClass("fa fa-file-pdf-o").attr("title","Download as PDF (up to 1000 rows)")).click(function(){download_table_pdf(); return false;});
     view.add_to_footer_infoline(download_link[0],40);
     view.add_to_footer_infoline(download_link_pdf[0],80);
   }
