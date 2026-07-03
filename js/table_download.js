@@ -160,9 +160,15 @@ function download_table_pdf() {
     return;
   }
   const csvData = get_table_data();
-  const displayedCols  = view.gridApi.getAllDisplayedColumns();
-  const rows = csvData
-    .trim().split('\n')
+  if (!csvData) { alert("No data to download!"); return; }
+  // check if csvData has valid csv data (at least 2 rows and 2 columns)
+  const csvDatalines = csvData.trim().split('\n');
+  if (csvDatalines.length < 2) { alert("No data to download!"); return; }
+  const firstRow = csvDatalines[0].split(',');
+  if (firstRow.length < 2) { alert("No data to download!"); return; }
+
+  //const displayedCols  = view.gridApi.getAllDisplayedColumns();
+  const rows = csvDatalines
     .map(line => { const cells = line.split(','); return cells.map(c => c.replace(/^"|"$/g, '')); })
     .map((row, i) => {
       if (i === 0) {
@@ -189,15 +195,15 @@ function download_table_pdf() {
     if (rows[0][n-2].text == "Reports") { for (let i = 0; i < rows.length; i++) { rows[i].splice(n-2, 2); } }
     else if (rows[0][n-3].text == "Reports") { for (let i = 0; i < rows.length; i++) { rows[i].splice(n-3, 3); } }
 
-    const colCount = rows[1].length;
-    const maxLen = new Array(colCount).fill(0);
+    // const colCount = rows[1].length;
+    // const maxLen = new Array(colCount).fill(0);
 
-    const scaleFactor = 0.6;                
-    const fixedWidths = displayedCols.map(col => {
-      const px = col.getActualWidth();      
-      const pt = Math.round(px * 0.75);     
-      return Math.max(30, Math.round(pt * scaleFactor)); // never smaller than ~30 pt
-    }); 
+    // const scaleFactor = 0.6;                
+    // const fixedWidths = displayedCols.map(col => {
+    //   const px = col.getActualWidth();      
+    //   const pt = Math.round(px * 0.75);     
+    //   return Math.max(30, Math.round(pt * scaleFactor)); // never smaller than ~30 pt
+    // }); 
 
     const docDef = {
       pageOrientation: 'landscape',
@@ -237,7 +243,7 @@ function download_table_pdf() {
 function get_table_data() {
   if ($("#main_content table").length) {
     const $tbl = $("#main_content table");
-    return extractTableCSV($tbl, ";");
+    return extractTableCSV($tbl, ",");
   } else if (view.gridApi) {
     return view.gridApi.getDataAsCsv();
   }
