@@ -149,7 +149,7 @@ function download_table() {
       filename: view.selected_page+'.csv'
     });
   } else if (view.gridApi) {
-    view.gridApi.exportDataAsCsv()
+    view.gridApi.exportDataAsCsv({columnSeparator: ';'})
   }
 }
 
@@ -159,7 +159,7 @@ function download_table_pdf() {
     alert("The table is too long to be downloaded as PDF. Please filter the table to reduce the number of rows <= 1000.");
     return;
   }
-  var dlm = ",";
+  var dlm = ";";
   const csvData = get_table_data();
   if (!view.gridApi) dlm = ";";
   if (!csvData) { alert("No data to download!"); return; }
@@ -247,7 +247,7 @@ function get_table_data() {
     const $tbl = $("#main_content table");
     return extractTableCSV($tbl, ";");
   } else if (view.gridApi) {
-    return view.gridApi.getDataAsCsv();
+    return view.gridApi.getDataAsCsv({columnSeparator : ';'});
   }
   return "";
 }
