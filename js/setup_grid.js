@@ -351,11 +351,29 @@ function onFilterChanged(event) {
 }
 
 function onSortChanged(event) {
-  view.initial_data.sort = event.columns.filter(function (s) {
-                              return s.sort != null;
-                            }).map(function (s) {
-                              return { colId: view.nameToHeader[view.clicked_page][s.colId], sort: s.sort };
-                            })[0];
+  if (!view.gridApi) return;
+
+  // Query the grid API directly to get the current state of all columns
+  let sortedCols = view.gridApi.getColumnState().filter(function(s) {
+    return s.sort != null;
+  });
+
+  if (sortedCols.length > 0) {
+    // Map the internal column ID back to your human-readable header name
+    let headerName = view.nameToHeader[view.clicked_page][sortedCols[0].colId];
+    
+    // Fallback just in case the mapping isn't found
+    if (!headerName) headerName = sortedCols[0].colId;
+
+    view.initial_data.sort = { 
+      colId: headerName, 
+      sort: sortedCols[0].sort 
+    };
+  } else {
+    // If the user clicks until the sort is removed, clear it from the URL
+    delete view.initial_data.sort;
+  }
+
   view.setHash();
 }
 
