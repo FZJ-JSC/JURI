@@ -159,17 +159,19 @@ function download_table_pdf() {
     alert("The table is too long to be downloaded as PDF. Please filter the table to reduce the number of rows <= 1000.");
     return;
   }
+  var dlm = ",";
   const csvData = get_table_data();
+  if (!view.gridApi) dlm = ";";
   if (!csvData) { alert("No data to download!"); return; }
   // check if csvData has valid csv data (at least 2 rows and 2 columns)
   const csvDatalines = csvData.trim().split('\n');
-  if (csvDatalines.length < 2) { alert("No data to download!"); return; }
-  const firstRow = csvDatalines[0].split(',');
+  if (csvDatalines.length < 3) { alert("No data to download!"); return; }
+  const firstRow = csvDatalines[0].split(dlm);
   if (firstRow.length < 2) { alert("No data to download!"); return; }
 
   //const displayedCols  = view.gridApi.getAllDisplayedColumns();
   const rows = csvDatalines
-    .map(line => { const cells = line.split(','); return cells.map(c => c.replace(/^"|"$/g, '')); })
+    .map(line => { const cells = line.trim().split(dlm); return cells.map(c => c.replace(/^"|"$/g, '')); })
     .map((row, i) => {
       if (i === 0) {
         const out = [];
@@ -243,7 +245,7 @@ function download_table_pdf() {
 function get_table_data() {
   if ($("#main_content table").length) {
     const $tbl = $("#main_content table");
-    return extractTableCSV($tbl, ",");
+    return extractTableCSV($tbl, ";");
   } else if (view.gridApi) {
     return view.gridApi.getDataAsCsv();
   }
