@@ -203,20 +203,22 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
 
       // Download the graph data using jQuery's $.get.
       // The CSV text is then parsed using csvToArr.
+      // A deferred object is utilized to absorb 404 errors, preventing a single 
+      // missing file from rejecting the entire Promise batch.
+      let dfd = $.Deferred();
       let jqxhr = $.get(localFilepath)
         .done(function (csvText) {
-          // Only process if this call is still current.
-          if (self._currentCallId !== callId) return;
-          // Parse the CSV text into an array of objects.
-          let parsed = csvToArr(csvText, self.graph_data.csv_delimiter ?? ",");
-          // Push each parsed row into the data array.
-          parsed.forEach((row) => currentDataArray.push(row));
+          if (self._currentCallId === callId) {
+            let parsed = csvToArr(csvText, self.graph_data.csv_delimiter ?? ",");
+            parsed.forEach((row) => currentDataArray.push(row));
+          }
+          dfd.resolve();
         })
         .fail(function () {
-          // Allow plotting to continue even if one file is not found.
+          dfd.resolve();
         });
 
-      deferrer.push(jqxhr);
+      deferrer.push(dfd.promise());
       self._pendingRequests.push(jqxhr);
     }
   }
@@ -235,19 +237,21 @@ PlotlyGraph.prototype.key_add_data_to_graph = function (params) {
       self.data[localTracePath] = currentTraceArray;
 
       // Download the CSV data for this trace.
+      // A deferred object is utilized to absorb 404 errors during trace evaluation.
+      let dfd = $.Deferred();
       let jqxhr = $.get(localTracePath)
         .done(function (csvText) {
-          // Only process if this call is still current.
-          if (self._currentCallId !== callId) return;
-          // Parse the CSV text and push each row into the trace's data array.
-          let parsed = csvToArr(csvText, trace.csv_delimiter ?? ",");
-          parsed.forEach((row) => currentTraceArray.push(row));
+          if (self._currentCallId === callId) {
+            let parsed = csvToArr(csvText, trace.csv_delimiter ?? ",");
+            parsed.forEach((row) => currentTraceArray.push(row));
+          }
+          dfd.resolve();
         })
         .fail(function () {
-          // Catch error to allow plotting to continue even if one file is not found.
+          dfd.resolve();
         });
 
-      deferrer.push(jqxhr);
+      deferrer.push(dfd.promise());
       self._pendingRequests.push(jqxhr);
     }
   }
