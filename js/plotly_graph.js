@@ -1417,9 +1417,11 @@ PlotlyGraph.prototype.plot = function (params) {
       }
     }
     // Removing listeners before adding new ones
-    graphDiv[0].removeAllListeners('plotly_update');
-
-    graphDiv[0].on('plotly_update', moveSlider)
+    // Safety check prevents Uncaught TypeErrors if the user navigates away before the Plotly promise resolves
+    if (graphDiv[0]) {
+      graphDiv[0].removeAllListeners('plotly_update');
+      graphDiv[0].on('plotly_update', moveSlider);
+    }
 
     // When a list for highlighing is given and the graph is not empty
     // Add the 'hover' and 'click' listeners to highlight the bars

@@ -113,8 +113,18 @@ function cell_color(params,column) {
 }
 
 
+/**
+ * The status cell is rendered as a flexbox container of SVG icons representing historical health.
+ * Encoded metadata strings (e.g., 'F:1776895200:3:2:0:1') are parsed to generate detailed tooltips
+ * displaying the execution date and a breakdown of run statuses.
+ * 
+ * @param {object} params - AG Grid parameters object containing the cell value.
+ * @returns {string} HTML string containing the rendered SVGs and tooltips.
+ */
 function cell_status(params) {
-  if (!params.value) return '';
+  if (!params || !params.value) return '';
+
+  let val = params.value.toString();
 
   const colors = {
     'S': { main: '#108548', bg: '#ecf3ec', title: 'Passed' },
@@ -128,29 +138,44 @@ function cell_status(params) {
     'W': 'M7.002 9.45a.75.75 0 1 1-.004 1.5.75.75 0 0 1 .004-1.5zM7 3.5a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4a.5.5 0 0 1 .5-.5z'
   };
 
-  const statusArray = params.value.split('');
-  
-  // gap: 0px ensures items touch
   let html = '<div style="display: flex; align-items: center; gap: 0px; vertical-align: middle;">';
 
-  statusArray.forEach((char) => {
-    if (char === '-') {
-      /**
-       * We use a div instead of a character dash to eliminate font-spacing.
-       * width: 6px makes it a short bridge, height: 2px is the line thickness.
-       */
-      html += '<div style="width: 6px; height: 2px; background-color: #bfbfbf; flex-shrink: 0; margin: 0;"></div>';
-    } else if (colors[char]) {
-      const c = colors[char];
-      const p = paths[char];
-      
-      /**
-       * width/height 16px. 
-       * The path starts at 0 on a 14-unit viewBox, 
-       * so it will touch the neighbors perfectly at 0px gap.
-       */
+  if (val.startsWith('-')) {
+    html += '<div style="width: 6px; height: 2px; background-color: #bfbfbf; flex-shrink: 0; margin: 0;"></div>';
+    val = val.substring(1);
+  }
+
+  let chunks = val.split('-');
+
+  chunks.forEach((chunk, index) => {
+    let parts = chunk.split(':');
+    let status = parts[0];
+    let tooltip = '';
+
+    if (colors[status]) {
+      const c = colors[status];
+      const p = paths[status];
+
+      if (parts.length === 6) {
+        let ts = parseInt(parts[1], 10);
+        let total = parts[2];
+        let s_cnt = parts[3];
+        let w_cnt = parts[4];
+        let f_cnt = parts[5];
+
+        let dateStr = new Date(ts * 1000).toLocaleString();
+        
+        // Standard HTML break tags are utilized for multiline Bootstrap rendering
+        tooltip = `Date: ${dateStr}<br>Total Runs: ${total}<br>✔️ Success: ${s_cnt}<br>⚠️ Warning: ${w_cnt}<br>❌ Failed: ${f_cnt}`;
+      } else {
+        tooltip = `Status: ${c.title}`;
+      }
+
+      // onmouseenter dynamically initializes Bootstrap tooltips for elements rendered asynchronously by AG Grid
       html += `
-        <div title="${c.title}" style="display: flex; flex-shrink: 0; width: 16px; height: 16px; margin: 0; padding: 0;">
+        <div title="${tooltip}" data-toggle="tooltip" data-html="true" data-placement="top" 
+             onmouseenter="if(typeof $ !== 'undefined' && !$(this).data('bs.tooltip')) { $(this).tooltip({html: true, boundary: 'viewport'}).tooltip('show'); }"
+             style="display: flex; flex-shrink: 0; width: 16px; height: 16px; margin: 0; padding: 0; cursor: pointer;">
           <svg width="16" height="16" viewBox="0 0 14 14" xmlns="http://www.w3.org/2000/svg" style="display: block;">
             <g fill-rule="evenodd">
               <path d="M0 7a7 7 0 1 1 14 0A7 7 0 0 1 0 7z" fill="${c.main}" />
@@ -159,6 +184,10 @@ function cell_status(params) {
             </g>
           </svg>
         </div>`;
+    }
+
+    if (index < chunks.length - 1) {
+      html += '<div style="width: 6px; height: 2px; background-color: #bfbfbf; flex-shrink: 0; margin: 0;"></div>';
     }
   });
 
