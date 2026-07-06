@@ -209,7 +209,7 @@ function download_table_pdf() {
 
     const docDef = {
       pageOrientation: 'landscape',
-      pageSize: 'A3',
+      pageSize: 'A2',
       pageMargins: [10, 10, 10, 10],
       content: [
         {
@@ -231,8 +231,8 @@ function download_table_pdf() {
         }
       ],
       styles: {
-        cell:   { fontSize: 6 },
-        tableHeader: { bold: true, fontSize: 7, color: '#ffffff', fillColor: '#023d6b' },
+        cell:   { fontSize: 8 },
+        tableHeader: { bold: true, fontSize: 8, color: '#ffffff', fillColor: '#023d6b' },
         table: { margin: [0, 0, 0, 0]}
       }
     };
