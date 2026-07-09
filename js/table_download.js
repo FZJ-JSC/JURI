@@ -265,7 +265,7 @@ function get_visible_table_length() {
 function enable_table_download() {
   if (! $("#download_link").length) {
     let download_link = $("<a>").attr("aria-label","Download as CSV").attr("id","download_link").append($("<span>").addClass("fa fa-download").attr("title","Download as CSV")).click(function(){download_table(); return false;});
-    let download_link_pdf = $("<a>").attr("aria-label","Download as PDF").attr("id","download_link_pdf").append($("<span>").addClass("fa fa-file-pdf-o").attr("title","Download as PDF (up to 1000 rows)")).click(function(){download_table_pdf(); return false;});
+    let download_link_pdf = $("<a>").attr("aria-label","Download as PDF").attr("id","download_link_pdf").append($("<span>").addClass("fa fa-file-pdf-o").attr("title","Download as PDF<br>(up to 1000 rows)")).click(function(){download_table_pdf(); return false;});
     view.add_to_footer_infoline(download_link[0],40);
     view.add_to_footer_infoline(download_link_pdf[0],80);
   }

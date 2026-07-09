@@ -163,7 +163,7 @@ function cell_status(params) {
         let w_cnt = parts[4];
         let f_cnt = parts[5];
 
-        let dateStr = new Date(ts * 1000).toLocaleString();
+        let dateStr = new Date(ts * 1000).toLocaleString('sv-SE');
         
         // Standard HTML break tags are utilized for multiline Bootstrap rendering
         tooltip = `Date: ${dateStr}<br>Total Runs: ${total}<br>✔️ Success: ${s_cnt}<br>⚠️ Warning: ${w_cnt}<br>❌ Failed: ${f_cnt}`;
