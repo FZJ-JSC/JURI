@@ -939,8 +939,26 @@ PlotlyGraph.prototype.plot = function (params) {
         // Getting min and max values of y for each y axis to adjust ranges below
         // (min and max for x are adjusted below)
         if (((self.minmax) && (trace.min)) || (trace.y)) {
-          ymin[trace.yaxis] = Math.min(ymin[trace.yaxis] ? ymin[trace.yaxis] : 0, ...(self.minmax ? trace.min : trace.y));
-          ymax[trace.yaxis] = Math.max(ymax[trace.yaxis] ? ymax[trace.yaxis] : 0, ...(self.minmax ? trace.max : trace.y));
+          let arrMin = self.minmax ? trace.min : trace.y;
+          let arrMax = self.minmax ? trace.max : trace.y;
+
+          let localMin = Infinity;
+          let localMax = -Infinity;
+
+          // Local min/max are found via loops to avoid call stack limits on large arrays
+          for (let i = 0; i < arrMin.length; i++) {
+            if (arrMin[i] < localMin) localMin = arrMin[i];
+          }
+          for (let i = 0; i < arrMax.length; i++) {
+            if (arrMax[i] > localMax) localMax = arrMax[i];
+          }
+
+          let prevMin = ymin[trace.yaxis] ? ymin[trace.yaxis] : 0;
+          let prevMax = ymax[trace.yaxis] ? ymax[trace.yaxis] : 0;
+
+          // Safe Math.min/max execution (only two arguments passed)
+          ymin[trace.yaxis] = Math.min(prevMin, localMin);
+          ymax[trace.yaxis] = Math.max(prevMax, localMax);
         }
 
         // Add traces if this data does not contain a slider, as in that case, all the traces were added already
@@ -1130,10 +1148,14 @@ PlotlyGraph.prototype.plot = function (params) {
     // all traces at once, and bugs updating the traces when passing them in the steps (see long comment above)
     var slider_change = function (e) {
       // Updating shapes in layout
-      layout.shapes = shapes[e.step._index]
-      layout.xaxis.range = [self.graph_data.vertical_line ? layout.shapes[0].x0 : Math.min(...traces_slider[e.step._index].flatMap(trace => trace.x)), Math.max(...traces_slider[e.step._index].flatMap(trace => trace.x))]
+      let extremes = self.getTracesXExtremes(traces_slider[e.step._index]);
+      layout.shapes = shapes[e.step._index];
+      layout.xaxis.range = [
+        self.graph_data.vertical_line ? layout.shapes[0].x0 : extremes.min, 
+        extremes.max
+      ];
       // Resettting autorange to false, as after zoom it may be changed to true (must be xaxis, which is used in 'matched' for all graphs)
-      layout.xaxis.autorange = false
+      layout.xaxis.autorange = false;
       // Updating the graph, as the slider update has problems
       Plotly.react(self.id, traces_slider[e.step._index], layout, self.config);
 
@@ -1197,10 +1219,14 @@ PlotlyGraph.prototype.plot = function (params) {
       if (traces_slider[index]) {
         layout.sliders[0].active = index
         // Updating shapes in layout
-        layout.shapes = shapes[index]
-        layout.xaxis.range = [self.graph_data.vertical_line ? layout.shapes[0].x0 : Math.min(...traces_slider[index].flatMap(trace => trace.x)), Math.max(...traces_slider[index].flatMap(trace => trace.x))]
+        let extremes = self.getTracesXExtremes(traces_slider[index]);
+        layout.shapes = shapes[index];
+        layout.xaxis.range = [
+          self.graph_data.vertical_line ? layout.shapes[0].x0 : extremes.min, 
+          extremes.max
+        ];
         // Resettting autorange to false, as after zoom it may be changed to true (must be xaxis, which is used in 'matched' for all graphs)
-        layout.xaxis.autorange = false
+        layout.xaxis.autorange = false;
 
         // Updating the graph, as the slider update has problems
         Plotly.react(self.id, traces_slider[index], layout, self.config);
@@ -1692,6 +1718,29 @@ PlotlyGraph.prototype.sortDataByX = function (data, xcol, layoutXType) {
   });
 };
 
+
+/**
+ * Helper to safely extract min and max X values from an array of traces.
+ * This is used to bypass call stack limits when dealing with very large trace point counts.
+ * 
+ * @param {Array<Object>} traces - Array of trace objects to inspect
+ * @returns {Object} Object containing {min, max} 
+ */
+PlotlyGraph.prototype.getTracesXExtremes = function(traces) {
+  let min = Infinity;
+  let max = -Infinity;
+  for (let t of traces) {
+    if (t.x && t.x.length > 0) {
+      for (let i = 0; i < t.x.length; i++) {
+        if (t.x[i] < min) min = t.x[i];
+        if (t.x[i] > max) max = t.x[i];
+      }
+    }
+  }
+  return { min: min, max: max };
+}
+
+
 /**
  * Function to check and store the primary mouse button state
  * to be used with mousedown/mouseup events on the highlighting of jobs
@@ -2031,7 +2080,14 @@ function _lastValues(traces) {
 Math.min = (...a) => {
   if (_isTraces(a)) {
     const y = _allY(a);
-    return y ? _nativeMin(...y) : undefined;
+    if (!y || y.length === 0) return undefined;
+    
+    // Loops are used to prevent call stack overflow on very large arrays
+    let min = y[0];
+    for (let i = 1; i < y.length; i++) {
+      if (y[i] < min) min = y[i];
+    }
+    return min;
   }
   return _nativeMin(...a);
 };
@@ -2045,7 +2101,14 @@ Math.min = (...a) => {
 Math.max = (...a) => {
   if (_isTraces(a)) {
     const y = _allY(a);
-    return y ? _nativeMax(...y) : undefined;
+    if (!y || y.length === 0) return undefined;
+
+    // Loops are used to prevent call stack overflow on very large arrays
+    let max = y[0];
+    for (let i = 1; i < y.length; i++) {
+      if (y[i] > max) max = y[i];
+    }
+    return max;
   }
   return _nativeMax(...a);
 };
