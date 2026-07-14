@@ -1128,6 +1128,10 @@ View.prototype.selectPage = async function (page, reset_initial_params, reload =
     self.footer_graph_config = (page_data.footer_graph_config) ?? null;
     self.graph_page_config = (page_data.graph_page_config) ?? null;
 
+    // Displaying internal error on the console, when it is present
+    if(page_data.error){
+      console.error(page_data.error)
+    }
     // Updating page_context depending on subpage
     self.page_context = ((typeof subpage === 'undefined')||(isNaN(parseInt(subpage)))) ? replaceDataPlaceholder(self.page_context) : self.get_history_context(subpage);
   }
