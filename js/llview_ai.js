@@ -326,6 +326,7 @@ async function sendChat() {
   const attach = $('#attachContainer');
   const symb = $('#attachSymbol');
   $msgContainer.append($('<div>').addClass('user-message').text(message));
+  $('#chatbotClearBtn').prop('disabled', false);
   $input.val('');
   $msgContainer.scrollTop($msgContainer[0].scrollHeight);
   const chatbot_api_url = view.uiConfig && view.uiConfig.llviewai.chatBotEndpoint ? view.uiConfig.llviewai.chatBotEndpoint : '/api/llview-ai';
@@ -431,7 +432,7 @@ function addChatbotHtml(self) {
                   style="background-color:var(--fzj-color-blue);color:white;border-color:var(--fzj-color-blue);">
             Send
           </button>
-          <button id="chatbotClearBtn" class="btn w-100 mt-2 btn-secondary" style="background-color:var(--fzj-color-gray);color:darkgray; border-color:var(--fzj-color-blue);">
+          <button id="chatbotClearBtn" class="btn w-100 mt-2 btn-secondary" disabled="disabled" style="background-color:var(--fzj-color-gray);color:black; border-color:var(--fzj-color-blue);">
             Clear
           </button>
         </div>
@@ -565,6 +566,7 @@ function addChatbotLogic(self) {
   // CLEAR
   $('#chatbotClearBtn').on('click', function() {
     $('#chatbotMessages').empty();
+    $(this).prop('disabled', true);
     $('#chatbotInput').val('').trigger('input');
   });
 }
