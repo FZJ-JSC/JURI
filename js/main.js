@@ -2038,7 +2038,10 @@ View.prototype.reloadPage = function () {
       index = self.headers[self.clicked_page].indexOf('JobID');
       selected_jobid = $("#main_content table tbody tr.selected td").eq(index).text()??""
     } else if (self.gridApi) {
-      self.gridState[self.selected_page] = self.gridApi.getState(); // Save current state to recover after refresh
+      // A unique state key is generated combining page and subpage
+      let stateKey = self.selected_subpage ? `${self.selected_page}_${self.selected_subpage}` : self.selected_page;
+      self.gridState[stateKey] = self.gridApi.getState(); // Save current state to recover after refresh
+      
       const selectedNodes = self.gridApi.getSelectedNodes();
       if (selectedNodes.length > 0) {
         selected_jobid = selectedNodes[0].data.jobid; // Just save the ID string

@@ -507,3 +507,44 @@ function gen_jobid_list_link(params) {
 
   return result.trim();
 }
+
+/**
+ * Generate a link that changes the view to a specific tab/page.
+ * 
+ * @param {object} params - object containing .value (the core page identifier)
+ * @param {string} prefix - string to prepend to the value to form the page ID
+ * @param {string} suffix - string to append to the value to form the page ID
+ * @returns {string} HTML string with an anchor tag that updates the page hash
+ */
+function gen_tab_link(params, prefix, suffix) {
+  // Ensure we have strings to concatenate
+  let pre = prefix || "";
+  let suf = suffix || "";
+  
+  // Construct the target ID from the prefix, value, and suffix
+  // e.g., if prefix='user_', params.value='john', suffix='_details' -> 'user_john_details'
+  let targetId = pre + params.value + suf;
+  
+  // Start with the current window's location to preserve base path and query params
+  let currentUrl = new URL(window.location.href);
+  
+  // Update the 'page' parameter inside the Hash
+  let hashParams = new URLSearchParams(currentUrl.hash.substring(1)); // Remove leading '#'
+  hashParams.set('page', targetId);
+  currentUrl.hash = hashParams.toString(); 
+
+  let finalUrl = currentUrl.href;
+
+  // Build the argument for selectPage
+  let selectPageArg;
+  if (targetId.includes('.')) {
+    const [page, subpage] = targetId.split('.');
+    selectPageArg = `['${page}', '${subpage}']`;
+  } else {
+    selectPageArg = `'${targetId}'`;
+  }
+
+  // Create link. Modifier keys bypass onclick to open new tab via href.
+  // Normal click intercepts via onclick, updates the view, and returns false.
+  return `<a href="${finalUrl}" onclick="if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return true; view.selectPage(${selectPageArg}); return false;">${params.value}</a>`;
+}

@@ -12,6 +12,9 @@
 
 function init_grid() {
 
+  // A unique state key is generated combining page and subpage
+  let stateKey = view.clicked_subpage ? `${view.clicked_page}_${view.clicked_subpage}` : view.clicked_page;
+
   /**
    * The Balham theme is configured here using the Theming API (starting on ag-grid v35).
    * CSS variable references are passed as strings so custom palette
@@ -36,7 +39,7 @@ function init_grid() {
     // columnMenu: 'legacy',
     rowData: view.contexts[view.page_context],
     columnDefs: view.columnDefs,
-    initialState: view.gridState[view.clicked_page]??null, // Recovering state, if existing
+    initialState: view.gridState[stateKey] ?? null, // Recovering state uniquely per tab, if existing
     // Registering filter components
     components: {
       DateTimeParentFilter: DateTimeParentFilter,

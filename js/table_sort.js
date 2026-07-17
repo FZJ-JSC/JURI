@@ -113,6 +113,14 @@ function set_initial_sort() {
       }
       element.trigger("click");
     } else if (view.gridApi) {
+      
+      let colId = view.headerToName[view.clicked_page][view.initial_data.sort.colId];
+      // The execution is aborted peacefully if the sorted column does not exist on the current tab.
+      // This avoids a fatal crash while preserving the sort state in the URL for when the user switches back.
+      if (!colId || !view.gridApi.getColumn(colId)) {
+        return; 
+      }
+
       if(view.headerToName[view.clicked_page][view.initial_data.sort.colId]) {
         // If column exists in this page, check if it should be open or closed
         check_column_expanded_status(view.headerToName[view.clicked_page][view.initial_data.sort.colId])
