@@ -308,7 +308,7 @@ function create_report_link(params,type,project,user) {
 function gen_project_user_link(params, config, project) {
   //    console.log("gen_project_user_link: "+config+" "+params.data[project]+" "+params.value);
   // Check permission
-  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+  if (view.navdata.data.permission && ["observer", "support", "project"].indexOf(view.navdata.data.permission) != -1) {
     
     // Start fresh with the base URL (no query, no hash)
     let newUrl = new URL(window.location.origin + window.location.pathname);

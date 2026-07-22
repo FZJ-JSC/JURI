@@ -52,7 +52,7 @@ function buildSafeUrl(paramsObj) {
 
 Handlebars.registerHelper('gen_project_user_link', function(config, project, user) {
   // Check permission
-  if (self.helperContext.permission && ["observer", "support"].indexOf(self.helperContext.permission) != -1) {
+  if (self.helperContext.permission && ["observer", "support", "project"].indexOf(self.helperContext.permission) != -1) {
     
     const url = buildSafeUrl({
       config: config,

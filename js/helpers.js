@@ -19,7 +19,7 @@ Handlebars.registerHelper('replaceDataPlaceholder', function(link) {
 Handlebars.registerHelper('gen_project_user_link', function(config,project,user) {
 //    console.log("gen_project_user_link: "+config+" "+project+" "+user);
   // Check permission
-  if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
+  if (view.navdata.data.permission && ["observer", "support", "project"].indexOf(view.navdata.data.permission) != -1) {
     
     // Start fresh with the base URL (no query, no hash)
     let newUrl = new URL(window.location.origin + window.location.pathname);
