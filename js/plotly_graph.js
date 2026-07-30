@@ -398,68 +398,91 @@ PlotlyGraph.prototype.plot = function (params) {
 
         // Trace options for heatmap must be done separately, as the data is expected to be differently
         // and some options are not required
-
-        /*NA-edit begin*/
         if (trace.type == 'heatmap') {                           // HEATMAP
           trace.colorscale = trace_data.colorscale ?? undefined;
           trace.reversescale = trace_data.reversescale ?? false;
 
-          let rawX = data.map(d => d[trace_data.xcol]);
-          trace.x = Array.from(new Set(rawX));
-          let xMap = new Map();        // map raw value -> numeric index
-          trace.x.forEach((val, idx) => xMap.set(val, idx));
-          layout.xaxis.tickmode = "array";
-          //layout.xaxis.tickvals =  Array.from(new Set(trace.x)).sort(function(a, b) { return parseInt(a) - parseInt(b); });
-          layout.xaxis.tickvals = Array.from(trace.x.keys());
-          layout.xaxis.ticktext = Array.from(trace.x.values());
+          let xColKey = trace_data.xcol ?? self.graph_data.xcol;
 
+          // Process X Axis (Handling Dates, Categories, and Floats)
+          let uniqueRawX = Array.from(new Set(data.map(d => d[xColKey])));
+          let xObjects = uniqueRawX.map(raw => {
+            let parsed;
+            if (layout.xaxis.type === 'category') {
+              parsed = raw !== null && raw !== undefined ? raw.toString() : "";
+            } else if (layout.xaxis.type !== 'date' && xColKey !== 'date') {
+              let val = parseFloat(raw);
+              parsed = isNaN(val) ? (self.graph_data.fillNA ?? null) : val;
+            } else {
+              parsed = self.parseToTimestamp(raw);
+            }
+            return { raw: raw, parsed: parsed };
+          });
 
-          let rawY = data.map(d => d[trace_data.ycol]);
-          console.log("Raw Y values before sorting:", rawY);
-          rawY.sort((a, b) => {
+          // Sort X values
+          if (layout.xaxis.type === 'category') {
+            xObjects.sort((a, b) => a.parsed.localeCompare(b.parsed));
+            layout.xaxis.autorange = true;
+          } else {
+            xObjects.sort((a, b) => {
+              if (a.parsed === null) return 1;
+              if (b.parsed === null) return -1;
+              return a.parsed - b.parsed;
+            });
+            if (layout.xaxis.type !== 'category' && xColKey === 'date') {
+              layout.xaxis.type = 'date';
+            }
+          }
+
+          trace.x = xObjects.map(obj => obj.parsed);
+          let xMap = new Map();
+          xObjects.forEach((obj, idx) => xMap.set(obj.raw, idx));
+
+          // Clean up any manual tick forcing so Plotly can natively format dates/strings
+          delete layout.xaxis.tickmode;
+          delete layout.xaxis.tickvals;
+          delete layout.xaxis.ticktext;
+
+          // Process Y Axis (With custom regex sort for nodes)
+          let uniqueRawY = Array.from(new Set(data.map(d => d[trace_data.ycol])));
+          uniqueRawY.sort((a, b) => {
             const regex = /jwb(\d+)/g;
             const numsA = [...a.matchAll(regex)].map(m => parseInt(m[1], 10));
             const numsB = [...b.matchAll(regex)].map(m => parseInt(m[1], 10));
-            for (let i = 0; i < Math.min(numsA.length, numsB.length); i++) { if (numsA[i] !== numsB[i]) return numsA[i] - numsB[i]; }
+            for (let i = 0; i < Math.min(numsA.length, numsB.length); i++) { 
+              if (numsA[i] !== numsB[i]) return numsA[i] - numsB[i]; 
+            }
             return numsA.length - numsB.length;
           });
-          trace.y = Array.from(new Set(rawY));
+          trace.y = uniqueRawY;
           let yMap = new Map();
           trace.y.forEach((val, idx) => yMap.set(val, idx));
+          
           delete layout.yaxis.range;
-          layout.yaxis.tickmode = "array";
-          layout.yaxis.tickvals = Array.from(trace.y.keys());
-          layout.yaxis.ticktext = Array.from(trace.y.values());
+          delete layout.yaxis.tickmode;
+          delete layout.yaxis.tickvals;
+          delete layout.yaxis.ticktext;
 
-
-          console.log("xMap:", xMap);
-          console.log("yMap:", yMap);
-
-          // Create empty array with sizes length[ length[...]=length_x ]=length_y
+          // Create and populate Z matrix (with fillNA fallback)
+          let fillVal = trace_data.fill ?? self.graph_data.fillNA ?? null;
           trace.z = new Array(trace.y.length);
           for (var i = 0; i < trace.y.length; i++) {
             trace.z[i] = new Array(trace.x.length);
             for (var j = 0; j < trace.x.length; j++) {
-              trace.z[i][j] = trace_data.fill ?? null;
+              trace.z[i][j] = fillVal;
             }
           }
 
-          // looping over values in data and filling array of z component (i.e., values that are represented by colors)
           for (let d = 0; d < data.length; d++) {
             let line = data[d];
-            // Resolve the x-value to match the key format used in the map
-            let lookupKey;
-            let xIdx, yIdx;
-            xIdx = xMap.get(line[trace_data.xcol]);
-            yIdx = yMap.get(line[trace_data.ycol]);
+            let xIdx = xMap.get(line[xColKey]);
+            let yIdx = yMap.get(line[trace_data.ycol]);
 
-            // Only assign if valid indices found
             if (xIdx !== undefined && yIdx !== undefined) {
               trace.z[yIdx][xIdx] = line[trace_data.zcol];
             }
           }
-        } else if (trace.type == 'bar') {              // BARPLOT
-
+        } else if (trace.type == 'bar') {               // BARPLOT
 
           // Getting x values
           let xColKey = trace_data.xcol ?? self.graph_data.xcol;
