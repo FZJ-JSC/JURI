@@ -483,7 +483,6 @@ PlotlyGraph.prototype.plot = function (params) {
             }
           }
         } else if (trace.type == 'bar') {               // BARPLOT
-
           // Getting x values
           let xColKey = trace_data.xcol ?? self.graph_data.xcol;
           if (layout.xaxis.type === 'category') {

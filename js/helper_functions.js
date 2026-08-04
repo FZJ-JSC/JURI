@@ -410,26 +410,47 @@ function gen_projects_link(params, config) {
 };
 
 
+/**
+ * Generates a link (or comma-separated links) for a mentor or list of mentors
+ * @param {Object} params Object containing the value to be formatted
+ * @param {string} params.value The mentor name or comma-separated list of mentor names
+ * @param {string} config The configuration parameter to pass in the URL
+ * @returns {string} HTML string with anchor tags for each mentor, or plain text if unauthorized
+ */
 function gen_mentor_link(params, config) {
-  //    console.log("gen_mentor_link: "+config+" "+params.value);
+  if (!params || !params.value) return "";
+
   // Check permission
   if (view.navdata.data.permission && ["observer", "support"].indexOf(view.navdata.data.permission) != -1) {
     
-    // Start fresh
-    let newUrl = new URL(window.location.origin + window.location.pathname);
+    // Split the value by comma in case there are multiple mentors
+    const mentors = String(params.value).split(',');
+    
+    // Map each mentor to a separate anchor tag
+    const links = mentors.map(mentorName => {
+      const trimmedName = mentorName.trim();
+      if (!trimmedName) return "";
+      
+      // Start fresh
+      let newUrl = new URL(window.location.origin + window.location.pathname);
 
-    // Set specific params
-    newUrl.searchParams.set('config', config);
-    newUrl.searchParams.set('mentor', params.value);
+      // Set specific params for this specific mentor
+      newUrl.searchParams.set('config', config);
+      newUrl.searchParams.set('mentor', trimmedName);
 
-    // Copy hash
-    newUrl.hash = window.location.hash;
+      // Copy hash
+      newUrl.hash = window.location.hash;
 
-    return `<a href="${newUrl.href}">${params.value}</a>`;
+      return `<a href="${newUrl.href}">${trimmedName}</a>`;
+    });
+
+    // Join the generated links with a comma and space
+    return links.filter(link => link !== "").join(', ');
   } else {
+    // Return original value if user does not have permission
     return params.value;
   }
-};
+}
 
 function gen_benchmark_link(params) {
   // console.log("gen_benchmark_link: "+config+" "+params.value);
@@ -510,11 +531,12 @@ function gen_jobid_list_link(params) {
 
 /**
  * Generate a link that changes the view to a specific tab/page.
+ * Validates against view.navdata.pages before creating a link.
  * 
  * @param {object} params - object containing .value (the core page identifier)
  * @param {string} prefix - string to prepend to the value to form the page ID
  * @param {string} suffix - string to append to the value to form the page ID
- * @returns {string} HTML string with an anchor tag that updates the page hash
+ * @returns {string} HTML string with an anchor tag (if valid) or just text
  */
 function gen_tab_link(params, prefix, suffix) {
   // Ensure we have strings to concatenate
@@ -522,8 +544,57 @@ function gen_tab_link(params, prefix, suffix) {
   let suf = suffix || "";
   
   // Construct the target ID from the prefix, value, and suffix
-  // e.g., if prefix='user_', params.value='john', suffix='_details' -> 'user_john_details'
+  // e.g., 'loginnodes.login_jpbl-s01-02'
   let targetId = pre + params.value + suf;
+  
+  // Parse targetId into page and subpage components
+  let targetPage = targetId;
+  let targetSubpage = null;
+  
+  if (targetId.includes('.')) {
+    const parts = targetId.split('.');
+    targetPage = parts[0];
+    targetSubpage = parts[1];
+  }
+
+  // Check if target exists in view.navdata.pages
+  let isValidTarget = false;
+
+  if (view && view.navdata && Array.isArray(view.navdata.pages)) {
+    // Top level sections (e.g., "System", "Jobs")
+    for (const section of view.navdata.pages) {
+      if (Array.isArray(section.pages)) {
+        // Inner pages
+        for (const pageObj of section.pages) {
+          
+          // Simple Page Match (No Subpages/Tabs)
+          if (!targetSubpage && pageObj.section === targetPage) {
+            isValidTarget = true;
+            break;
+          }
+          
+          // Nested Tab Match
+          if (targetSubpage && pageObj.section === targetPage && Array.isArray(pageObj.tabs)) {
+            for (const tabObj of pageObj.tabs) {
+              if (tabObj.section === targetSubpage) {
+                isValidTarget = true;
+                break;
+              }
+            }
+          }
+          if (isValidTarget) break;
+        }
+      }
+      if (isValidTarget) break;
+    }
+  }
+
+  // If the target page doesn't exist for this system, just return the raw text
+  if (!isValidTarget) {
+    return params.value;
+  }
+
+  // --- Target is valid, build the link ---
   
   // Start with the current window's location to preserve base path and query params
   let currentUrl = new URL(window.location.href);
@@ -536,13 +607,7 @@ function gen_tab_link(params, prefix, suffix) {
   let finalUrl = currentUrl.href;
 
   // Build the argument for selectPage
-  let selectPageArg;
-  if (targetId.includes('.')) {
-    const [page, subpage] = targetId.split('.');
-    selectPageArg = `['${page}', '${subpage}']`;
-  } else {
-    selectPageArg = `'${targetId}'`;
-  }
+  let selectPageArg = targetSubpage ? `['${targetPage}', '${targetSubpage}']` : `'${targetPage}'`;
 
   // Create link. Modifier keys bypass onclick to open new tab via href.
   // Normal click intercepts via onclick, updates the view, and returns false.
