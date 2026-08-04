@@ -831,6 +831,7 @@ PlotlyGraph.prototype.plot = function (params) {
           // If it's not a heatmap not a bar, we consider it is a scatter plot
           trace.line = mergeDeep({ width: 1, shape: 'hvh', color: trace_data.color ?? 'black' }, trace_data.line ?? {});
           trace.mode = trace_data.mode ?? 'lines';
+          trace.nbinsx = trace_data.nbinsx ?? null;
           trace.showlegend = trace_data.showlegend ?? true;
           trace.legendgroup = trace_data.legendgroup ?? trace_data.name;
 
@@ -897,10 +898,10 @@ PlotlyGraph.prototype.plot = function (params) {
               trace.hovertemplate.push(trace.min[i].toFixed(2) + ' / <b>' + trace.y[i].toFixed(2) + '</b> / ' + trace.max[i].toFixed(2));
             }
             minmax[trace_data.ycol] = { name: trace.name, min: trace.min, max: trace.max, yaxis: trace.yaxis, color: trace.line.color, factor: data.factor };
-          } else if (trace.type != "histogram") {
-            trace.hovertemplate = '<b>%{y}</b>';
-          } else {
+          } else if (trace.type == "histogram") {
             trace.hovertemplate = '<b>Range: %{x}, Count: %{y}</b>';
+          } else {
+            trace.hovertemplate = '<b>%{y}</b>';
           }
 
           // Creating hovertemplate if given on config
