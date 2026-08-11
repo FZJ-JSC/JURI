@@ -456,6 +456,11 @@ View.prototype.FooterGraph.prototype.clear = function (page) {
   // Safely purge Plotly memory/WebGL contexts before emptying the DOM
   if (self.graphs && self.graphs.length > 0) {
     self.graphs.forEach(graph => {
+      // Abort pending network requests and timeouts for this specific graph instance
+      if (typeof graph.destroy === 'function') {
+        graph.destroy();
+      }
+      
       // Check if it's a Plotly graph (Mermaid graphs won't have Plotly.purge)
       if (graph.div && typeof Plotly !== 'undefined') {
         try { Plotly.purge(graph.div[0]); } catch(e) { console.warn("Plotly purge failed", e); }

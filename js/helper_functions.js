@@ -112,6 +112,19 @@ function cell_color(params,column) {
   return color_obj;
 }
 
+function percent_or_null(params) {
+  let dec_places = 2;
+  let value = parseFloat(params.value*100.0).toLocaleString('en',{minimumFractionDigits: dec_places, maximumFractionDigits: dec_places});
+  if (params.value !== undefined) {
+    if (value == '0.00') {
+      value = ""
+    } else {
+      value += "%";
+    }
+  }
+  return value;
+}
+
 
 /**
  * The status cell is rendered as a flexbox container of SVG icons representing historical health.
@@ -207,7 +220,7 @@ function cell_background_color(params,colorcol,defscale) {
     } else {
       if (value <= 0.00005 ) {
         // return white background if value is too small (only for colorscales passed in argument)
-        return {backgroundColor: '#fff', color: '#000'};
+        return {backgroundColor: 'transparent', color: '#000'};
       }
       // From argument passed in the column config
       colorscale_name = defscale;

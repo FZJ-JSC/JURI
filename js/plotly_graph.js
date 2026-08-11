@@ -309,6 +309,9 @@ PlotlyGraph.prototype.plot = function (params) {
   let self = this;
   // Getting div where plot is going to be added
   let graphDiv = $(`#${self.id}`);
+  // If the DOM element no longer exists (e.g., user switched tabs), abort rendering
+  if (graphDiv.length === 0) return;
+
   if (self.graph_data.height) {
     graphDiv.height(self.graph_data.height)
   }
@@ -1691,6 +1694,32 @@ PlotlyGraph.prototype.plot = function (params) {
 
   })
 }
+
+
+/**
+ * Cancels any pending data fetching or scheduled plotting tasks to prevent 
+ * background processes from firing after the graph has been removed from the DOM.
+ */
+PlotlyGraph.prototype.destroy = function () {
+  let self = this;
+  
+  // Clear any scheduled delayed plots
+  clearTimeout(self.timeout);
+  
+  // Abort any active network requests
+  if (self._pendingRequests && self._pendingRequests.length) {
+    self._pendingRequests.forEach((req) => {
+      if (typeof req.abort === 'function') {
+        req.abort();
+      }
+    });
+    self._pendingRequests = [];
+  }
+  
+  // Increment callId so any currently resolving promises instantly fail the _currentCallId check
+  self._currentCallId = Date.now(); 
+};
+
 
 /**
  * Helper to sort the raw data array in-place based on the X-axis column.

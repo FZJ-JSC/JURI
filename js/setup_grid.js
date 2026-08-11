@@ -100,6 +100,7 @@ function init_grid() {
 
     defaultColDef: {          // Default definitions for the columns
       sortable: true,                     // Allow sorting
+      sortingOrder: ['desc', 'asc', null],// Change sorting order, since 'desc' is probably more useful
       filter: 'agTextColumnFilter',       // Default filter by text
       resizable: true,                    // Allow resize of this column
       floatingFilter: true,               // Activate the floating filter
