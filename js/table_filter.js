@@ -420,14 +420,15 @@ function get_filter_object(filtertype, value) {
 
 function apply_filter(filters) {
   let index = 0;
-  let table = $("tr.filter").closest("table")
+  let table = $("tr.filter").closest("table");
+  
   if (table.length) {
     table.find("tr:first th").each(function() {
       let key = $(this).text();
       if (filters && filters[key]) {
         $(this).closest("table").find("tr.filter th input").eq(index).val(filters[key]);
       }
-      index+=1;
+      index += 1;
       return;
     });
     $("tr.filter").closest("table").each(function() {
@@ -438,42 +439,56 @@ function apply_filter(filters) {
     // Setting filter from argument
     if (Object.keys(filters).length) {
       let initial_filters = {};
-      Object.entries(filters).forEach(([key,value]) => {
-        if (!value.length) {return;}
+      
+      Object.entries(filters).forEach(([key, value]) => {
+        if (!value.length) return;
+        
+        let colId = view.headerToName[view.clicked_page][key];
+        if (!colId) return;
+
+        let column = view.gridApi.getColumn(colId);
+        if (column) {
+          check_column_expanded_status(colId);
+        }
+
         let multi = false;
-        if (view.gridApi.getColumn(view.headerToName[view.clicked_page][key])) {
-          check_column_expanded_status(view.headerToName[view.clicked_page][key])
-        }
-        if(!view.headerToName[view.clicked_page][key]) {
-          return;
-        }
-        initial_filters[view.headerToName[view.clicked_page][key]] = {}
-        // Checking if there are multiple conditions
+        let operator = null;
+
+        // Check for multiple conditions
         if (value.includes('&&')) {
-          initial_filters[view.headerToName[view.clicked_page][key]].operator = 'AND';
+          operator = 'AND';
           multi = '&&';
         } else if (value.includes('||')) {
-          initial_filters[view.headerToName[view.clicked_page][key]].operator = 'OR';
+          operator = 'OR';
           multi = '||';
         }
-        let colType = view.gridApi.getColumn(view.headerToName[view.clicked_page][key])?.colDef.cellDataType
-        // if(!colType) {return;}
-        let filtertype = (colType=='date' || colType=='dateString' || colType=='number' || colType=='timeInterval') ? colType : 'text';
-        // If there are multiple conditions, add them to the conditions array
+
+        let colType = column?.colDef.cellDataType;
+        let filtertype = (colType == 'date' || colType == 'dateString' || colType == 'number' || colType == 'timeInterval') ? colType : 'text';
+
         if (multi) {
-          initial_filters[view.headerToName[view.clicked_page][key]].conditions = []
+          // Construct the strict ag-Grid multi-condition object
+          initial_filters[colId] = {
+            filterType: filtertype === 'number' || filtertype === 'timeInterval' ? 'number' : (filtertype === 'date' || filtertype === 'dateString' ? 'date' : 'text'),
+            operator: operator,
+            conditions: []
+          };
+          
           value.split(multi).forEach((cond) => {
-            let condition = get_filter_object(filtertype,cond)
-            initial_filters[view.headerToName[view.clicked_page][key]].conditions.push(condition)
-          })
-          initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
+            let conditionObj = get_filter_object(filtertype, cond);
+            // Ensure the sub-condition has the correct filterType explicitly defined
+            conditionObj.filterType = initial_filters[colId].filterType;
+            initial_filters[colId].conditions.push(conditionObj);
+          });
         } else {
-          let condition = get_filter_object(filtertype,value)
-          initial_filters[view.headerToName[view.clicked_page][key]] = condition
-          initial_filters[view.headerToName[view.clicked_page][key]].filterType = filtertype
+          let conditionObj = get_filter_object(filtertype, value);
+          // Apply the correct native filterType to single condition objects
+          conditionObj.filterType = filtertype === 'number' || filtertype === 'timeInterval' ? 'number' : (filtertype === 'date' || filtertype === 'dateString' ? 'date' : 'text');
+          initial_filters[colId] = conditionObj;
         }
-      })
-      // Selecting filter option if the corresponding filter is applied
+      });
+
+      // Select filter options if the corresponding filter is applied
       view.check_filteroptions(filters);
       // Apply filter to the grid
       filter_grid(initial_filters);

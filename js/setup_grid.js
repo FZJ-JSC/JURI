@@ -506,6 +506,21 @@ function onChange(event) {
 let numberFilterParams = {
   debounceMs: 2000,
   allowedCharPattern: "\\d><\\-\\.",
+  // A custom 'contains' option is injected into the native number filter,
+  // allowing partial text matching on numerical data.
+  filterOptions: [
+    'equals', 'notEqual', 'lessThan', 'lessThanOrEqual', 
+    'greaterThan', 'greaterThanOrEqual', 'inRange', 'blank', 'notBlank',
+    {
+      displayKey: 'contains',
+      displayName: 'Contains',
+      predicate: ([filterValue], cellValue) => {
+        if (cellValue == null || filterValue == null) return false;
+        // Both values are evaluated as strings to support partial pattern matching
+        return cellValue.toString().includes(filterValue.toString());
+      }
+    }
+  ]
   // numberParser: (text) => {
   //   return text == null
   //     ? null
@@ -639,7 +654,7 @@ class NumberFloatingFilterComponent {
       } else {
         this.currentValue = Number(this.eFilterInput.value);
         params.parentFilterInstance(instance => {
-          instance.onFloatingFilterChanged('equals', this.currentValue);
+          instance.onFloatingFilterChanged('contains', this.currentValue);
         });
       }
     }
@@ -711,7 +726,6 @@ class NumberFloatingFilterComponent {
 }
 
 
-
 /**
  * Class DateTimeParentFilter
  * 
@@ -719,7 +733,7 @@ class NumberFloatingFilterComponent {
  * This custom filter engine replaces the native filter entirely so 
  * timestamps can be strictly compared down to the second. A native-looking UI 
  * is rendered in the hamburger menu, utilizing exact ag-Grid DOM structures 
- * to inherit the active theme.
+ * to inherit the active theme perfectly.
  */
 class DateTimeParentFilter {
   /**
@@ -735,99 +749,30 @@ class DateTimeParentFilter {
   }
 
   /**
-   * Constructs the native-looking filter menu utilizing ag-Grid markup,
-   * injecting robust V33 fallback styling to prevent layout collapses during lazy-loading.
+   * Constructs the native-looking filter menu utilizing ag-Grid markup.
+   * Dynamic condition blocks are generated natively without hardcoded CSS.
    * 
    * @returns {void}
    */
   buildGui() {
-    this.eGuiWrapper = $('<div>').addClass('ag-filter')[0];
+    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed')[0];
     
-    // Explicit flex properties guarantee structural integrity even if ag-Grid's core CSS isn't fully loaded
-    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed').css({
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%',
-      boxSizing: 'border-box'
-    })[0];
-    
-    let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper');
+    // The main wrapper is established leveraging native ag-Grid class hierarchies
+    let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper ag-focus-managed');
+    const filterParams = this.params.filterParams || this.params.colDef?.filterParams || {};
+    this.maxConditions = filterParams.maxNumConditions || 3;
+    this.globalOperator = 'AND';
 
-    let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
-    let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
-    
-    // Fallback flex properties ensure the element retains dimensions to correctly calculate dropdown bounds
-    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
-                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false')
-                                   .css({
-                                     display: 'flex',
-                                     alignItems: 'center',
-                                     justifyContent: 'space-between',
-                                     width: '100%',
-                                     minHeight: 'var(--ag-list-item-height, 30px)',
-                                     boxSizing: 'border-box',
-                                     cursor: 'pointer',
-                                     border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
-                                     borderRadius: 'var(--ag-border-radius, 4px)',
-                                     backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
-                                     padding: '0 var(--ag-widget-horizontal-spacing, 8px)'
-                                   });
-    
-    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals').css({
-      flex: '1 1 auto',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
-    });
-    
-    let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
-                         .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
+    this.conditionBlocks = [];
+    this.joinOperators = [];
+    this.currentTypes = [];
+    this.eSelects = [];       
+    this.eInput1s = [];
+    this.eInput2s = [];
+    this.eInput2Containers = [];
 
-    this.selectWrapper.append(this.eDisplayField, icon);
-    selectContainer.append(selectLabel, this.selectWrapper);
-
-    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation').css({
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 'var(--ag-widget-vertical-spacing, 8px)',
-      marginTop: 'var(--ag-widget-vertical-spacing, 8px)'
-    });
-
-    const inputStyleFallback = {
-      width: '100%',
-      boxSizing: 'border-box',
-      minHeight: 'var(--ag-list-item-height, 30px)',
-      border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
-      borderRadius: 'var(--ag-border-radius, 4px)',
-      backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
-      padding: '0 var(--ag-widget-horizontal-spacing, 8px)',
-      color: 'var(--ag-text-color, inherit)'
-    };
-
-    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false').css({ width: '100%' });
-    let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
-    this.eInput1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...').css(inputStyleFallback)[0];
-    input1Wrapper.append(this.eInput1);
-    input1Container.append(input1Label, input1Wrapper);
-
-    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true').css({ width: '100%' })[0];
-    let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
-    this.eInput2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To').css(inputStyleFallback)[0];
-    input2Wrapper.append(this.eInput2);
-    $(this.eInput2Container).append(input2Label, input2Wrapper);
-
-    filterBody.append(input1Container, this.eInput2Container);
-    bodyWrapper.append(selectContainer, filterBody);
-    $(this.eGui).append(bodyWrapper);
-    $(this.eGuiWrapper).append(this.eGui);
-
+    // The ephemeral popup dropdown is spawned with strict structural definitions
     this.ePopup = $('<div>').addClass('ag-popup').css({ display: 'none' })[0];
-    
-    // Explicitly uses variables matching ag-Grid V33 theming framework conventions
     this.eList = $('<div>').addClass('ag-list ag-select-list ag-ltr ag-popup-child ag-popup-positioned-under')
                            .attr('role', 'listbox').css({
                              position: 'fixed', 
@@ -835,8 +780,7 @@ class DateTimeParentFilter {
                              border: '1px solid var(--ag-border-color, #babfc7)',
                              boxShadow: 'var(--ag-popup-shadow, 0 1px 4px rgba(0,0,0,0.2))',
                              borderRadius: 'var(--ag-border-radius, 4px)',
-                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999,
-                             padding: 'var(--ag-widget-vertical-spacing, 4px) 0'
+                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999
                            })[0];
     $(this.ePopup).append(this.eList);
 
@@ -854,81 +798,197 @@ class DateTimeParentFilter {
       'inRange': 'In Range'
     };
 
-    this.currentType = 'equals';
+    let activeSelectIndex = 0;
 
-    Object.entries(this.options).forEach(([val, label]) => {
-      let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
-                           .html(`<span>${label}</span>`)
-                           .css({
-                              padding: 'var(--ag-widget-vertical-spacing, 6px) var(--ag-widget-horizontal-spacing, 12px)',
-                              cursor: 'pointer',
-                              color: 'var(--ag-data-color, var(--ag-text-color, #181d1f))',
-                              display: 'flex',
-                              alignItems: 'center',
-                              lineHeight: 'normal'
-                           });
-      item.on('click', (e) => {
-        e.stopPropagation();
-        this.currentType = val;
-        $(this.eDisplayField).text(label);
-        $(this.ePopup).hide();
-        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
-        this.onChange();
-      });
-      item.on('mouseenter', () => item.css('background-color', 'var(--ag-menu-option-active-background-color, var(--ag-row-hover-color, rgba(0,0,0,0.05)))'));
-      item.on('mouseleave', () => item.css('background-color', 'transparent'));
-      $(this.eList).append(item);
-    });
-
-    this.selectWrapper.on('click', (e) => {
-      e.stopPropagation();
-      let isExpanded = this.selectWrapper.hasClass('ag-picker-expanded');
-      
-      if (isExpanded) {
-        $(this.ePopup).hide();
-        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
-      } else {
-        // Appending strictly to `.ag-root-wrapper` automatically ensures all v33 Theme CSS Variables cascade properly
-        if (!this.ePopup.parentNode || this.ePopup.parentNode.tagName === 'BODY') {
-            let rootWrapper = $(this.eGuiWrapper).closest('.ag-root-wrapper');
-            if (rootWrapper.length > 0) {
-                rootWrapper.append(this.ePopup);
-            } else {
-                $('body').append(this.ePopup);
-                let themeParent = $(this.eGuiWrapper).closest('[class*="ag-theme-"]');
-                if (themeParent.length > 0) {
-                    let cls = themeParent.attr('class').split(' ').find(c => c.startsWith('ag-theme-'));
-                    if (cls) $(this.ePopup).addClass(cls);
-                }
-            }
-        }
-
-        let rect = this.selectWrapper[0].getBoundingClientRect();
-        
-        // Guard against unpredictable width collapses
-        let calculatedWidth = Math.max(rect.width, 180);
-        $(this.eList).css({
-          top: rect.bottom + 'px',
-          left: rect.left + 'px',
-          width: calculatedWidth + 'px',
-          minWidth: calculatedWidth + 'px'
+    const populateList = (index) => {
+      $(this.eList).empty();
+      Object.entries(this.options).forEach(([val, label]) => {
+        let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
+                             .html(`<span>${label}</span>`)
+                             .css({ cursor: 'pointer', padding: '6px 12px' });
+        item.on('click', (e) => {
+          e.stopPropagation();
+          this.currentTypes[index] = val;
+          $(this.conditionBlocks[index].displayField).text(label);
+          $(this.ePopup).hide();
+          this.conditionBlocks[index].selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false');
+          this.onChange();
         });
+        item.on('mouseenter', () => item.css('background-color', 'var(--ag-menu-option-active-background-color, var(--ag-row-hover-color, rgba(0,0,0,0.05)))'));
+        item.on('mouseleave', () => item.css('background-color', 'transparent'));
+        $(this.eList).append(item);
+      });
+    };
+
+    // Filter structures are injected sequentially per the defined limits
+    for (let i = 0; i < this.maxConditions; i++) {
+      this.currentTypes.push('equals');
+      
+      let joinOperatorContainer = null;
+
+      // Operator radio nodes are cleanly mapped matching native component signatures
+      if (i > 0) {
+        joinOperatorContainer = $('<div>').addClass('ag-filter-condition');
         
-        $(this.ePopup).show();
-        this.selectWrapper.addClass('ag-picker-expanded').attr('aria-expanded', 'true');
+        let buildRadio = (val, labelStr) => {
+          let radioClass = `ag-filter-condition-operator-${val.toLowerCase()}`;
+          let radioContainer = $('<div>').addClass(`ag-labeled ag-label-align-right ag-radio-button ag-input-field ag-filter-condition-operator ${radioClass}`).attr('role', 'presentation');
+          let label = $('<div>').addClass('ag-input-field-label ag-label ag-radio-button-label').text(labelStr);
+          let wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-radio-button-input-wrapper');
+          let input = $('<input>').attr('type', 'radio').attr('name', `ag-simple-filter-and-or-${this.params.column.getColId()}-${i}`).val(val).addClass('ag-input-field-input ag-radio-button-input');
+          
+          if (i > 1) {
+             radioContainer.addClass('ag-disabled');
+             wrapper.addClass('ag-disabled');
+             input.prop('disabled', true);
+          }
+          
+          wrapper.append(input);
+          radioContainer.append(label, wrapper);
+
+          input.on('change', () => {
+             if (i === 1) { 
+                this.globalOperator = val;
+                this.onChange();
+             }
+          });
+
+          return { container: radioContainer, input: input, wrapper: wrapper };
+        };
+
+        let andRadio = buildRadio('AND', 'AND');
+        let orRadio = buildRadio('OR', 'OR');
+        
+        joinOperatorContainer.append(andRadio.container, orRadio.container);
+        this.joinOperators.push({ and: andRadio, or: orRadio, container: joinOperatorContainer });
+        
+        joinOperatorContainer.hide();
+        bodyWrapper.append(joinOperatorContainer);
       }
-    });
+
+      let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
+      let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
+      
+      // Native picker variables and layout parameters are matched identically
+      let selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-picker-collapsed ag-has-popup-positioned-under')
+                                     .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false')
+                                     .css({
+                                       display: 'flex',
+                                       alignItems: 'center',
+                                       justifyContent: 'space-between',
+                                       width: '100%',
+                                       minHeight: 'max(var(--ag-list-item-height, 22px), calc(var(--ag-spacing, 4px) * 4))',
+                                       boxSizing: 'border-box',
+                                       cursor: 'pointer',
+                                       border: 'var(--ag-picker-button-border, solid var(--ag-border-width, 1px) var(--ag-border-color, #babfc7))',
+                                       borderRadius: 'var(--ag-border-radius, 5px)',
+                                       backgroundColor: 'var(--ag-picker-button-background-color, var(--ag-background-color, #ffffff))',
+                                       paddingLeft: 'var(--ag-spacing, 4px)',
+                                       paddingRight: 'var(--ag-spacing, 4px)',
+                                     });
+      
+      let displayField = $('<div>').addClass('ag-picker-field-display').text('Equals');
+      let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
+                           .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
+
+      selectWrapper.append(displayField, icon);
+      selectContainer.append(selectLabel, selectWrapper);
+
+      selectWrapper.on('click', (e) => {
+        e.stopPropagation();
+        let isExpanded = selectWrapper.hasClass('ag-picker-expanded');
+        
+        if (isExpanded) {
+          $(this.ePopup).hide();
+          selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false');
+        } else {
+          this.conditionBlocks.forEach(b => b.selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false'));
+          
+          activeSelectIndex = i;
+          populateList(i);
+
+          if (!this.ePopup.parentNode || this.ePopup.parentNode.tagName === 'BODY') {
+            let rootWrapper = $(this.eGui).closest('.ag-root-wrapper');
+            if (rootWrapper.length > 0) {
+              rootWrapper.append(this.ePopup);
+            } else {
+              $('body').append(this.ePopup);
+              let themeParent = $(this.eGui).closest('[class*="ag-theme-"]');
+              if (themeParent.length > 0) {
+                let cls = themeParent.attr('class').split(' ').find(c => c.startsWith('ag-theme-'));
+                if (cls) $(this.ePopup).addClass(cls);
+              }
+            }
+          }
+
+          let rect = selectWrapper[0].getBoundingClientRect();
+          let calculatedWidth = Math.max(rect.width, 180);
+          
+          $(this.eList).css({
+            top: rect.bottom + 'px',
+            left: rect.left + 'px',
+            width: calculatedWidth + 'px',
+            minWidth: calculatedWidth + 'px'
+          });
+          
+          $(this.ePopup).show();
+          selectWrapper.removeClass('ag-picker-collapsed').addClass('ag-picker-expanded').attr('aria-expanded', 'true');
+        }
+      });
+
+      let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation');
+
+      let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false');
+      let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+      let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+      let input1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                                 .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...')[0];
+      input1Wrapper.append(input1);
+      input1Container.append(input1Label, input1Wrapper);
+
+      let input2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true')[0];
+      let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+      let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+      let input2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                                 .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To')[0];
+      input2Wrapper.append(input2);
+      $(input2Container).append(input2Label, input2Wrapper);
+
+      input1.addEventListener('input', () => this.onChange());
+      input2.addEventListener('input', () => this.onChange());
+
+      filterBody.append(input1Container, input2Container);
+      
+      // Native components are injected directly as siblings
+      if (i > 0) {
+        selectContainer.hide();
+        filterBody.hide();
+      }
+      
+      bodyWrapper.append(selectContainer, filterBody);
+
+      this.eSelects.push(selectContainer);
+      this.eInput1s.push(input1);
+      this.eInput2s.push(input2);
+      this.eInput2Containers.push(input2Container);
+      this.conditionBlocks.push({ 
+        operatorContainer: joinOperatorContainer, 
+        selectContainer: selectContainer, 
+        filterBody: filterBody, 
+        selectWrapper: selectWrapper, 
+        displayField: displayField 
+      });
+    }
+
+    $(this.eGui).append(bodyWrapper);
 
     this.closeDropdown = (e) => {
-      if (!e.target || !(e.target instanceof Node)) {
-        $(this.ePopup).hide();
-        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
-        return;
-      }
-      if (this.ePopup && this.selectWrapper) {
-        if (!this.ePopup.contains(e.target) && !this.selectWrapper[0].contains(e.target)) {
+      if (!e.target || !(e.target instanceof Node)) return;
+      if ($(this.ePopup).is(':visible')) {
+        let clickedInsideAnySelect = this.conditionBlocks.some(b => b.selectWrapper[0].contains(e.target));
+        if (!this.ePopup.contains(e.target) && !clickedInsideAnySelect) {
           $(this.ePopup).hide();
-          this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+          this.conditionBlocks.forEach(b => b.selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false'));
         }
       }
     };
@@ -937,49 +997,89 @@ class DateTimeParentFilter {
     window.addEventListener('blur', this.closeDropdown);
 
     this.onChange = () => {
-      let type = this.currentType;
-      let val1 = this.eInput1.value.trim();
-      let val2 = this.eInput2.value.trim();
+      let validConditions = [];
 
-      if (type === 'inRange') {
-        $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
-      } else {
-        $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+      for (let i = 0; i < this.maxConditions; i++) {
+        let type = this.currentTypes[i];
+        let val1 = this.eInput1s[i].value.trim();
+        let val2 = this.eInput2s[i].value.trim();
+
+        if (type === 'inRange') {
+          $(this.eInput2Containers[i]).removeClass('ag-hidden').attr('aria-hidden', 'false');
+        } else {
+          $(this.eInput2Containers[i]).addClass('ag-hidden').attr('aria-hidden', 'true');
+        }
+
+        if (val1) {
+          let syntheticString = '';
+          if (type === 'contains' || type === 'equals') {
+            syntheticString = val1;
+          } else if (type === 'greaterThan') {
+            syntheticString = `> ${val1}`;
+          } else if (type === 'greaterThanOrEqual') {
+            syntheticString = `>= ${val1}`;
+          } else if (type === 'lessThan') {
+            syntheticString = `< ${val1}`;
+          } else if (type === 'lessThanOrEqual') {
+            syntheticString = `<= ${val1}`;
+          } else if (type === 'inRange') {
+            syntheticString = `${val1} - ${val2}`;
+          }
+
+          let parsed = parseDateFilterText(syntheticString);
+          
+          if (parsed && type === 'contains') {
+            parsed.type = 'contains';
+            parsed.filterText = val1;
+          }
+
+          if (parsed) validConditions.push(parsed);
+        }
       }
 
-      if (!val1) {
+      // Cascading visual blocks are correctly revealed upon prior entry presence
+      for (let i = 1; i < this.maxConditions; i++) {
+        if (this.eInput1s[i-1].value.trim() !== '') {
+          if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.show();
+          this.conditionBlocks[i].selectContainer.show();
+          this.conditionBlocks[i].filterBody.show();
+        } else {
+          this.eInput1s[i].value = '';
+          this.eInput2s[i].value = '';
+          if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.hide();
+          this.conditionBlocks[i].selectContainer.hide();
+          this.conditionBlocks[i].filterBody.hide();
+        }
+      }
+
+      this.joinOperators.forEach((ops) => {
+         if (this.globalOperator === 'AND') {
+           ops.and.input.prop('checked', true);
+           ops.and.wrapper.addClass('ag-checked');
+           ops.or.input.prop('checked', false);
+           ops.or.wrapper.removeClass('ag-checked');
+         } else {
+           ops.or.input.prop('checked', true);
+           ops.or.wrapper.addClass('ag-checked');
+           ops.and.input.prop('checked', false);
+           ops.and.wrapper.removeClass('ag-checked');
+         }
+      });
+
+      if (validConditions.length === 0) {
         this.filterModel = null;
-        this.params.filterChangedCallback();
-        return;
-      }
-
-      let syntheticString = '';
-      if (type === 'contains' || type === 'equals') {
-        syntheticString = val1;
-      } else if (type === 'greaterThan') {
-        syntheticString = `> ${val1}`;
-      } else if (type === 'greaterThanOrEqual') {
-        syntheticString = `>= ${val1}`;
-      } else if (type === 'lessThan') {
-        syntheticString = `< ${val1}`;
-      } else if (type === 'lessThanOrEqual') {
-        syntheticString = `<= ${val1}`;
-      } else if (type === 'inRange') {
-        syntheticString = `${val1} - ${val2}`;
-      }
-
-      this.filterModel = parseDateFilterText(syntheticString);
-      
-      if (this.filterModel && type === 'contains') {
-        this.filterModel.type = 'contains';
-        this.filterModel.filterText = val1;
+      } else if (validConditions.length === 1) {
+        this.filterModel = validConditions[0];
+      } else {
+        this.filterModel = {
+          filterType: 'date',
+          operator: this.globalOperator,
+          conditions: validConditions
+        };
       }
 
       this.params.filterChangedCallback();
     };
-
-    this.eInput1.addEventListener('input', this.onChange);
-    this.eInput2.addEventListener('input', this.onChange);
   }
 
   /**
@@ -988,8 +1088,8 @@ class DateTimeParentFilter {
    * @returns {void}
    */
   afterGuiAttached() {
-    if (this.eInput1) {
-      setTimeout(() => this.eInput1.focus(), 50);
+    if (this.eInput1s && this.eInput1s.length > 0) {
+      setTimeout(() => this.eInput1s[0].focus(), 50);
     }
   }
 
@@ -999,11 +1099,56 @@ class DateTimeParentFilter {
    * @returns {HTMLElement}
    */
   getGui() {
-    return this.eGuiWrapper;
+    return this.eGui;
+  }
+
+  /**
+   * Single condition evaluation helper
+   * 
+   * @param {Object} model - The single filter condition object
+   * @param {string} cellValue - The raw cell value
+   * @returns {boolean}
+   */
+  checkCondition(model, cellValue) {
+    if (model.type === 'contains') {
+      return cellValue.toLowerCase().includes(model.filterText.toLowerCase());
+    }
+
+    const toTimestamp = (val) => {
+      if (!val || typeof val !== 'string') return null;
+      return new Date(val.replace(' ', 'T')).getTime();
+    };
+
+    let cellTime = toTimestamp(cellValue);
+    let fromTime = toTimestamp(model.dateFrom);
+    
+    if (!fromTime || !cellTime) return true;
+    
+    if (model.type === 'equals') {
+      if (model.dateTo) {
+        let toTime = toTimestamp(model.dateTo);
+        if (!toTime) return cellTime === fromTime;
+        return cellTime >= fromTime && cellTime <= toTime;
+      }
+      return cellTime === fromTime;
+    }
+    
+    if (model.type === 'greaterThan') return cellTime > fromTime;
+    if (model.type === 'greaterThanOrEqual') return cellTime >= fromTime;
+    if (model.type === 'lessThan') return cellTime < fromTime;
+    if (model.type === 'lessThanOrEqual') return cellTime <= fromTime;
+    if (model.type === 'inRange') {
+      let toTime = toTimestamp(model.dateTo);
+      if (!toTime) return cellTime >= fromTime;
+      return cellTime >= fromTime && cellTime <= toTime;
+    }
+    
+    return true;
   }
 
   /**
    * Evaluates if a specified row passes the defined date boundaries.
+   * Supports both single conditions and multi-condition OR/AND operators.
    * 
    * @param {Object} params - The row evaluation context.
    * @returns {boolean} 
@@ -1014,40 +1159,17 @@ class DateTimeParentFilter {
     let cellValue = this.params.getValue(params.node);
     if (!cellValue) return false;
 
-    if (this.filterModel.type === 'contains') {
-      return cellValue.toLowerCase().includes(this.filterModel.filterText.toLowerCase());
-    }
-
-    const toTimestamp = (val) => {
-      if (!val || typeof val !== 'string') return null;
-      return new Date(val.replace(' ', 'T')).getTime();
-    };
-
-    let cellTime = toTimestamp(cellValue);
-    let fromTime = toTimestamp(this.filterModel.dateFrom);
-    
-    if (!fromTime || !cellTime) return true;
-    
-    if (this.filterModel.type === 'equals') {
-      if (this.filterModel.dateTo) {
-        let toTime = toTimestamp(this.filterModel.dateTo);
-        if (!toTime) return cellTime === fromTime;
-        return cellTime >= fromTime && cellTime <= toTime;
+    // Evaluate multiple conditions if operator exists
+    if (this.filterModel.operator) {
+      if (this.filterModel.operator === 'OR') {
+        return this.filterModel.conditions.some(cond => this.checkCondition(cond, cellValue));
+      } else if (this.filterModel.operator === 'AND') {
+        return this.filterModel.conditions.every(cond => this.checkCondition(cond, cellValue));
       }
-      return cellTime === fromTime;
     }
-    
-    if (this.filterModel.type === 'greaterThan') return cellTime > fromTime;
-    if (this.filterModel.type === 'greaterThanOrEqual') return cellTime >= fromTime;
-    if (this.filterModel.type === 'lessThan') return cellTime < fromTime;
-    if (this.filterModel.type === 'lessThanOrEqual') return cellTime <= fromTime;
-    if (this.filterModel.type === 'inRange') {
-      let toTime = toTimestamp(this.filterModel.dateTo);
-      if (!toTime) return cellTime >= fromTime;
-      return cellTime >= fromTime && cellTime <= toTime;
-    }
-    
-    return true;
+
+    // Default to single condition evaluation
+    return this.checkCondition(this.filterModel, cellValue);
   }
 
   /**
@@ -1065,19 +1187,12 @@ class DateTimeParentFilter {
    * @returns {Object|null}
    */
   getModel() {
-    if (!this.filterModel) return null;
-    return {
-      filterType: 'date',
-      type: this.filterModel.type,
-      dateFrom: this.filterModel.dateFrom,
-      dateTo: this.filterModel.dateTo,
-      filterText: this.filterModel.filterText,
-      rawUserInput: this.filterModel.rawUserInput
-    };
+    return this.filterModel;
   }
 
   /**
    * Allows external programmatic overrides matching grid load state.
+   * Safely unpacks multi-condition logic (OR/AND) into the expanding Hamburger Menu UI.
    * 
    * @param {Object|null} model - The injected model override values.
    * @returns {void}
@@ -1085,34 +1200,84 @@ class DateTimeParentFilter {
   setModel(model) {
     this.filterModel = model;
     
-    if (!model) {
-      this.currentType = 'equals';
-      $(this.eDisplayField).text(this.options['equals']);
-      this.eInput1.value = '';
-      this.eInput2.value = '';
-      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
-      return;
+    // The hamburger UI is entirely reset if the active model is null
+    for (let i = 0; i < this.maxConditions; i++) {
+      this.currentTypes[i] = 'equals';
+      $(this.conditionBlocks[i].displayField).text(this.options['equals']);
+      this.eInput1s[i].value = '';
+      this.eInput2s[i].value = '';
+      $(this.eInput2Containers[i]).addClass('ag-hidden').attr('aria-hidden', 'true');
+      
+      // Explicitly hide secondary blocks on reset
+      if (i > 0) {
+        if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.hide();
+        this.conditionBlocks[i].selectContainer.hide();
+        this.conditionBlocks[i].filterBody.hide();
+      }
     }
 
-    this.currentType = model.type;
-    $(this.eDisplayField).text(this.options[model.type] || 'Equals');
+    if (!model) return;
+
+    let conditions = model.operator && model.conditions ? model.conditions : [model];
     
-    if (model.type === 'inRange') {
-      $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
-    } else {
-      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+    if (model.operator) {
+      this.globalOperator = model.operator;
     }
 
-    let raw = model.rawUserInput || '';
-    if (model.type === 'inRange') {
-      let parts = raw.split(' - ');
-      this.eInput1.value = parts[0] ? parts[0].trim() : '';
-      this.eInput2.value = parts[1] ? parts[1].trim() : '';
-    } else if (model.type === 'contains') {
-      this.eInput1.value = model.filterText || raw;
-    } else {
-      this.eInput1.value = raw.replace(/^[><=]+\s*/, '').trim();
+    // Input blocks are populated sequentially depending on condition payload length
+    for (let i = 0; i < Math.min(conditions.length, this.maxConditions); i++) {
+      let cond = conditions[i];
+      this.currentTypes[i] = cond.type;
+      $(this.conditionBlocks[i].displayField).text(this.options[cond.type] || 'Equals');
+      
+      if (cond.type === 'inRange') {
+        $(this.eInput2Containers[i]).removeClass('ag-hidden').attr('aria-hidden', 'false');
+      } else {
+        $(this.eInput2Containers[i]).addClass('ag-hidden').attr('aria-hidden', 'true');
+      }
+
+      let raw = cond.rawUserInput || '';
+      if (cond.type === 'inRange') {
+        let parts = raw.split(' - ');
+        this.eInput1s[i].value = parts[0] ? parts[0].trim() : '';
+        this.eInput2s[i].value = parts[1] ? parts[1].trim() : '';
+      } else if (cond.type === 'contains') {
+        this.eInput1s[i].value = cond.filterText || raw;
+      } else {
+        this.eInput1s[i].value = raw.replace(/^[><=]+\s*/, '').trim();
+      }
+
+      if (i > 0) {
+        if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.show();
+      }
+      this.conditionBlocks[i].selectContainer.show();
+      this.conditionBlocks[i].filterBody.show();
     }
+
+    // The cascading UI reveals an empty block natively following populated lines
+    if (conditions.length < this.maxConditions) {
+      let nextIdx = conditions.length;
+      if (this.conditionBlocks[nextIdx].operatorContainer) {
+        this.conditionBlocks[nextIdx].operatorContainer.show();
+      }
+      this.conditionBlocks[nextIdx].selectContainer.show();
+      this.conditionBlocks[nextIdx].filterBody.show();
+    }
+
+    // Operators are checked uniformly according to the global operator assignment
+    this.joinOperators.forEach((ops) => {
+       if (this.globalOperator === 'AND') {
+         ops.and.input.prop('checked', true);
+         ops.and.wrapper.addClass('ag-checked');
+         ops.or.input.prop('checked', false);
+         ops.or.wrapper.removeClass('ag-checked');
+       } else {
+         ops.or.input.prop('checked', true);
+         ops.or.wrapper.addClass('ag-checked');
+         ops.and.input.prop('checked', false);
+         ops.and.wrapper.removeClass('ag-checked');
+       }
+    });
   }
 
   /**
@@ -1123,8 +1288,7 @@ class DateTimeParentFilter {
   destroy() {
     document.removeEventListener('mousedown', this.closeDropdown, true);
     window.removeEventListener('blur', this.closeDropdown);
-    // Explicitly tell jQuery to wipe the memory cache for this component and all its children
-    if (this.eGuiWrapper) $(this.eGuiWrapper).remove();
+    if (this.eGui) $(this.eGui).remove();
     if (this.ePopup) $(this.ePopup).remove();
   }
 }
@@ -1245,18 +1409,35 @@ class DateFloatingFilterComponent {
 
   /**
    * Detects and synchronizes any model modifications back down to internal filter scopes.
+   * Supports multi-condition arrays (OR/AND) by disabling the input and displaying the joined query.
    * 
    * @param {Object} parentModel - Modified filter data model object.
    * @returns {void}
    */
   onParentModelChanged(parentModel) {
-    if (!parentModel || (parentModel.dateFrom == null && parentModel.type !== 'contains')) {
+    this.eFilterInput.disabled = false;
+
+    let activeModels = this.params.api.getFilterModel();
+    let myColId = this.params.column.getColId();
+    
+    // The input is wiped and aborted if the grid reports no active filter
+    if (!activeModels[myColId] || !parentModel || (!parentModel.operator && parentModel.dateFrom == null && parentModel.type !== 'contains')) {
       this.eFilterInput.value = '';
       return;
     }
 
     if (document.activeElement === this.eFilterInput) return;
 
+    // MULTI-CONDITION SYNC LOGIC
+    // If the model contains an operator, it merges the raw strings for visual feedback and locks the input
+    if (parentModel.operator && parentModel.conditions) {
+      let conditionsText = parentModel.conditions.map(cond => cond.rawUserInput || cond.dateFrom).join(` ${parentModel.operator} `);
+      this.eFilterInput.value = conditionsText;
+      this.eFilterInput.disabled = true;
+      return;
+    }
+
+    // SINGLE CONDITION SYNC LOGIC
     if (parentModel.rawUserInput) {
       this.eFilterInput.value = parentModel.rawUserInput;
       return;
@@ -1318,7 +1499,6 @@ class DateFloatingFilterComponent {
 }
 
 
-
 /**
  * Class TimeIntervalParentFilter
  * 
@@ -1342,92 +1522,26 @@ class TimeIntervalParentFilter {
 
   /**
    * Dynamically constructs DOM identical to v33 standards injecting structural invariants natively.
+   * Dynamic condition blocks are generated based on the maxNumConditions parameter.
    * 
    * @returns {void}
    */
   buildGui() {
-    this.eGuiWrapper = $('<div>').addClass('ag-filter')[0];
-    
     // Core flex requirements embedded sequentially against lazy load failures
-    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed').css({
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%',
-      boxSizing: 'border-box'
-    })[0];
+    this.eGui = $('<form>').addClass('ag-filter-wrapper ag-focus-managed')[0];
     
-    let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper');
+    let bodyWrapper = $('<div>').addClass('ag-filter-body-wrapper ag-simple-filter-body-wrapper ag-focus-managed');
 
-    let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
-    let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
-    
-    this.selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-has-popup-positioned-under')
-                                   .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false')
-                                   .css({
-                                     display: 'flex',
-                                     alignItems: 'center',
-                                     justifyContent: 'space-between',
-                                     width: '100%',
-                                     minHeight: 'var(--ag-list-item-height, 30px)',
-                                     boxSizing: 'border-box',
-                                     cursor: 'pointer',
-                                     border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
-                                     borderRadius: 'var(--ag-border-radius, 4px)',
-                                     backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
-                                     padding: '0 var(--ag-widget-horizontal-spacing, 8px)'
-                                   });
-    
-    this.eDisplayField = $('<div>').addClass('ag-picker-field-display').text('Equals').css({
-      flex: '1 1 auto',
-      whiteSpace: 'nowrap',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis'
-    });
-    
-    let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
-                         .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
+    this.maxConditions = (this.params.filterParams && this.params.filterParams.maxNumConditions) ? this.params.filterParams.maxNumConditions : 2;
+    this.globalOperator = 'AND';
 
-    this.selectWrapper.append(this.eDisplayField, icon);
-    selectContainer.append(selectLabel, this.selectWrapper);
-
-    let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation').css({
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 'var(--ag-widget-vertical-spacing, 8px)',
-      marginTop: 'var(--ag-widget-vertical-spacing, 8px)'
-    });
-
-    const inputStyleFallback = {
-      width: '100%',
-      boxSizing: 'border-box',
-      minHeight: 'var(--ag-list-item-height, 30px)',
-      border: '1px solid var(--ag-input-border-color, var(--ag-border-color, #babfc7))',
-      borderRadius: 'var(--ag-border-radius, 4px)',
-      backgroundColor: 'var(--ag-input-background-color, var(--ag-background-color, #ffffff))',
-      padding: '0 var(--ag-widget-horizontal-spacing, 8px)',
-      color: 'var(--ag-text-color, inherit)'
-    };
-
-    let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false').css({ width: '100%' });
-    let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
-    this.eInput1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...').css(inputStyleFallback)[0];
-    input1Wrapper.append(this.eInput1);
-    input1Container.append(input1Label, input1Wrapper);
-
-    this.eInput2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true').css({ width: '100%' })[0];
-    let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
-    let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation').css({ width: '100%' });
-    this.eInput2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
-                               .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To').css(inputStyleFallback)[0];
-    input2Wrapper.append(this.eInput2);
-    $(this.eInput2Container).append(input2Label, input2Wrapper);
-
-    filterBody.append(input1Container, this.eInput2Container);
-    bodyWrapper.append(selectContainer, filterBody);
-    $(this.eGui).append(bodyWrapper);
-    $(this.eGuiWrapper).append(this.eGui);
+    this.conditionBlocks = [];
+    this.joinOperators = [];
+    this.currentTypes = [];
+    this.eSelects = [];
+    this.eInput1s = [];
+    this.eInput2s = [];
+    this.eInput2Containers = [];
 
     this.ePopup = $('<div>').addClass('ag-popup').css({ display: 'none' })[0];
     
@@ -1439,8 +1553,7 @@ class TimeIntervalParentFilter {
                              border: '1px solid var(--ag-border-color, #babfc7)',
                              boxShadow: 'var(--ag-popup-shadow, 0 1px 4px rgba(0,0,0,0.2))',
                              borderRadius: 'var(--ag-border-radius, 4px)',
-                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999,
-                             padding: 'var(--ag-widget-vertical-spacing, 4px) 0'
+                             maxHeight: '250px', overflowY: 'auto', zIndex: 999999
                            })[0];
     $(this.ePopup).append(this.eList);
 
@@ -1457,81 +1570,195 @@ class TimeIntervalParentFilter {
       'inRange': 'In Range'
     };
 
-    this.currentType = 'equals';
+    let activeSelectIndex = 0;
 
-    Object.entries(this.options).forEach(([val, label]) => {
-      let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
-                           .html(`<span>${label}</span>`)
-                           .css({
-                              padding: 'var(--ag-widget-vertical-spacing, 6px) var(--ag-widget-horizontal-spacing, 12px)',
-                              cursor: 'pointer',
-                              color: 'var(--ag-data-color, var(--ag-text-color, #181d1f))',
-                              display: 'flex',
-                              alignItems: 'center',
-                              lineHeight: 'normal'
-                           });
-      item.on('click', (e) => {
-        e.stopPropagation();
-        this.currentType = val;
-        this.eDisplayField.text(label);
-        $(this.ePopup).hide();
-        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
-        this.onChange();
-      });
-      item.on('mouseenter', () => item.css('background-color', 'var(--ag-menu-option-active-background-color, var(--ag-row-hover-color, rgba(0,0,0,0.05)))'));
-      item.on('mouseleave', () => item.css('background-color', 'transparent'));
-      $(this.eList).append(item);
-    });
-
-    this.selectWrapper.on('click', (e) => {
-      e.stopPropagation();
-      let isExpanded = this.selectWrapper.hasClass('ag-picker-expanded');
-      
-      if (isExpanded) {
-        $(this.ePopup).hide();
-        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
-      } else {
-        // Appending strictly to `.ag-root-wrapper` automatically ensures all v33 Theme CSS Variables cascade properly
-        if (!this.ePopup.parentNode || this.ePopup.parentNode.tagName === 'BODY') {
-            let rootWrapper = $(this.eGuiWrapper).closest('.ag-root-wrapper');
-            if (rootWrapper.length > 0) {
-                rootWrapper.append(this.ePopup);
-            } else {
-                $('body').append(this.ePopup);
-                let themeParent = $(this.eGuiWrapper).closest('[class*="ag-theme-"]');
-                if (themeParent.length > 0) {
-                    let cls = themeParent.attr('class').split(' ').find(c => c.startsWith('ag-theme-'));
-                    if (cls) $(this.ePopup).addClass(cls);
-                }
-            }
-        }
-
-        let rect = this.selectWrapper[0].getBoundingClientRect();
-        
-        // Guard against unpredictable width collapses
-        let calculatedWidth = Math.max(rect.width, 180);
-        $(this.eList).css({
-          top: rect.bottom + 'px',
-          left: rect.left + 'px',
-          width: calculatedWidth + 'px',
-          minWidth: calculatedWidth + 'px'
+    const populateList = (index) => {
+      $(this.eList).empty();
+      Object.entries(this.options).forEach(([val, label]) => {
+        let item = $('<div>').addClass('ag-list-item ag-select-list-item').attr('role', 'option')
+                             .html(`<span>${label}</span>`)
+                             .css({ cursor: 'pointer', padding: '6px 12px' });
+        item.on('click', (e) => {
+          e.stopPropagation();
+          this.currentTypes[index] = val;
+          $(this.conditionBlocks[index].displayField).text(label);
+          $(this.ePopup).hide();
+          this.conditionBlocks[index].selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false');
+          this.onChange();
         });
+        item.on('mouseenter', () => item.css('background-color', 'var(--ag-menu-option-active-background-color, var(--ag-row-hover-color, rgba(0,0,0,0.05)))'));
+        item.on('mouseleave', () => item.css('background-color', 'transparent'));
+        $(this.eList).append(item);
+      });
+    };
+
+    for (let i = 0; i < this.maxConditions; i++) {
+      this.currentTypes.push('equals');
+      
+      let joinOperatorContainer = null;
+
+      if (i > 0) {
+        joinOperatorContainer = $('<div>').addClass('ag-filter-condition');
         
-        $(this.ePopup).show();
-        this.selectWrapper.addClass('ag-picker-expanded').attr('aria-expanded', 'true');
+        let buildRadio = (val, labelStr) => {
+          let radioClass = `ag-filter-condition-operator-${val.toLowerCase()}`;
+          let radioContainer = $('<div>').addClass(`ag-labeled ag-label-align-right ag-radio-button ag-input-field ag-filter-condition-operator ${radioClass}`).attr('role', 'presentation');
+          let label = $('<div>').addClass('ag-input-field-label ag-label ag-radio-button-label').text(labelStr);
+          let wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-radio-button-input-wrapper');
+          let input = $('<input>').attr('type', 'radio').attr('name', `ag-simple-filter-and-or-${this.params.column.getColId()}-${i}`).val(val).addClass('ag-input-field-input ag-radio-button-input');
+          
+          if (i > 1) {
+             radioContainer.addClass('ag-disabled');
+             wrapper.addClass('ag-disabled');
+             input.prop('disabled', true);
+          }
+          
+          wrapper.append(input);
+          radioContainer.append(label, wrapper);
+
+          input.on('change', () => {
+             if (i === 1) { 
+                this.globalOperator = val;
+                this.onChange();
+             }
+          });
+
+          return { container: radioContainer, input: input, wrapper: wrapper };
+        };
+
+        let andRadio = buildRadio('AND', 'AND');
+        let orRadio = buildRadio('OR', 'OR');
+        
+        joinOperatorContainer.append(andRadio.container, orRadio.container);
+        this.joinOperators.push({ and: andRadio, or: orRadio, container: joinOperatorContainer });
+        
+        joinOperatorContainer.hide();
+        bodyWrapper.append(joinOperatorContainer);
       }
-    });
+
+      let selectContainer = $('<div>').addClass('ag-picker-field ag-labeled ag-label-align-left ag-select ag-filter-select').attr('role', 'presentation');
+      let selectLabel = $('<div>').addClass('ag-label ag-hidden').attr('aria-hidden', 'true').attr('role', 'presentation');
+      
+      // Native picker variables and layout parameters are matched identically
+      let selectWrapper = $('<div>').addClass('ag-wrapper ag-picker-field-wrapper ag-picker-collapsed ag-has-popup-positioned-under')
+                                     .attr('tabindex', '0').attr('role', 'combobox').attr('aria-expanded', 'false')
+                                     .css({
+                                       display: 'flex',
+                                       alignItems: 'center',
+                                       justifyContent: 'space-between',
+                                       width: '100%',
+                                       minHeight: 'max(var(--ag-list-item-height, 22px), calc(var(--ag-spacing, 4px) * 4))',
+                                       boxSizing: 'border-box',
+                                       cursor: 'pointer',
+                                       border: 'var(--ag-picker-button-border, solid var(--ag-border-width, 1px) var(--ag-border-color, #babfc7))',
+                                       borderRadius: 'var(--ag-border-radius, 5px)',
+                                       backgroundColor: 'var(--ag-picker-button-background-color, var(--ag-background-color, #ffffff))',
+                                       paddingLeft: 'var(--ag-spacing, 4px)',
+                                       paddingRight: 'var(--ag-spacing, 4px)',
+                                     });
+      
+      let displayField = $('<div>').addClass('ag-picker-field-display').text('Equals');
+      let icon = $('<div>').addClass('ag-picker-field-icon').attr('aria-hidden', 'true')
+                           .html('<span class="ag-icon ag-icon-small-down" unselectable="on" role="presentation"></span>');
+
+      selectWrapper.append(displayField, icon);
+      selectContainer.append(selectLabel, selectWrapper);
+
+      selectWrapper.on('click', (e) => {
+        e.stopPropagation();
+        let isExpanded = selectWrapper.hasClass('ag-picker-expanded');
+        
+        if (isExpanded) {
+          $(this.ePopup).hide();
+          selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false');
+        } else {
+          this.conditionBlocks.forEach(b => b.selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false'));
+          
+          activeSelectIndex = i;
+          populateList(i);
+
+          if (!this.ePopup.parentNode || this.ePopup.parentNode.tagName === 'BODY') {
+            let rootWrapper = $(this.eGui).closest('.ag-root-wrapper');
+            if (rootWrapper.length > 0) {
+              rootWrapper.append(this.ePopup);
+            } else {
+              $('body').append(this.ePopup);
+              let themeParent = $(this.eGui).closest('[class*="ag-theme-"]');
+              if (themeParent.length > 0) {
+                let cls = themeParent.attr('class').split(' ').find(c => c.startsWith('ag-theme-'));
+                if (cls) $(this.ePopup).addClass(cls);
+              }
+            }
+          }
+
+          let rect = selectWrapper[0].getBoundingClientRect();
+          let calculatedWidth = Math.max(rect.width, 180);
+          
+          $(this.eList).css({
+            top: rect.bottom + 'px',
+            left: rect.left + 'px',
+            width: calculatedWidth + 'px',
+            minWidth: calculatedWidth + 'px'
+          });
+          
+          $(this.ePopup).show();
+          selectWrapper.removeClass('ag-picker-collapsed').addClass('ag-picker-expanded').attr('aria-expanded', 'true');
+        }
+      });
+
+      let filterBody = $('<div>').addClass('ag-filter-body').attr('role', 'presentation');
+
+      let input1Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-from ag-filter-filter').attr('aria-hidden', 'false');
+      let input1Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+      let input1Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+      let input1 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                                 .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'Filter...')[0];
+      input1Wrapper.append(input1);
+      input1Container.append(input1Label, input1Wrapper);
+
+      let input2Container = $('<div>').addClass('ag-labeled ag-label-align-left ag-text-field ag-input-field ag-filter-to ag-filter-filter ag-hidden').attr('aria-hidden', 'true')[0];
+      let input2Label = $('<div>').addClass('ag-input-field-label ag-label ag-hidden ag-text-field-label').attr('aria-hidden', 'true').attr('role', 'presentation');
+      let input2Wrapper = $('<div>').addClass('ag-wrapper ag-input-wrapper ag-text-field-input-wrapper').attr('role', 'presentation');
+      let input2 = $('<input>').addClass('ag-input-field-input ag-text-field-input')
+                                 .attr('type', 'text').attr('tabindex', '0').attr('placeholder', 'To')[0];
+      input2Wrapper.append(input2);
+      $(input2Container).append(input2Label, input2Wrapper);
+
+      input1.addEventListener('input', () => this.onChange());
+      input2.addEventListener('input', () => this.onChange());
+
+      filterBody.append(input1Container, input2Container);
+      
+      // Native components are injected directly as siblings
+      if (i > 0) {
+        selectContainer.hide();
+        filterBody.hide();
+      }
+      
+      bodyWrapper.append(selectContainer, filterBody);
+
+      this.eSelects.push(selectContainer);
+      this.eInput1s.push(input1);
+      this.eInput2s.push(input2);
+      this.eInput2Containers.push(input2Container);
+      this.conditionBlocks.push({ 
+        operatorContainer: joinOperatorContainer, 
+        selectContainer: selectContainer, 
+        filterBody: filterBody, 
+        selectWrapper: selectWrapper, 
+        displayField: displayField 
+      });
+    }
+
+    $(this.eGui).append(bodyWrapper);
 
     this.closeDropdown = (e) => {
-      if (!e.target || !(e.target instanceof Node)) {
-        $(this.ePopup).hide();
-        this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
-        return;
-      }
-      if (this.ePopup && this.selectWrapper) {
-        if (!this.ePopup.contains(e.target) && !this.selectWrapper[0].contains(e.target)) {
+      if (!e.target || !(e.target instanceof Node)) return;
+      if ($(this.ePopup).is(':visible')) {
+        let clickedInsideAnySelect = this.conditionBlocks.some(b => b.selectWrapper[0].contains(e.target));
+        if (!this.ePopup.contains(e.target) && !clickedInsideAnySelect) {
           $(this.ePopup).hide();
-          this.selectWrapper.removeClass('ag-picker-expanded').attr('aria-expanded', 'false');
+          this.conditionBlocks.forEach(b => b.selectWrapper.removeClass('ag-picker-expanded').addClass('ag-picker-collapsed').attr('aria-expanded', 'false'));
         }
       }
     };
@@ -1540,43 +1767,83 @@ class TimeIntervalParentFilter {
     window.addEventListener('blur', this.closeDropdown);
 
     this.onChange = () => {
-      let type = this.currentType;
-      let val1 = this.eInput1.value.trim();
-      let val2 = this.eInput2.value.trim();
+      let validConditions = [];
 
-      if (type === 'inRange') {
-        $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
-      } else {
-        $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+      for (let i = 0; i < this.maxConditions; i++) {
+        let type = this.currentTypes[i];
+        let val1 = this.eInput1s[i].value.trim();
+        let val2 = this.eInput2s[i].value.trim();
+
+        if (type === 'inRange') {
+          $(this.eInput2Containers[i]).removeClass('ag-hidden').attr('aria-hidden', 'false');
+        } else {
+          $(this.eInput2Containers[i]).addClass('ag-hidden').attr('aria-hidden', 'true');
+        }
+
+        if (val1) {
+          let syntheticString = '';
+          if (type === 'equals') {
+            syntheticString = val1;
+          } else if (type === 'greaterThan') {
+            syntheticString = `> ${val1}`;
+          } else if (type === 'greaterThanOrEqual') {
+            syntheticString = `>= ${val1}`;
+          } else if (type === 'lessThan') {
+            syntheticString = `< ${val1}`;
+          } else if (type === 'lessThanOrEqual') {
+            syntheticString = `<= ${val1}`;
+          } else if (type === 'inRange') {
+            syntheticString = `${val1} - ${val2}`;
+          }
+
+          let parsed = parseTimeFilterText(syntheticString);
+          if (parsed) validConditions.push(parsed);
+        }
       }
 
-      if (!val1) {
+      // Cascading visual blocks are correctly revealed upon prior entry presence
+      for (let i = 1; i < this.maxConditions; i++) {
+        if (this.eInput1s[i-1].value.trim() !== '') {
+          if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.show();
+          this.conditionBlocks[i].selectContainer.show();
+          this.conditionBlocks[i].filterBody.show();
+        } else {
+          this.eInput1s[i].value = '';
+          this.eInput2s[i].value = '';
+          if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.hide();
+          this.conditionBlocks[i].selectContainer.hide();
+          this.conditionBlocks[i].filterBody.hide();
+        }
+      }
+
+      this.joinOperators.forEach((ops) => {
+         if (this.globalOperator === 'AND') {
+           ops.and.input.prop('checked', true);
+           ops.and.wrapper.addClass('ag-checked');
+           ops.or.input.prop('checked', false);
+           ops.or.wrapper.removeClass('ag-checked');
+         } else {
+           ops.or.input.prop('checked', true);
+           ops.or.wrapper.addClass('ag-checked');
+           ops.and.input.prop('checked', false);
+           ops.and.wrapper.removeClass('ag-checked');
+         }
+      });
+
+      if (validConditions.length === 0) {
         this.filterModel = null;
-        this.params.filterChangedCallback();
-        return;
+      } else if (validConditions.length === 1) {
+        this.filterModel = validConditions[0];
+      } else {
+        this.filterModel = {
+          filterType: 'number',
+          operator: this.globalOperator,
+          conditions: validConditions
+        };
       }
 
-      let syntheticString = '';
-      if (type === 'equals') {
-        syntheticString = val1;
-      } else if (type === 'greaterThan') {
-        syntheticString = `> ${val1}`;
-      } else if (type === 'greaterThanOrEqual') {
-        syntheticString = `>= ${val1}`;
-      } else if (type === 'lessThan') {
-        syntheticString = `< ${val1}`;
-      } else if (type === 'lessThanOrEqual') {
-        syntheticString = `<= ${val1}`;
-      } else if (type === 'inRange') {
-        syntheticString = `${val1} - ${val2}`;
-      }
-
-      this.filterModel = parseTimeFilterText(syntheticString);
       this.params.filterChangedCallback();
     };
-
-    this.eInput1.addEventListener('input', this.onChange);
-    this.eInput2.addEventListener('input', this.onChange);
   }
 
   /**
@@ -1585,8 +1852,8 @@ class TimeIntervalParentFilter {
    * @returns {void}
    */
   afterGuiAttached() {
-    if (this.eInput1) {
-      setTimeout(() => this.eInput1.focus(), 50);
+    if (this.eInput1s && this.eInput1s.length > 0) {
+      setTimeout(() => this.eInput1s[0].focus(), 50);
     }
   }
 
@@ -1596,11 +1863,35 @@ class TimeIntervalParentFilter {
    * @returns {HTMLElement}
    */
   getGui() {
-    return this.eGuiWrapper;
+    return this.eGui;
   }
 
   /**
-   * Applies the core boolean calculation comparing mathematical data elements.
+   * Single condition evaluation helper
+   * 
+   * @param {Object} model - The single filter condition object
+   * @param {number} cellSecs - The formatted numerical seconds value
+   * @returns {boolean}
+   */
+  checkCondition(model, cellSecs) {
+    let filterSecs = model.filter;
+
+    if (model.type === 'equals') return cellSecs === filterSecs;
+    if (model.type === 'greaterThan') return cellSecs > filterSecs;
+    if (model.type === 'greaterThanOrEqual') return cellSecs >= filterSecs;
+    if (model.type === 'lessThan') return cellSecs < filterSecs;
+    if (model.type === 'lessThanOrEqual') return cellSecs <= filterSecs;
+    if (model.type === 'inRange') {
+      let toSecs = model.filterTo;
+      if (toSecs == null) return cellSecs >= filterSecs;
+      return cellSecs >= filterSecs && cellSecs <= toSecs;
+    }
+    return true;
+  }
+
+  /**
+   * Evaluates if a specified row passes the defined date boundaries.
+   * Supports both single conditions and multi-condition OR/AND operators.
    * 
    * @param {Object} params - External row definition map.
    * @returns {boolean}
@@ -1614,19 +1905,17 @@ class TimeIntervalParentFilter {
     let cellSecs = Number(cellValue);
     if (isNaN(cellSecs)) return false;
 
-    let filterSecs = this.filterModel.filter;
-
-    if (this.filterModel.type === 'equals') return cellSecs === filterSecs;
-    if (this.filterModel.type === 'greaterThan') return cellSecs > filterSecs;
-    if (this.filterModel.type === 'greaterThanOrEqual') return cellSecs >= filterSecs;
-    if (this.filterModel.type === 'lessThan') return cellSecs < filterSecs;
-    if (this.filterModel.type === 'lessThanOrEqual') return cellSecs <= filterSecs;
-    if (this.filterModel.type === 'inRange') {
-      let toSecs = this.filterModel.filterTo;
-      if (toSecs == null) return cellSecs >= filterSecs;
-      return cellSecs >= filterSecs && cellSecs <= toSecs;
+    // Evaluate multiple conditions if operator exists
+    if (this.filterModel.operator) {
+      if (this.filterModel.operator === 'OR') {
+        return this.filterModel.conditions.some(cond => this.checkCondition(cond, cellSecs));
+      } else if (this.filterModel.operator === 'AND') {
+        return this.filterModel.conditions.every(cond => this.checkCondition(cond, cellSecs));
+      }
     }
-    return true;
+
+    // Default to single condition evaluation
+    return this.checkCondition(this.filterModel, cellSecs);
   }
 
   /**
@@ -1644,18 +1933,12 @@ class TimeIntervalParentFilter {
    * @returns {Object|null}
    */
   getModel() {
-    if (!this.filterModel) return null;
-    return {
-      filterType: 'number',
-      type: this.filterModel.type,
-      filter: this.filterModel.filter,
-      filterTo: this.filterModel.filterTo,
-      rawUserInput: this.filterModel.rawUserInput
-    };
+    return this.filterModel;
   }
 
   /**
    * Syncs and overwrites internal logic natively accommodating saved grids loading routines.
+   * Supports complex multi-condition arrays spanning dynamic UI blocks.
    * 
    * @param {Object|null} model - Input configuration map restoring logic.
    * @returns {void} 
@@ -1663,32 +1946,76 @@ class TimeIntervalParentFilter {
   setModel(model) {
     this.filterModel = model;
     
-    if (!model) {
-      this.currentType = 'equals';
-      this.eDisplayField.text(this.options['equals']);
-      this.eInput1.value = '';
-      this.eInput2.value = '';
-      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
-      return;
+    // Reset all inputs before populating
+    for (let i = 0; i < this.maxConditions; i++) {
+      this.currentTypes[i] = 'equals';
+      $(this.conditionBlocks[i].displayField).text(this.options['equals']);
+      this.eInput1s[i].value = '';
+      this.eInput2s[i].value = '';
+      $(this.eInput2Containers[i]).addClass('ag-hidden').attr('aria-hidden', 'true');
+      
+      // Explicitly hide secondary blocks on reset
+      if (i > 0) {
+        if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.hide();
+        this.conditionBlocks[i].selectContainer.hide();
+        this.conditionBlocks[i].filterBody.hide();
+      }
     }
 
-    this.currentType = model.type;
-    this.eDisplayField.text(this.options[model.type] || 'Equals');
+    if (!model) return;
+
+    let conditions = model.operator && model.conditions ? model.conditions : [model];
     
-    if (model.type === 'inRange') {
-      $(this.eInput2Container).removeClass('ag-hidden').attr('aria-hidden', 'false');
-    } else {
-      $(this.eInput2Container).addClass('ag-hidden').attr('aria-hidden', 'true');
+    if (model.operator) {
+      this.globalOperator = model.operator;
     }
 
-    let raw = model.rawUserInput || '';
-    if (model.type === 'inRange') {
-      let parts = raw.split(' - ');
-      this.eInput1.value = parts[0] ? parts[0].trim() : '';
-      this.eInput2.value = parts[1] ? parts[1].trim() : '';
-    } else {
-      this.eInput1.value = raw.replace(/^[><=]+\s*/, '').trim();
+    for (let i = 0; i < Math.min(conditions.length, this.maxConditions); i++) {
+      let cond = conditions[i];
+      this.currentTypes[i] = cond.type;
+      $(this.conditionBlocks[i].displayField).text(this.options[cond.type] || 'Equals');
+      
+      if (cond.type === 'inRange') {
+        $(this.eInput2Containers[i]).removeClass('ag-hidden').attr('aria-hidden', 'false');
+      } else {
+        $(this.eInput2Containers[i]).addClass('ag-hidden').attr('aria-hidden', 'true');
+      }
+
+      let raw = cond.rawUserInput || '';
+      if (cond.type === 'inRange') {
+        let parts = raw.split(' - ');
+        this.eInput1s[i].value = parts[0] ? parts[0].trim() : '';
+        this.eInput2s[i].value = parts[1] ? parts[1].trim() : '';
+      } else {
+        this.eInput1s[i].value = raw.replace(/^[><=]+\s*/, '').trim();
+      }
+
+      if (i > 0) {
+        if (this.conditionBlocks[i].operatorContainer) this.conditionBlocks[i].operatorContainer.show();
+      }
+      this.conditionBlocks[i].selectContainer.show();
+      this.conditionBlocks[i].filterBody.show();
     }
+
+    if (conditions.length < this.maxConditions) {
+       if (this.conditionBlocks[conditions.length].operatorContainer) this.conditionBlocks[conditions.length].operatorContainer.show();
+       this.conditionBlocks[conditions.length].selectContainer.show();
+       this.conditionBlocks[conditions.length].filterBody.show();
+    }
+
+    this.joinOperators.forEach((ops) => {
+       if (this.globalOperator === 'AND') {
+         ops.and.input.prop('checked', true);
+         ops.and.wrapper.addClass('ag-checked');
+         ops.or.input.prop('checked', false);
+         ops.or.wrapper.removeClass('ag-checked');
+       } else {
+         ops.or.input.prop('checked', true);
+         ops.or.wrapper.addClass('ag-checked');
+         ops.and.input.prop('checked', false);
+         ops.and.wrapper.removeClass('ag-checked');
+       }
+    });
   }
 
   /**
@@ -1699,8 +2026,7 @@ class TimeIntervalParentFilter {
   destroy() {
     document.removeEventListener('mousedown', this.closeDropdown, true);
     window.removeEventListener('blur', this.closeDropdown);
-    // Explicitly tell jQuery to wipe the memory cache for this component and all its children
-    if (this.eGuiWrapper) $(this.eGuiWrapper).remove();
+    if (this.eGui) $(this.eGui).remove();
     if (this.ePopup) $(this.ePopup).remove();
   }
 }
@@ -1819,18 +2145,34 @@ class TimeIntervalFloatingFilterComponent {
 
   /**
    * Handles propagating updates generated externally mirroring properties internally identically.
+   * Supports multi-condition arrays (OR/AND) by disabling the input and displaying the joined query.
    * 
    * @param {Object} parentModel - Configuration state object dynamically provided.
    * @returns {void}
    */
   onParentModelChanged(parentModel) {
-    if (!parentModel || parentModel.filter == null) {
+    this.eFilterInput.disabled = false;
+
+    let activeModels = this.params.api.getFilterModel();
+    let myColId = this.params.column.getColId();
+    
+    if (!activeModels[myColId] || !parentModel || (!parentModel.operator && parentModel.filter == null)) {
       this.eFilterInput.value = '';
       return;
     }
 
     if (document.activeElement === this.eFilterInput) return;
 
+    // MULTI-CONDITION SYNC LOGIC
+    // If the model contains an operator, it merges the raw strings for visual feedback and locks the input
+    if (parentModel.operator && parentModel.conditions) {
+      let conditionsText = parentModel.conditions.map(cond => cond.rawUserInput || cond.filter).join(` ${parentModel.operator} `);
+      this.eFilterInput.value = conditionsText;
+      this.eFilterInput.disabled = true;
+      return;
+    }
+
+    // SINGLE CONDITION SYNC LOGIC
     if (parentModel.rawUserInput) {
       this.eFilterInput.value = parentModel.rawUserInput;
       return;
