@@ -791,6 +791,7 @@ class DateTimeParentFilter {
     this.options = {
       'contains': 'Contains',
       'equals': 'Equals',
+      'notEqual': 'Does not equal',
       'greaterThan': 'Greater Than',
       'greaterThanOrEqual': 'Greater Than or Equal',
       'lessThan': 'Less Than',
@@ -980,6 +981,11 @@ class DateTimeParentFilter {
       });
     }
 
+    // An empty resizer wrapper is appended as the final flex child.
+    // This forces the flexbox container to render the bottom gap identically to native filters.
+    let resizerWrapper = $('<div>').addClass('ag-resizer-wrapper');
+    bodyWrapper.append(resizerWrapper);
+
     $(this.eGui).append(bodyWrapper);
 
     this.closeDropdown = (e) => {
@@ -1014,6 +1020,8 @@ class DateTimeParentFilter {
           let syntheticString = '';
           if (type === 'contains' || type === 'equals') {
             syntheticString = val1;
+          } else if (type === 'notEqual') {
+            syntheticString = `!= ${val1}`;
           } else if (type === 'greaterThan') {
             syntheticString = `> ${val1}`;
           } else if (type === 'greaterThanOrEqual') {
@@ -1103,27 +1111,50 @@ class DateTimeParentFilter {
   }
 
   /**
-   * Single condition evaluation helper
+   * Single condition evaluation helper.
+   * Invalid dates (such as "Unknown") are strictly excluded from mathematical inequalities,
+   * and day-level boundaries are applied to "notEqual".
    * 
    * @param {Object} model - The single filter condition object
    * @param {string} cellValue - The raw cell value
    * @returns {boolean}
    */
   checkCondition(model, cellValue) {
+    if (cellValue == null) {
+      return model.type === 'notEqual';
+    }
+
     if (model.type === 'contains') {
-      return cellValue.toLowerCase().includes(model.filterText.toLowerCase());
+      return cellValue.toLowerCase().includes((model.filterText || '').toLowerCase());
     }
 
     const toTimestamp = (val) => {
       if (!val || typeof val !== 'string') return null;
-      return new Date(val.replace(' ', 'T')).getTime();
+      let t = new Date(val.replace(' ', 'T')).getTime();
+      return isNaN(t) ? null : t;
     };
 
     let cellTime = toTimestamp(cellValue);
     let fromTime = toTimestamp(model.dateFrom);
-    
-    if (!fromTime || !cellTime) return true;
-    
+
+    // If the cell contains non-date text (e.g., "Unknown"), string equality is used
+    if (!cellTime) {
+      let target = (model.filterText || model.dateFrom || '').toLowerCase();
+      if (model.type === 'equals') return cellValue.toLowerCase() === target;
+      if (model.type === 'notEqual') return cellValue.toLowerCase() !== target;
+      // Non-date values are strictly excluded from mathematical inequalities
+      return false;
+    }
+
+    // If the filter target itself is non-date text (e.g., filtering for "!= Unknown")
+    if (!fromTime) {
+      let target = (model.filterText || model.dateFrom || '').toLowerCase();
+      if (model.type === 'notEqual') return cellValue.toLowerCase() !== target;
+      if (model.type === 'equals') return cellValue.toLowerCase() === target;
+      return false;
+    }
+
+    // Both values are valid dates: mathematical comparison is performed
     if (model.type === 'equals') {
       if (model.dateTo) {
         let toTime = toTimestamp(model.dateTo);
@@ -1131,6 +1162,16 @@ class DateTimeParentFilter {
         return cellTime >= fromTime && cellTime <= toTime;
       }
       return cellTime === fromTime;
+    }
+
+    if (model.type === 'notEqual') {
+      // If dateTo exists, the entire day range (00:00:00 to 23:59:59) is excluded
+      if (model.dateTo) {
+        let toTime = toTimestamp(model.dateTo);
+        if (!toTime) return cellTime !== fromTime;
+        return cellTime < fromTime || cellTime > toTime;
+      }
+      return cellTime !== fromTime;
     }
     
     if (model.type === 'greaterThan') return cellTime > fromTime;
@@ -1348,6 +1389,7 @@ class DateFloatingFilterComponent {
         .html(`
             <strong style="color: #66afe9;">Date Filter Tips:</strong><br>
             <b>Date (Optional Time):</b> YYYY-MM-DD (HH:MM)<br>
+            <b>Does Not Equal:</b> != YYYY-MM-DD or != Unknown<br>
             <b>After (Inclusive):</b> &gt;= YYYY-MM-DD (HH:MM)<br>
             <b>After:</b> &gt; YYYY-MM-DD (HH:MM)<br>
             <b>Before (Inclusive):</b> &lt;= YYYY-MM-DD (HH:MM)<br>
@@ -1420,8 +1462,8 @@ class DateFloatingFilterComponent {
     let activeModels = this.params.api.getFilterModel();
     let myColId = this.params.column.getColId();
     
-    // The input is wiped and aborted if the grid reports no active filter
-    if (!activeModels[myColId] || !parentModel || (!parentModel.operator && parentModel.dateFrom == null && parentModel.type !== 'contains')) {
+    // The input is cleared only if the column filter is genuinely inactive in the grid
+    if (!activeModels[myColId] || !parentModel) {
       this.eFilterInput.value = '';
       return;
     }
@@ -1429,9 +1471,9 @@ class DateFloatingFilterComponent {
     if (document.activeElement === this.eFilterInput) return;
 
     // MULTI-CONDITION SYNC LOGIC
-    // If the model contains an operator, it merges the raw strings for visual feedback and locks the input
+    // If the model contains an operator, raw strings are merged for visual feedback and the input is locked
     if (parentModel.operator && parentModel.conditions) {
-      let conditionsText = parentModel.conditions.map(cond => cond.rawUserInput || cond.dateFrom).join(` ${parentModel.operator} `);
+      let conditionsText = parentModel.conditions.map(cond => cond.rawUserInput || cond.dateFrom || cond.filterText).join(` ${parentModel.operator === 'AND' ? '&&' : '||'} `);
       this.eFilterInput.value = conditionsText;
       this.eFilterInput.disabled = true;
       return;
@@ -1444,36 +1486,38 @@ class DateFloatingFilterComponent {
     }
 
     const cleanStr = (str, isEnd) => {
-        if (!str) return '';
-        if (isEnd && str.endsWith('23:59:59')) return str.slice(0, 10);
-        if (!isEnd && str.endsWith('00:00:00')) return str.slice(0, 10);
-        return str;
+      if (!str) return '';
+      if (isEnd && str.endsWith('23:59:59')) return str.slice(0, 10);
+      if (!isEnd && str.endsWith('00:00:00')) return str.slice(0, 10);
+      return str;
     };
 
     let fromStr = parentModel.dateFrom || '';
     let toStr = parentModel.dateTo || '';
 
     if (parentModel.type === 'inRange') {
-       let cFrom = cleanStr(fromStr, false);
-       let cTo = cleanStr(toStr, true);
+      let cFrom = cleanStr(fromStr, false);
+      let cTo = cleanStr(toStr, true);
        
-       if (cFrom === cTo && cFrom !== '') {
-          this.eFilterInput.value = cFrom;
-       } else {
-          this.eFilterInput.value = `${cFrom} - ${cTo}`;
-       }
+      if (cFrom === cTo && cFrom !== '') {
+        this.eFilterInput.value = cFrom;
+      } else {
+        this.eFilterInput.value = `${cFrom} - ${cTo}`;
+      }
+    } else if (parentModel.type === 'notEqual') {
+      this.eFilterInput.value = `!= ${parentModel.filterText || cleanStr(fromStr, false)}`;
     } else if (parentModel.type === 'contains') {
-       this.eFilterInput.value = parentModel.filterText || '';
+      this.eFilterInput.value = parentModel.filterText || '';
     } else if (parentModel.type === 'greaterThanOrEqual') {
-       this.eFilterInput.value = `>= ${cleanStr(fromStr, false)}`;
+      this.eFilterInput.value = `>= ${cleanStr(fromStr, false)}`;
     } else if (parentModel.type === 'lessThanOrEqual') {
-       this.eFilterInput.value = `<= ${cleanStr(fromStr, true)}`;
+      this.eFilterInput.value = `<= ${cleanStr(fromStr, true)}`;
     } else if (parentModel.type === 'greaterThan') {
-       this.eFilterInput.value = `> ${cleanStr(fromStr, true)}`;
+      this.eFilterInput.value = `> ${cleanStr(fromStr, true)}`;
     } else if (parentModel.type === 'lessThan') {
-       this.eFilterInput.value = `< ${cleanStr(fromStr, false)}`;
+      this.eFilterInput.value = `< ${cleanStr(fromStr, false)}`;
     } else {
-       this.eFilterInput.value = fromStr;
+      this.eFilterInput.value = fromStr;
     }
   }
 
@@ -1749,6 +1793,11 @@ class TimeIntervalParentFilter {
         displayField: displayField 
       });
     }
+
+    // An empty resizer wrapper is appended as the final flex child.
+    // This forces the flexbox container to render the bottom gap identically to native filters.
+    let resizerWrapper = $('<div>').addClass('ag-resizer-wrapper');
+    bodyWrapper.append(resizerWrapper);
 
     $(this.eGui).append(bodyWrapper);
 
@@ -2217,10 +2266,11 @@ class TimeIntervalFloatingFilterComponent {
 }
 
 
+
 /**
  * User input text is parsed into a mathematical Date filter object.
- * Partial dates (like "04-14") or invalid dates are detected and automatically 
- * trigger a 'contains' string search instead of strict mathematical bounds.
+ * Partial dates or text (like "Unknown") are detected and mapped to string matching.
+ * "!= " inputs are mapped to notEqual with whole-day coverage when no time is supplied.
  * 
  * @param {string} val - Unformatted date payload entered dynamically.
  * @returns {Object|null}
@@ -2233,10 +2283,11 @@ function parseDateFilterText(val) {
   let dateFrom = null;
   let dateTo = null;
 
-  let isGreaterThanOrEqual = val.startsWith('>=');
-  let isLessThanOrEqual = val.startsWith('<=');
-  let isGreaterThan = !isGreaterThanOrEqual && val.startsWith('>');
-  let isLessThan = !isLessThanOrEqual && val.startsWith('<');
+  let isNotEqual = val.startsWith('!=');
+  let isGreaterThanOrEqual = !isNotEqual && val.startsWith('>=');
+  let isLessThanOrEqual = !isNotEqual && val.startsWith('<=');
+  let isGreaterThan = !isNotEqual && !isGreaterThanOrEqual && val.startsWith('>');
+  let isLessThan = !isNotEqual && !isLessThanOrEqual && val.startsWith('<');
   let isRange = val.includes(' - ');
 
   if (isRange) {
@@ -2250,17 +2301,28 @@ function parseDateFilterText(val) {
       dateTo = toStr.includes(':') ? toStr : `${toStr} 23:59:59`;
     }
   } else {
-    let rawDate = val.replace(/^[><=]+\s*/, '').trim();
+    let rawDate = val.replace(/^[><!=]+\s*/, '').trim();
+    // Premature evaluation is avoided while typing operators before a value is entered
+    if (!rawDate) return null;
+
     let hasTime = rawDate.includes(':');
 
     let testDateStr = hasTime ? rawDate : `${rawDate} 00:00:00`;
     let testDate = new Date(testDateStr.replace(' ', 'T')).getTime();
 
+    // If it does not start with a 4-digit year, it is treated as a text match (e.g. "Unknown" or "04-14")
     if (isNaN(testDate) || !rawDate.match(/^\d{4}/)) {
+      if (isNotEqual) {
+        return { type: 'notEqual', filterText: rawDate, rawUserInput: val };
+      }
       return { type: 'contains', filterText: rawDate, rawUserInput: val };
     }
 
-    if (isGreaterThanOrEqual) {
+    if (isNotEqual) {
+      type = 'notEqual';
+      dateFrom = hasTime ? rawDate : `${rawDate} 00:00:00`;
+      dateTo = hasTime ? null : `${rawDate} 23:59:59`;
+    } else if (isGreaterThanOrEqual) {
       type = 'greaterThanOrEqual';
       dateFrom = hasTime ? rawDate : `${rawDate} 00:00:00`;
     } else if (isLessThanOrEqual) {

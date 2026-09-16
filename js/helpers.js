@@ -469,7 +469,7 @@ Handlebars.registerHelper('aireport_link', function(grp,user,filename) {
       result = `<span style="color: grey;" class="fa fa-lightbulb-o" title="AI Reports are disabled" aria-label="AI Reports are disabled"/>`;
     }
   } else {
-    result = `<span style="color: grey;" class="fa fa-lightbulb-o" title="No job report available" aria-label="No job report available"/>`;
+    result = `<span style="color: grey;" class="fa fa-lightbulb-o" title="Job report not available" aria-label="Job report not available"/>`;
   }
   return new Handlebars.SafeString(result);
 });
@@ -481,7 +481,7 @@ Handlebars.registerHelper('pdf_link', function(grp,user,filename) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
     result = `<a href="${url}" ><span class="fa fa-file-pdf-o" title="Download job report" aria-label="Download PDF job report"/></a>`;
   } else {
-    result = `<span style="color: grey;" class="fa fa-file-pdf-o" title="No job report available" aria-label="No job report available"/>`;
+    result = `<span style="color: grey;" class="fa fa-file-pdf-o" title="Job report not available" aria-label="Job report not available"/>`;
   }
   return new Handlebars.SafeString(result);
 });
@@ -492,7 +492,7 @@ Handlebars.registerHelper('html_link', function(grp,user,filename) {
     let url = 'data/'+((view.navdata.data.demo || view.url_data.demo)?'DEMO/':'')+"projects/"+grp+'/'+user+'/'+((typeof filename !== 'undefined')?filename:'#');
     result = `<a href="${url}" ><span class="fa fa-area-chart" title="Show job report" aria-label="Show HTML job report"/></a>`;
   } else {
-    result = `<span style="color: grey;" class="fa fa-area-chart" title="No job report available" aria-label="No job report available"/>`;
+    result = `<span style="color: grey;" class="fa fa-area-chart" title="Job report not available" aria-label="Job report not available"/>`;
   }
   return new Handlebars.SafeString(result);
 });

@@ -300,18 +300,18 @@ function create_report_link(params,type,project,user) {
     if (type == "aireport") {
       //result = `<a href="#" onclick="generate_ai_report('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
       if(view.uiConfig?.llviewai?.enableAIReports){
-        result = `<a href="#" onclick="showAiReportDialog('${url}'); return false;"><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+        result = `<a href="#" onclick="showAiReportDialog('${url}'); return false;"><span class="fa ${icon}" aria-label="${text}"/></a>`;
       }
       else{
-        result = `<span style="color: grey;" class="fa ${icon}" title="AI reports are not enabled" aria-label="AI reports are not enabled"/>`;
+        result = `<span style="color: grey;" class="fa ${icon}" aria-label="AI reports are not enabled"/>`;
       }
     }
     else{
-      result = `<a href="${url}" ><span class="fa ${icon}" title="${title}" aria-label="${text}"/></a>`;
+      result = `<a href="${url}" ><span class="fa ${icon}" aria-label="${text}"/></a>`;
     }
     
   } else {
-    result = `<span style="color: grey;" class="fa ${icon}" title="No job report available" aria-label="No job report available"/>`;
+    result = `<span style="color: grey;" class="fa ${icon}" aria-label="Job report not available"/>`;
   }
   // console.log(result)
   return result;
