@@ -283,7 +283,6 @@ function create_report_link(params,type,project,user) {
     icon = "fa-area-chart";
     title = "Show job report"
     text = "Show HTML job report"
-
   }
   else if (type == "aireport") { 
     icon = "fa-lightbulb-o";

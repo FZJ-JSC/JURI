@@ -1562,30 +1562,45 @@ View.prototype.add_filter = function (new_filter,delimiter="||") {
 }
 
 /**
- * Compare the checkboxes on filter options table with the 'filters' and select the ones that 
- * are already included
- * @param {*} filters filters to be checked
+ * Checkboxes in the options table and dynamic shortcut buttons are checked 
+ * and toggled based on currently applied filters.
+ * 
+ * @param {Object} filters - Currently applied filter dictionary
+ * @returns {void}
  */
 View.prototype.check_filteroptions = function (filters) {
-  let self=this;
-  if ((typeof self.page_data.options != 'object')||((typeof self.page_data.options === 'object')&&(!Object.keys(self.page_data.options).length))) {return;}
-  // Checking if checkboxes on options need to be checked, and checking them
-  for (let [name, input] of Object.entries(self.page_data.options)) {
-    for (let [optname, filter] of Object.entries(input)) {
-      let id = `${name.replace(/(\s)/g, '_').replace(/[\(\)]/g, '')}_${optname.replace(/(\s)/g, '_').replace(/[\(\)]/g, '')}`;
-      let checked = true;
-      for (let [key, value] of Object.entries(filter)) {
-        if (!filters.hasOwnProperty(key)||!filters[key].includes(value)) {
-          checked = false
+  let self = this;
+  
+  // Checkbox inputs in the options table are evaluated
+  if (self.filteroptions && typeof self.filteroptions === 'object' && Object.keys(self.filteroptions).length) {
+    for (let [name, input] of Object.entries(self.filteroptions)) {
+      for (let [optname, filter] of Object.entries(input)) {
+        let id = `${name.replace(/(\s)/g, '_').replace(/[\(\)]/g, '')}_${optname.replace(/(\s)/g, '_').replace(/[\(\)]/g, '')}`;
+        let checked = true;
+        for (let [key, value] of Object.entries(filter)) {
+          if (!filters.hasOwnProperty(key) || !filters[key].includes(value)) {
+            checked = false;
+          }
         }
-      }
-      $(`#${id}`).prop('checked', checked);
-      if(name=='State') {
-        $(`#filter_${optname.toLowerCase()}`).toggleClass("active", checked)
+        $(`#${id}`).prop('checked', checked);
       }
     }
-  }  
-}
+  }
+
+  // Active states for dynamic shortcut buttons are synchronized
+  if (self.filter_buttons && self.filter_buttons.length) {
+    self.filter_buttons.forEach((b) => {
+      let active = true;
+      for (let [key, value] of Object.entries(b.filter)) {
+        if (!filters.hasOwnProperty(key) || !filters[key].includes(value)) {
+          active = false;
+          break;
+        }
+      }
+      $(`#${b.id}`).toggleClass("active", active);
+    });
+  }
+};
 
 /**
  * Remove filter from grid
@@ -1612,198 +1627,169 @@ View.prototype.remove_filter = function (new_filter,delimiter="||") {
 
 
 /**
- * Add button with options to apply to the table
- * @param {obj} opt Object containing the filters to be applied, in the form:
- *                  { 
- *                    'Field Name1' : { 
- *                                      'Option1': {'Header1': 'Value1','Header2': 'Value2',...},
- *                                      'Option2': {'Header1': 'Value1','Header3': 'Value3',...},
- *                                      ...
- *                                    },
- *                    'Field Name2' : { 
- *                                       ...
- *                                    },
- *                  }
- * @param {*} filter Filter element, where the button for more options will be added. If not present, nothing is done
- * @returns 
+ * Dynamic filter buttons and expandable options table are constructed
+ * based on the page configuration. The '+' button is rendered strictly
+ * when valid preset options are configured.
+ * 
+ * @param {jQuery} filter - Target DOM container where the controls are appended
+ * @param {Object} options - Configuration object containing buttons array and/or table dictionary
+ * @returns {void}
  */
-View.prototype.add_filter_options = function (filter,options) {
-  if (typeof (options) == "undefined"||!Object.keys(options).length) {return;}
+View.prototype.add_filter_options = function (filter, options) {
+  if (typeof options === "undefined" || !options || !Object.keys(options).length) return;
   let self = this;
 
-  if(!filter.length){
-    return;
+  if (!filter.length) return;
+
+  // Configuration is normalized to support both structured and legacy definitions
+  let tableOptions = options.table || (options.buttons ? {} : options);
+  let buttonConfigs = options.buttons || [];
+
+  // Deep validation ensures at least one category contains non-empty selectable options
+  let hasTableOptions = false;
+  if (tableOptions && typeof tableOptions === 'object') {
+    hasTableOptions = Object.values(tableOptions).some(
+      val => val && typeof val === 'object' && Object.keys(val).length > 0
+    );
   }
-  self.filteroptions = options;
 
-  // Creating table with filter options
-  $('#optionsdiv').remove() // Removing previous before adding new one
-  let desc = 'Options to filter table:'
-  let optionsdiv = $('<div>',{id: "optionsdiv"}).hide()
-  let optionstable = $('<table>',{id: "optionstable",width: 100+200*Object.keys(options).length});
-  let optionsrow = $('<tr>').append($('<th>',{"aria-label":desc})
-    .text(desc))
+  self.filteroptions = hasTableOptions ? tableOptions : {};
+  self.filter_buttons = [];
 
-  // Looping over the different options according to their order on the columns
-  for (let [key, values] of Object.entries(options).sort(([a], [b]) => sortByKeyOrder(a, b, self.gridApi.getColumns().map((col)=>col.colDef.headerName)))) {
-    let id = key.replace(/(\s)/g, '_').replace(/[\(\)]/g, '');
-    // Adding current option 'title' in a cell
-    optionsrow.append($('<td>',{id: id}).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'))
-    let this_option = $('<td>').addClass('optionvalues')
-    // Looping over the different options for this given field, and creating the checkbox filteroptions
-    for (let [optname, filter_entry] of Object.entries(values)) {
-      let inputid = `${id}_${optname.replace(/(\s)/g, '_')}`;
-      let option_input = $('<input>',{type: 'checkbox',id: inputid, name: id, value: optname})
-      let option_label = $('<label>',{for: inputid}).append($('<span>').text(optname).css("vertical-align", "middle"))
-        .prepend(option_input)
-      this_option.append(option_label)
-        .append(`<br>`);
-      // Remove previous listener (if any) to prevent memory leak, then add the new one
-      $('#top_info_area').off('change', `#optionsdiv #${inputid}`).on('change', `#optionsdiv #${inputid}`, (e) => {
-        let delimiter="||";
-        if (e.target.checked) {
-          self.add_filter(filter_entry,delimiter=delimiter);
-        } else {
-          self.remove_filter(filter_entry,delimiter=delimiter);
-        }
-      })
+  let optionsdiv = null;
 
+  // The expandable options table is constructed only if valid table options are present
+  if (hasTableOptions) {
+    $('#optionsdiv').remove();
+    let desc = 'Options to filter table:';
+    optionsdiv = $('<div>', { id: "optionsdiv" }).hide();
+    let optionstable = $('<table>', { id: "optionstable", width: 100 + 200 * Object.keys(tableOptions).length });
+    let optionsrow = $('<tr>').append($('<th>', { "aria-label": desc }).text(desc));
+
+    for (let [key, values] of Object.entries(tableOptions).sort(([a], [b]) => sortByKeyOrder(a, b, self.gridApi.getColumns().map((col) => col.colDef.headerName)))) {
+      if (!values || typeof values !== 'object' || !Object.keys(values).length) continue;
+
+      let id = key.replace(/(\s)/g, '_').replace(/[\(\)]/g, '');
+      optionsrow.append($('<td>', { id: id }).append($('<span>').text(`${key}: `).css("vertical-align", "middle")).addClass('optionname'));
+      let this_option = $('<td>').addClass('optionvalues');
+
+      for (let [optname, filter_entry] of Object.entries(values)) {
+        let inputid = `${id}_${optname.replace(/(\s)/g, '_')}`;
+        let option_input = $('<input>', { type: 'checkbox', id: inputid, name: id, value: optname });
+        let option_label = $('<label>', { for: inputid })
+          .append($('<span>').text(optname).css("vertical-align", "middle"))
+          .prepend(option_input);
+          
+        this_option.append(option_label).append(`<br>`);
+
+        $('#top_info_area').off('change', `#optionsdiv #${inputid}`).on('change', `#optionsdiv #${inputid}`, (e) => {
+          let delimiter = "||";
+          if (e.target.checked) {
+            self.add_filter(filter_entry, delimiter);
+          } else {
+            self.remove_filter(filter_entry, delimiter);
+          }
+        });
+      }
+      optionsrow.append(this_option);
     }
-    optionsrow.append(this_option)
-  }
-  // Creating div with table with filter options to be added to DOM
-  optionstable.append(optionsrow)
-  optionsdiv.append(optionstable)
+    
+    optionstable.append(optionsrow);
+    optionsdiv.append(optionstable);
 
-  // Create the container for the toggle buttons
+    // Initial URL state visibility is evaluated
+    if (self.initial_data.options?.showoptions) {
+      $('#top_info_area').prepend(optionsdiv);
+      self.check_filteroptions(self.initial_data.filter);
+      optionsdiv.slideDown(function() {
+        resize();
+      });
+    }
+  }
+
+  // Container for shortcut buttons is created
   let filterToggle = $('<div>')
     .addClass('filter-toggle')
-    .attr('id', 'status-filter-toggle')
+    .attr('id', 'status-filter-toggle');
 
-  // Define the buttons with their respective colors
-  const buttons = [
-    { 
-      label: 'C', 
-      color: 'green', 
-      tooltip: 'Toggle filter for COMPLETED jobs',
-      id: 'filter_completed',
-      function: () => {
-        let delimiter="||";
-        if ($('#filter_completed').hasClass('active')) {
-          self.add_filter({State: 'COMPLETED'},delimiter=delimiter);
-        } else {
-          self.remove_filter({State: 'COMPLETED'},delimiter=delimiter);
-        }
-      } 
-    },
-    { 
-      label: 'F', 
-      color: 'red', 
-      tooltip: 'Toggle filter for FAILED jobs',
-      id: 'filter_failed',
-      function: () => {
-        let delimiter="||";
-        if ($('#filter_failed').hasClass('active')) {
-          self.add_filter({State: 'FAILED'},delimiter=delimiter);
-        } else {
-          self.remove_filter({State: 'FAILED'},delimiter=delimiter);
-        }
-      } 
-    },
-    { 
-      label: 'R', 
-      color: 'blue',
-      tooltip: 'Toggle filter for RUNNING jobs',
-      id: 'filter_running',
-      function: () => {
-        let delimiter="||";
-        if ($('#filter_running').hasClass('active')) {
-          self.add_filter({State: 'RUNNING'},delimiter=delimiter);
-        } else {
-          self.remove_filter({State: 'RUNNING'},delimiter=delimiter);
-        }
-      } 
-    },
-    { 
-      label: '+', 
-      color: 'black', 
-      tooltip: `${self.initial_data.options?.showoptions ? "Hide" : "Show"} pre-selected filter options`,
-      id: 'filteroptions',
-      function: () => {
-        let filteroptions = $('#filteroptions')
-        // Turns on and off filter options
-        if (self.initial_data.options?.showoptions) {
-          // If "aria-label"is already showing up when clicking the filteroptions, then turn it off
-          filteroptions.attr("data-original-title","Click to show the options to filter the table")
-            .attr("aria-label","Click to show the options to filter the table")
-          delete self.initial_data.options.showoptions;
-          $('#optionsdiv').slideUp(function() {
-            $(this).remove();
-            resize()
-          });
-          self.setHash();
-        } else {
-          // If "aria-label" does not exist when clicking the filteroptions, then turn it on
-          filteroptions.attr("data-original-title","Click to hide the options to filter the table")
-            .attr("aria-label","Click to hide the options to filter the table")
-          self.initial_data.options = { 'showoptions': 'true' };
-          self.setHash();
-          $('#top_info_area').prepend(optionsdiv);
-          // Checking which options should be already selected
-          self.check_filteroptions(self.initial_data.filter);
-          optionsdiv.slideDown(function() {
-            resize();
-          });
-        }
-        return;
-      } 
-    }
-  ];
+  // Dynamic filter buttons are constructed from configuration
+  buttonConfigs.forEach((b, idx) => {
+    let btnId = b.id || `filter_btn_${idx}_${b.label.replace(/\W/g, '')}`;
+    let btnDef = { ...b, id: btnId };
+    self.filter_buttons.push(btnDef);
 
-  // Loop through the buttons to create and add them
-  buttons.forEach(button => {
     const btn = $('<button>')
       .addClass('filter-toggle-btn')
-      .attr('id',button.id)
-      .text(button.label)
-      .attr('data-value', button.label)
-      .attr("title",button.tooltip)
-      .attr("aria-label",button.tooltip)
+      .attr('id', btnId)
+      .text(b.label)
+      .attr('data-value', b.label)
+      .attr("title", b.tooltip || '')
+      .attr("aria-label", b.tooltip || '')
       .attr('data-toggle', "tooltip")
       .attr('data-html', "true")
       .attr('data-placement', "bottom")
-      .css({
-        color: button.color,
-      })
-      .off('click') // Turning off first, to avoid adding multiple events
+      .css({ color: b.color || 'inherit' })
       .on('click', function () {
-        $(this).toggleClass('active');
-        button.function();
+        let delimiter = "||";
+        if ($(this).hasClass('active')) {
+          self.remove_filter(b.filter, delimiter);
+        } else {
+          self.add_filter(b.filter, delimiter);
+        }
       });
 
-    // Add the button to the container
     filterToggle.append(btn);
   });
 
-  // Add the toggle buttons to the #filter element
-  filter.append(filterToggle);
+  // The '+' expand button is appended only when valid table options exist
+  if (hasTableOptions && optionsdiv) {
+    const plusBtn = $('<button>')
+      .addClass('filter-toggle-btn')
+      .attr('id', 'filteroptions')
+      .text('+')
+      .attr('data-value', '+')
+      .attr("title", `${self.initial_data.options?.showoptions ? "Hide" : "Show"} pre-selected filter options`)
+      .attr("aria-label", `${self.initial_data.options?.showoptions ? "Hide" : "Show"} pre-selected filter options`)
+      .attr('data-toggle', "tooltip")
+      .attr('data-html', "true")
+      .attr('data-placement', "bottom")
+      .css({ color: 'black' })
+      .on('click', function () {
+        let filteroptions = $('#filteroptions');
+        if (self.initial_data.options?.showoptions) {
+          filteroptions.attr("data-original-title", "Click to show the options to filter the table")
+            .attr("aria-label", "Click to show the options to filter the table");
+          delete self.initial_data.options.showoptions;
+          optionsdiv.slideUp(function () {
+            $(this).remove();
+            resize();
+          });
+          self.setHash();
+        } else {
+          filteroptions.attr("data-original-title", "Click to hide the options to filter the table")
+            .attr("aria-label", "Click to hide the options to filter the table");
+          self.initial_data.options = { 'showoptions': 'true' };
+          self.setHash();
+          $('#top_info_area').prepend(optionsdiv);
+          self.check_filteroptions(self.initial_data.filter);
+          optionsdiv.slideDown(function () {
+            resize();
+          });
+        }
+      });
 
-  // If show info is active (from URL), activate it
-  let filteroptions = $('#filteroptions')
-  if (self.initial_data.options?.showoptions) {
-    filteroptions.addClass('active');
-    filteroptions.attr("data-original-title","Click to hide the options to filter the table")
-      .attr("aria-label","Click to hide the options to filter the table")
-    $('#top_info_area').prepend(optionsdiv);
-    // Checking which options should be already selected
-    self.check_filteroptions(self.initial_data.filter);
-    optionsdiv.slideDown(function() {
-      resize();
-    });
-    resize();
+    if (self.initial_data.options?.showoptions) {
+      plusBtn.addClass('active');
+    }
+
+    filterToggle.append(plusBtn);
   }
-  return;
-}
+
+  // The toggle button group is appended to the DOM if any controls were created
+  if (filterToggle.children().length > 0) {
+    filter.append(filterToggle);
+  }
+};
 
 
 /**

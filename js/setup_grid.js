@@ -110,7 +110,7 @@ function init_grid() {
       cellClass: 'text-center',           // Default class of cells
       flex: 1,                            // Set flex cells that will fill the space
       filterParams: {
-        maxNumConditions: 3,
+        maxNumConditions: 4,
       }
       // minWidth: 50,
       // cellClass: (params) => {
