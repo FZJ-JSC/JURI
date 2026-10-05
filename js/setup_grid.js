@@ -204,11 +204,12 @@ function init_grid() {
       $("#filter-text-box").val(view.initial_data.quickfilter)
     }
 
-    // Parse filter options to add possible dates
-    view.page_data.options = parseOptions(view.page_data.options)
-    // Add button for options
-    view.add_filter_options($('#filter'),view.page_data.options);
-
+    if (view.page_data?.options) {
+      // Parse filter options to add possible dates
+      view.page_data.options = parseOptions(view.page_data.options)
+      // Add button for options
+      view.add_filter_options($('#filter'),view.page_data.options);
+    }
   }
 
   // view.gridApi.setColumnsVisible(view.gridApi.getColumnGroup('GPU').getLeafColumns(), false)

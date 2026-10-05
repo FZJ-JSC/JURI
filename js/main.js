@@ -1757,6 +1757,8 @@ View.prototype.add_filter_options = function (filter, options) {
       .on('click', function () {
         let filteroptions = $('#filteroptions');
         if (self.initial_data.options?.showoptions) {
+          // The active class is removed when the drawer is closed
+          filteroptions.removeClass('active');
           filteroptions.attr("data-original-title", "Click to show the options to filter the table")
             .attr("aria-label", "Click to show the options to filter the table");
           delete self.initial_data.options.showoptions;
@@ -1766,6 +1768,8 @@ View.prototype.add_filter_options = function (filter, options) {
           });
           self.setHash();
         } else {
+          // The active class is applied when the drawer is opened
+          filteroptions.addClass('active');
           filteroptions.attr("data-original-title", "Click to hide the options to filter the table")
             .attr("aria-label", "Click to hide the options to filter the table");
           self.initial_data.options = { 'showoptions': 'true' };

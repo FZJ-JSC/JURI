@@ -658,23 +658,23 @@ function add_column_selector() {
     }
 
     groups.forEach(function(group) {
-      // inital checkbox state is given by last session setting, default value or false (in this order) 
-      let checked = false;
+      // Default to true if no default_columns configuration is specified
+      let checked = true;
 
       let group_escaped = escapeSpecialCaseChar(group);
       if (typeof(Storage) !== "undefined" && sessionStorage.getItem("group_"+group_escaped)) {
         checked = sessionStorage.getItem("group_"+group_escaped) == "true";
-      } else if (view.page_data && typeof(view.page_data.default_columns) == "object") {
-        checked = view.page_data.default_columns.includes(group.replace(/(_)/g, ' '));
-      } else if (typeof(default_columns) !== "undefined") {
-        checked = default_columns.includes(group.replace(/(_)/g, ' '));
+      } else if (Array.isArray(view.page_data?.default_columns)) {
+        checked = view.page_data.default_columns.includes(group.replace(/_/g, ' '));
+      } else if (typeof(default_columns) !== "undefined" && Array.isArray(default_columns)) {
+        checked = default_columns.includes(group.replace(/_/g, ' '));
       }
       // Forcing show used groups (groups that are used on URL)
-      checked = used_groups.has(group) ? true : checked
+      checked = used_groups.has(group) ? true : checked;
 
       // Creating column list selection
       dropup_menu.append($("<label>").addClass("dropdown-item form-check-label")
-                    .text(group.replace(/(_)/g, ' '))
+                    .text(group.replaceAll('_', ' '))
                     .prepend($("<input>")
                     .addClass("form-check-input")
                     .attr("type","checkbox")
@@ -691,7 +691,7 @@ function add_column_selector() {
                         // For datatables / grids
                         } else if (view.gridApi) {
                           view.headerToName[view.clicked_page][group]
-                          groupid = view.headerToName[view.clicked_page][group]
+                          const groupid = view.headerToName[view.clicked_page][group]
                           clear_filter(groupid)
                           const gp = view.gridApi.getColumnDefs().find((d) => d.groupId === groupid);
                           if (gp) {
