@@ -21,19 +21,16 @@ function debug_to_console($data) {
 }
 
 $dir=dirname($_SERVER['SCRIPT_FILENAME']);
-if (!isset($_SERVER['PHP_AUTH_USER'])) {
+
+$authuser = $_SERVER['REMOTE_USER'] ?? $_SERVER['PHP_AUTH_USER'] ?? null;
+if ($authuser === null || $authuser === '') {
   header('WWW-Authenticate: Basic realm="Job Monitor"');
   header('HTTP/1.0 401 Unauthorized');
   echo 'You are not logged in. Please, reload the page and try again.';
   exit;
 }
+$user = strtolower($authuser);
 
-// Get info from mapping
-if (isset($_SERVER['REMOTE_USER'])) {
-  $user = strtolower($_SERVER['REMOTE_USER']);
-} else {
-  $user = strtolower($_SERVER['PHP_AUTH_USER']);
-}
 $demo = false;
 if (strpos($dir, 'demo') !== false) {
   $demo = " DEMO";
@@ -57,10 +54,9 @@ if(isset($_GET["jobid"])) {
   // Parsing data
   $jobfile = parse_ini_string($unzipped, TRUE);
   // Separating project from user
-  $info = explode(",",$jobfile['jobid_map'][$jobid]);
+  $info = explode(",", $jobfile['jobid_map'][$jobid] ?? '');
   // Getting project and user
-  $project = $info[0];
-  $user = $info[1];
+  $project = $info[0]; $user = $info[1] ?? '';
   if (!$project) {
     // If no project is found, show 404 page WITHOUT changing URL
     http_response_code(404);
@@ -167,7 +163,8 @@ if(isset($inifile["supporter"][$user])) {
         !isset($inifile["mentor"][$loginuser]) && !isset($inifile["supporter"][$loginuser])) {
         // If not, emit alert and redirect to regular login.php
         $alert = "User \"".$loginuser."\" not found on ".strtoupper($systemname)."!";
-        echo "<script type='text/javascript'>alert('$alert'); window.location.replace('login.php'); </script>";
+        $msg = json_encode($alert, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+        echo "<script type='text/javascript'>alert($msg); window.location.replace('login.php'); </script>";
         exit();
       }
       $loginasuser=$loginuser;
@@ -332,6 +329,7 @@ if( !empty($mentorlinks)||!empty($supporterlinks) ) {
 $systemname = str_replace("_", " ", $systemname);
 $systemname = strtoupper($systemname);
 
+$health = ''; $status_page = ''; $profile_page = '';
 // Defining systems at JSC
 $systemmap = array(
   'SYSTEM' => 'JURECA DC',

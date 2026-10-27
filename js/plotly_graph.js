@@ -993,10 +993,11 @@ PlotlyGraph.prototype.plot = function (params) {
         if (!self.graph_data.slider) {
           traces.push(trace);
         }
-      } else { // if there's no data
+      // } else { // if there's no data
+        // NOTE: This is now being done before the plot, to take into account also traces with 0 points
         // If there are no traces, remove tick0 and dtick from the graph, as that makes the page unresponsive
-        delete layout.xaxis.dtick;
-        delete layout.xaxis.tick0;
+        // delete layout.xaxis.dtick;
+        // delete layout.xaxis.tick0;
       }
     }
 
@@ -1450,6 +1451,16 @@ PlotlyGraph.prototype.plot = function (params) {
    **                            CREATING THE PLOT                           **
    ****************************************************************************/
   if (params) layout.datarevision = params.JobID + "?_=" + new Date().getTime()
+
+  // If there's no data to plot, the bar plots can render too many points
+  // To avoid this, we clean up dtick and tick0 for empty graphs here
+  const xTraces = traces.filter(t => !t.xaxis ||t.xaxis === 'x');
+  const noXData = xTraces.length === 0 || xTraces.every(t => !t.x ||t.x.length === 0);
+  if (noXData) {
+    delete layout.xaxis.dtick;
+    delete layout.xaxis.tick0;
+  }
+
   Plotly.react(self.id, traces, layout, self.config).then(_ => {
 
     // Fixing zoom when double clicking or clicking on the 'reset axis' modebar button
